@@ -15,10 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`flex gap-[32px]`}>
+      <body className="flex min-h-screen bg-gray-50">
         <AlertProvider>
           <Sidebar />
-          {children}
+          <main className="flex-1 overflow-auto">{children}</main>
         </AlertProvider>
       </body>
     </html>

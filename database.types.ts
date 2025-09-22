@@ -14,12 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert: {
+        Row: {
+          alert_level: string | null
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          id: number
+          title: string | null
+        }
+        Insert: {
+          alert_level?: string | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          title?: string | null
+        }
+        Update: {
+          alert_level?: string | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          title?: string | null
+        }
+        Relationships: []
+      }
       evacuation_centers: {
         Row: {
           address: string
           capacity: number | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           created_by: string | null
+          current_occupancy: number | null
           id: number
           latitude: number
           longitude: number
@@ -31,8 +61,11 @@ export type Database = {
         Insert: {
           address: string
           capacity?: number | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          current_occupancy?: number | null
           id?: number
           latitude: number
           longitude: number
@@ -44,8 +77,11 @@ export type Database = {
         Update: {
           address?: string
           capacity?: number | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          current_occupancy?: number | null
           id?: number
           latitude?: number
           longitude?: number
