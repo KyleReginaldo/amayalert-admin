@@ -1,35 +1,56 @@
 'use client';
 
-import {
-  LayoutDashboard,
-  LogOut,
-  MapPinHouse,
-  Menu,
-  Settings,
-  TriangleAlert,
-  X,
-} from 'lucide-react';
+import { LayoutDashboard, LogOut, MapPinHouse, Settings, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
-const Sidebar = () => {
-  const pathname = usePathname();
+// Create context for sidebar state
+const SidebarContext = createContext<{
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  toggleMobileMenu: () => void;
+} | null>(null);
+
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error('useSidebar must be used within a SidebarProvider');
+  }
+  return context;
+};
+
+export const SidebarProvider = ({ children }: { children: React.ReactNode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  return (
+    <SidebarContext.Provider value={{ isMobileMenuOpen, setIsMobileMenuOpen, toggleMobileMenu }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
+
+const Sidebar = () => {
+  const pathname = usePathname();
+  const { isMobileMenuOpen, setIsMobileMenuOpen } = useSidebar();
+
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('mobile-sidebar');
-      const menuButton = document.getElementById('mobile-menu-button');
 
-      if (isMobileMenuOpen && sidebar && menuButton) {
-        if (!sidebar.contains(event.target as Node) && !menuButton.contains(event.target as Node)) {
+      if (isMobileMenuOpen && sidebar) {
+        if (!sidebar.contains(event.target as Node)) {
           setIsMobileMenuOpen(false);
         }
       }
@@ -37,7 +58,7 @@ const Sidebar = () => {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   // Hide the sidebar on authentication routes like /signin
   if (pathname?.startsWith('/signin')) return null;
@@ -65,17 +86,13 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        id="mobile-menu-button"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#3396D3] text-white rounded-lg shadow-lg"
-      >
-        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
       {/* Mobile Overlay */}
-      {isMobileMenuOpen && <div className="md:hidden fixed inset-0 bg-black/50 z-20" />}
+      {isMobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-20"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <div
