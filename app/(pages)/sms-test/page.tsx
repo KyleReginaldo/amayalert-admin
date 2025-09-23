@@ -24,7 +24,7 @@ export default function SMSTestPage() {
     try {
       const status = await smsService.checkStatus();
       setServiceStatus(status);
-    } catch (error) {
+    } catch {
       setServiceStatus({ success: false, error: 'Failed to check service status' });
     }
     setLoading(false);
@@ -47,7 +47,7 @@ export default function SMSTestPage() {
         useMessagingService: true,
       });
       setResult(response);
-    } catch (error) {
+    } catch {
       setResult({ success: false, error: 'Failed to send SMS' });
     }
 
@@ -73,7 +73,7 @@ export default function SMSTestPage() {
         useTest,
       });
       setResult(response);
-    } catch (error) {
+    } catch {
       setResult({ success: false, error: 'Failed to send emergency alert' });
     }
 

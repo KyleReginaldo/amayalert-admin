@@ -125,6 +125,7 @@ const MapComponent = ({
   }, [initialLocation, hasUserSelected, onLocationSelect]);
 
   // Initialize geocoder when map loads
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onMapLoad = useCallback((_map: google.maps.Map) => {
     geocoderRef.current = new google.maps.Geocoder();
   }, []);

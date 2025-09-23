@@ -79,6 +79,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Remove id from body if present to prevent updates
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _, ...updateData } = body as UserUpdate & { id?: string };
 
     const { data: user, error } = await supabase
