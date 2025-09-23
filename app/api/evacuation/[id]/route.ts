@@ -97,6 +97,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.latitude !== undefined) updateData.latitude = body.latitude;
     if (body.longitude !== undefined) updateData.longitude = body.longitude;
     if (body.capacity !== undefined) updateData.capacity = body.capacity;
+    if (body.current_occupancy !== undefined) updateData.current_occupancy = body.current_occupancy;
+    if (body.contact_name !== undefined) updateData.contact_name = body.contact_name;
+    if (body.contact_phone !== undefined) updateData.contact_phone = body.contact_phone;
     if (body.status !== undefined) {
       const validStatuses = ['open', 'closed', 'full', 'maintenance'];
       if (validStatuses.includes(body.status)) {

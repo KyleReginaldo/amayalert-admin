@@ -13,11 +13,15 @@ interface EvacuationCenter {
   address: string;
   latitude: number;
   longitude: number;
-  capacity?: number;
-  current_occupancy?: number;
-  status?: string;
-  contact_name?: string;
-  contact_phone?: string;
+  capacity: number | null;
+  current_occupancy: number | null;
+  status: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  photos: string[] | null;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string | null;
 }
 
 interface EvacuationCentersMapProps {
@@ -43,118 +47,119 @@ export default function EvacuationCentersMap({
   const [selectedCenter, setSelectedCenter] = useState<EvacuationCenter | null>(null);
   const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null);
 
-  // Create custom marker icon based on center status
+  // Create marker icon based on center status
   const createMarkerIcon = useCallback((center: EvacuationCenter) => {
-    let color = '#10b981'; // green for open
-    if (center.status === 'full') color = '#ef4444'; // red for full
-    else if (center.status === 'maintenance') color = '#f59e0b'; // amber for maintenance
-    else if (center.status === 'closed') color = '#6b7280'; // gray for closed
+    const currentOccupancy = center.current_occupancy || 0;
+    const capacity = center.capacity || 0;
+
+    const status =
+      capacity > 0 && currentOccupancy >= capacity
+        ? 'full'
+        : capacity > 0 && currentOccupancy >= capacity * 0.8
+        ? 'almost-full'
+        : 'available';
+
+    const color =
+      status === 'available' ? '#22c55e' : status === 'almost-full' ? '#f59e0b' : '#ef4444';
 
     return {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: color,
-      fillOpacity: 0.8,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-      scale: 8,
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+            <circle cx="20" cy="20" r="16" fill="${color}" stroke="white" stroke-width="3" opacity="0.8"/>
+            <circle cx="20" cy="20" r="4" fill="white"/>
+          </svg>
+        `)}`,
+      scaledSize: new google.maps.Size(30, 30),
+      anchor: new google.maps.Point(15, 15),
     };
   }, []);
 
   // Create info window content
-  const createInfoWindowContent = useCallback((center: EvacuationCenter) => {
-    const occupancyPercentage = center.capacity
-      ? Math.round(((center.current_occupancy || 0) / center.capacity) * 100)
-      : 0;
+  const createInfoWindowContent = useCallback(
+    (center: EvacuationCenter) => {
+      const currentOccupancy = center.current_occupancy || 0;
+      const capacity = center.capacity || 0;
+      const occupancyPercentage =
+        capacity > 0 ? Math.round((currentOccupancy / capacity) * 100) : 0;
 
-    return `
-      <div style="max-width: 280px; padding: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-          <div style="width: 32px; height: 32px; background: #3b82f6; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-            <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
-              <path d="M12 2L2 7v10c0 5.55 3.84 10 9 11 1.09-.21 2-.6 2.78-1.15C15.92 25.46 18 23.35 18 21V7l-6-5z"/>
-            </svg>
-          </div>
-          <div>
-            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #1f2937;">${
-              center.name
-            }</h3>
-            <span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; color: white; background: ${
-              center.status === 'open'
-                ? '#10b981'
-                : center.status === 'full'
-                ? '#ef4444'
-                : center.status === 'maintenance'
-                ? '#f59e0b'
-                : '#6b7280'
-            };">
-              ${(center.status || 'closed').toUpperCase()}
+      const status =
+        capacity > 0 && currentOccupancy >= capacity
+          ? 'Full'
+          : capacity > 0 && currentOccupancy >= capacity * 0.8
+          ? 'Almost Full'
+          : 'Available';
+
+      return `
+        <div style="max-width: 300px; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">${
+            center.name
+          }</h3>
+          <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">${center.address}</p>
+          
+          <div style="display: flex; gap: 8px; margin: 8px 0;">
+            <span style="background: ${
+              status === 'Available' ? '#dcfce7' : status === 'Almost Full' ? '#fef3c7' : '#fee2e2'
+            }; color: ${
+        status === 'Available' ? '#16a34a' : status === 'Almost Full' ? '#d97706' : '#dc2626'
+      }; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+              ${status}
             </span>
           </div>
-        </div>
-        
-        <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">
-          📍 ${center.address}
-        </div>
-        
-        ${
-          center.capacity
-            ? `
-          <div style="margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-              <span>Occupancy</span>
-              <span>${center.current_occupancy || 0}/${
-                center.capacity
-              } (${occupancyPercentage}%)</span>
+          
+          <div style="margin: 8px 0; font-size: 14px; color: #374151;">
+            <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+              <span>Capacity:</span>
+              <span><strong>${currentOccupancy}/${capacity}</strong></span>
             </div>
-            <div style="width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
-              <div style="width: ${Math.min(
-                occupancyPercentage,
-                100,
-              )}%; height: 100%; background: ${
-                occupancyPercentage >= 90
-                  ? '#ef4444'
-                  : occupancyPercentage >= 75
-                  ? '#f59e0b'
-                  : '#10b981'
-              }; border-radius: 3px;"></div>
+            <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+              <span>Occupancy:</span>
+              <span><strong>${occupancyPercentage}%</strong></span>
             </div>
           </div>
-        `
-            : ''
-        }
-        
-        ${
-          center.contact_name || center.contact_phone
-            ? `
-          <div style="padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 12px;">
-            ${
-              center.contact_name
-                ? `<div><strong>Contact:</strong> ${center.contact_name}</div>`
-                : ''
-            }
-            ${
-              center.contact_phone
-                ? `<div><strong>Phone:</strong> ${center.contact_phone}</div>`
-                : ''
-            }
-          </div>
-        `
-            : ''
-        }
-        
-        <div style="margin-top: 8px;">
-          <button 
-            onclick="window.selectEvacuationCenter(${center.id})"
-            style="width: 100%; padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;"
-          >
-            View Details
-          </button>
+          
+          ${
+            center.contact_phone
+              ? `
+            <div style="margin: 8px 0; font-size: 14px; color: #374151;">
+              <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                <span>Contact:</span>
+                <span><strong>${center.contact_phone}</strong></span>
+              </div>
+            </div>
+          `
+              : ''
+          }
+          
+          ${
+            onCenterSelect
+              ? `
+            <button 
+              onclick="selectEvacuationCenter(${center.id})"
+              style="
+                width: 100%; 
+                background: #2563eb; 
+                color: white; 
+                border: none; 
+                padding: 8px 16px; 
+                border-radius: 6px; 
+                font-size: 14px; 
+                font-weight: 500; 
+                cursor: pointer; 
+                margin-top: 8px;
+              "
+              onmouseover="this.style.background='#1d4ed8'"
+              onmouseout="this.style.background='#2563eb'"
+            >
+              Select This Center
+            </button>
+          `
+              : ''
+          }
         </div>
-      </div>
-    `;
-  }, []);
-
-  // Initialize map
+      `;
+    },
+    [onCenterSelect],
+  ); // Initialize map
   useEffect(() => {
     const initMap = async () => {
       try {
@@ -162,7 +167,7 @@ export default function EvacuationCentersMap({
         setError(null);
 
         const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API || '',
           version: 'weekly',
           libraries: ['places', 'geometry'],
         });
@@ -277,7 +282,7 @@ export default function EvacuationCentersMap({
     infoWindow,
     onCenterSelect,
     markerCluster,
-    markers,
+    markers, // Re-added markers dependency
   ]);
 
   // Cleanup on unmount
@@ -308,8 +313,8 @@ export default function EvacuationCentersMap({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Map Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Map Statistics - Hidden on mobile to save space */}
+      <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-blue-500" />
@@ -369,38 +374,38 @@ export default function EvacuationCentersMap({
         )}
         <div ref={mapRef} style={{ height }} className="w-full" />
 
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-md p-3 text-xs">
-          <h4 className="font-medium mb-2">Center Status</h4>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Open</span>
+        {/* Legend - Simplified for mobile */}
+        <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 bg-white rounded-lg shadow-md p-2 md:p-3 text-xs">
+          <h4 className="font-medium mb-1 md:mb-2 hidden md:block">Center Status</h4>
+          <div className="flex md:flex-col gap-2 md:gap-1">
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full"></div>
+              <span className="hidden md:inline">Open</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Full</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full"></div>
+              <span className="hidden md:inline">Full</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-              <span>Maintenance</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-2 h-2 md:w-3 md:h-3 bg-amber-500 rounded-full"></div>
+              <span className="hidden md:inline">Maintenance</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-              <span>Closed</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-2 h-2 md:w-3 md:h-3 bg-gray-500 rounded-full"></div>
+              <span className="hidden md:inline">Closed</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Selected Center Details */}
+      {/* Selected Center Details - Mobile optimized */}
       {selectedCenter && (
-        <Card>
+        <Card className="md:block">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                {selectedCenter.name}
+                <span className="truncate">{selectedCenter.name}</span>
               </CardTitle>
               <Button variant="ghost" size="sm" onClick={() => setSelectedCenter(null)}>
                 <X className="h-4 w-4" />
@@ -414,7 +419,7 @@ export default function EvacuationCentersMap({
                 <p className="text-sm text-gray-600">{selectedCenter.address}</p>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <Badge
                   variant={
                     selectedCenter.status === 'open'

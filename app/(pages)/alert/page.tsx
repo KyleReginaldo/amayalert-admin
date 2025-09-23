@@ -1,6 +1,7 @@
 'use client';
 
-import alertsAPI, { Alert as ApiAlert } from '@/app/lib/alerts-api';
+import alertsAPI, { Alert } from '@/app/lib/alerts-api';
+import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,12 +22,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, Bell, Clock, Edit, Filter, Plus, Save, Search, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  Clock,
+  Edit,
+  Eye,
+  Filter,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-// Use the API Alert type
-type Alert = ApiAlert;
+// Use the API Alert type directly
 
 // Configuration for alert levels
 const alertLevelConfig = {
@@ -45,8 +64,9 @@ const alertLevelConfig = {
 };
 
 export default function AlertPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Get data from context
+  const { alerts, alertsLoading, refreshAlerts, addAlert, updateAlert, removeAlert } = useData();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [alertLevelFilter, setAlertLevelFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,50 +75,45 @@ export default function AlertPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
-  // Load alerts on component mount
+  // Load alerts on component mount if needed
   useEffect(() => {
-    loadAlerts();
-  }, []);
-
-  const loadAlerts = async () => {
-    try {
-      setLoading(true);
-      const response = await alertsAPI.getAllAlerts();
-      if (response.success && response.data) {
-        setAlerts(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to load alerts:', error);
-    } finally {
-      setLoading(false);
+    if (alerts.length === 0 && !alertsLoading) {
+      refreshAlerts();
     }
-  };
+  }, [alerts.length, alertsLoading, refreshAlerts]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreate = async (alertData: Record<string, any>) => {
     try {
+      setModalLoading(true);
       const response = await alertsAPI.createAlert(alertData);
       if (response.success && response.data) {
-        setAlerts((prev) => [response.data!, ...prev]);
+        addAlert(response.data);
         setIsModalOpen(false);
       }
     } catch (error) {
       console.error('Failed to create alert:', error);
+    } finally {
+      setModalLoading(false);
     }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpdate = async (id: number, alertData: Record<string, any>) => {
     try {
+      setModalLoading(true);
       const response = await alertsAPI.updateAlert(id, alertData);
       if (response.success && response.data) {
-        setAlerts((prev) => prev.map((alert) => (alert.id === id ? response.data! : alert)));
+        updateAlert(id, response.data);
         setIsModalOpen(false);
         setEditingAlert(null);
       }
     } catch (error) {
       console.error('Failed to update alert:', error);
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -107,7 +122,7 @@ export default function AlertPage() {
       try {
         const response = await alertsAPI.deleteAlert(id);
         if (response.success) {
-          setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+          removeAlert(id);
         }
       } catch (error) {
         console.error('Failed to delete alert:', error);
@@ -116,11 +131,13 @@ export default function AlertPage() {
   };
 
   const openCreateModal = () => {
+    console.log('Opening create modal'); // Debug log
     setEditingAlert(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (alert: Alert) => {
+    console.log('Opening edit modal for alert:', alert.id); // Debug log
     setEditingAlert(alert);
     setIsModalOpen(true);
   };
@@ -150,7 +167,7 @@ export default function AlertPage() {
     critical: alerts.filter((a) => a.alert_level === 'critical').length,
   };
 
-  if (loading) {
+  if (alertsLoading && alerts.length === 0) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="mx-auto max-w-7xl">
@@ -163,8 +180,8 @@ export default function AlertPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
         {/* Header Section */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -182,14 +199,15 @@ export default function AlertPage() {
               </div>
             </div>
           </div>
-          <Button onClick={openCreateModal} className="gap-2">
+          <Button onClick={openCreateModal} className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
-            Create Alert
+            <span className="hidden sm:inline">Create Alert</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
@@ -312,85 +330,119 @@ export default function AlertPage() {
           <CardHeader>
             <CardTitle>Alerts ({filteredAlerts.length})</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {paginatedAlerts.map((alert) => {
-                const LevelIcon =
-                  alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
-                  Bell;
-                return (
-                  <Card key={alert.id} className="border-l-4 border-l-primary">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={alertLevelColor(alert.alert_level)}>
-                              <LevelIcon className="h-3 w-3 mr-1" />
-                              {alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]
-                                ?.label || alert.alert_level}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">#{alert.id}</span>
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold text-lg">
-                              {alert.title || 'Untitled Alert'}
-                            </h3>
-                            <p className="text-sm leading-relaxed text-muted-foreground mt-1">
-                              {alert.content}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <div>
-                              Created: {new Date(alert.created_at).toLocaleDateString()} at{' '}
-                              {new Date(alert.created_at).toLocaleTimeString()}
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">ID</TableHead>
+                    <TableHead>Alert Details</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Content</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAlerts.map((alert) => {
+                    const LevelIcon =
+                      alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
+                      Bell;
+                    return (
+                      <TableRow key={alert.id}>
+                        <TableCell className="font-medium">#{alert.id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                              <LevelIcon className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            {alert.deleted_at && (
-                              <div className="text-red-500">
-                                Deleted: {new Date(alert.deleted_at).toLocaleDateString()}
-                              </div>
-                            )}
+                            <div>
+                              <div className="font-medium">{alert.title || 'Untitled Alert'}</div>
+                              <div className="text-sm text-muted-foreground">Alert #{alert.id}</div>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditModal(alert)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(alert.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-
-              {paginatedAlerts.length === 0 && (
-                <div className="text-center py-12">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No alerts found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchTerm || alertLevelFilter !== 'all'
-                      ? 'Try adjusting your search or filters'
-                      : 'Create your first alert to get started'}
-                  </p>
-                  {!searchTerm && alertLevelFilter === 'all' && (
-                    <Button onClick={openCreateModal}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Alert
-                    </Button>
-                  )}
-                </div>
-              )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={alertLevelColor(alert.alert_level)}>
+                            <LevelIcon className="h-3 w-3 mr-1" />
+                            {alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]
+                              ?.label || alert.alert_level}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[300px] truncate" title={alert.content || ''}>
+                            {alert.content || 'No content'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <div className="text-sm">
+                              <div>{new Date(alert.created_at).toLocaleDateString()}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(alert.created_at).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {alert.deleted_at ? (
+                            <Badge variant="destructive">Deleted</Badge>
+                          ) : (
+                            <Badge variant="default">Active</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" title="View Details">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(alert)}
+                              title="Edit Alert"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(alert.id)}
+                              className="text-destructive hover:text-destructive"
+                              title="Delete Alert"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
+
+            {paginatedAlerts.length === 0 && (
+              <div className="text-center py-12">
+                <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No alerts found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm || alertLevelFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Create your first alert to get started'}
+                </p>
+                {!searchTerm && alertLevelFilter === 'all' && (
+                  <Button onClick={openCreateModal}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Alert
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -425,25 +477,24 @@ export default function AlertPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Create/Edit Modal */}
-        {isModalOpen && (
-          <AlertModal
-            isOpen={isModalOpen}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingAlert(null);
-            }}
-            alert={editingAlert}
-            onSave={
-              editingAlert
-                ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (data: Record<string, any>) => handleUpdate(editingAlert.id, data)
-                : handleCreate
-            }
-          />
-        )}
       </div>
+
+      {/* Centralized Modal - Available for both mobile and desktop */}
+      <AlertModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingAlert(null);
+        }}
+        alert={editingAlert}
+        onSave={
+          editingAlert
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (data: Record<string, any>) => handleUpdate(editingAlert.id, data)
+            : handleCreate
+        }
+        loading={modalLoading}
+      />
     </div>
   );
 }
@@ -455,9 +506,10 @@ interface AlertModalProps {
   alert: Alert | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSave: (data: Record<string, any>) => void;
+  loading?: boolean;
 }
 
-function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
+function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -489,7 +541,7 @@ function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{alert ? 'Edit Alert' : 'Create New Alert'}</DialogTitle>
           <DialogDescription>
@@ -508,6 +560,7 @@ function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
               onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="Enter alert title..."
               required
+              disabled={loading}
             />
           </div>
 
@@ -520,6 +573,7 @@ function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
               placeholder="Enter the alert message..."
               required
               rows={4}
+              disabled={loading}
             />
           </div>
 
@@ -533,11 +587,12 @@ function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
                   alert_level: value as 'low' | 'medium' | 'high' | 'critical',
                 }))
               }
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[10000]">
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -547,12 +602,21 @@ function AlertModal({ isOpen, onClose, alert, onSave }: AlertModalProps) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit">
-              <Save className="h-4 w-4 mr-2" />
-              {alert ? 'Update Alert' : 'Create Alert'}
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {alert ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {alert ? 'Update Alert' : 'Create Alert'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

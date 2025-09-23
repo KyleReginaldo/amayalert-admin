@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { MapProvider } from '../providers/map-provider';
-import ReactGoogleMapsPicker from './ReactGoogleMapsPicker';
+import { MapComponent } from './map-component';
 
 interface SmartMapPickerProps {
   initialLocation?: { lat: number; lng: number; address?: string };
@@ -36,15 +36,15 @@ export default function SmartMapPicker({
     );
   }
 
-  // Use the recommended provider pattern from the documentation
+  // Use the MapProvider with the enhanced MapComponent
   return (
     <div className={className}>
       <MapProvider>
-        <ReactGoogleMapsPicker
+        <MapComponent
           initialLocation={initialLocation}
           onLocationSelect={onLocationSelect}
           height={height}
-          className=""
+          className="w-full"
         />
       </MapProvider>
     </div>

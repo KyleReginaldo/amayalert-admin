@@ -1,521 +1,514 @@
 'use client';
 
+import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Activity,
   AlertTriangle,
   Bell,
   Building2,
   Clock,
   Download,
+  Loader2,
   MapPin,
-  MoreVertical,
   Shield,
   TrendingDown,
   TrendingUp,
   Users,
 } from 'lucide-react';
-
-interface DashboardStats {
-  totalUsers: number;
-  activeAlerts: number;
-  evacuationCenters: number;
-  criticalAlerts: number;
-  userGrowth: number;
-  alertsToday: number;
-  availableCenters: number;
-  responseTime: string;
-}
-
-const sampleStats: DashboardStats = {
-  totalUsers: 1247,
-  activeAlerts: 8,
-  evacuationCenters: 4,
-  criticalAlerts: 1,
-  userGrowth: 12.5,
-  alertsToday: 3,
-  availableCenters: 2,
-  responseTime: '4.2 min',
-};
-
-const recentAlerts = [
-  {
-    id: 1,
-    title: 'Flood warning issued for Riverside District',
-    type: 'Emergency',
-    severity: 'Critical',
-    location: 'Riverside District',
-    time: '2 hours ago',
-    user: 'Emergency Team',
-    status: 'Active',
-  },
-  {
-    id: 2,
-    title: 'Weather advisory for heavy rainfall',
-    type: 'Warning',
-    severity: 'High',
-    location: 'Citywide',
-    time: '6 hours ago',
-    user: 'Weather Service',
-    status: 'Active',
-  },
-  {
-    id: 3,
-    title: 'Traffic update on Main Highway',
-    type: 'Information',
-    severity: 'Medium',
-    location: 'Main Highway',
-    time: '8 hours ago',
-    user: 'Traffic Department',
-    status: 'Resolved',
-  },
-  {
-    id: 4,
-    title: 'Power outage resolved in Downtown',
-    type: 'Information',
-    severity: 'Low',
-    location: 'Downtown',
-    time: '12 hours ago',
-    user: 'Utilities Department',
-    status: 'Resolved',
-  },
-];
-
-const recentUsers = [
-  {
-    id: 1,
-    name: 'John Smith',
-    email: 'john.smith@email.com',
-    role: 'User',
-    location: 'Downtown',
-    joinDate: '2025-09-20',
-    status: 'Active',
-  },
-  {
-    id: 2,
-    name: 'Maria Garcia',
-    email: 'maria.garcia@email.com',
-    role: 'Admin',
-    location: 'Riverside',
-    joinDate: '2025-09-19',
-    status: 'Active',
-  },
-  {
-    id: 3,
-    name: 'Robert Johnson',
-    email: 'robert.j@email.com',
-    role: 'User',
-    location: 'Central',
-    joinDate: '2025-09-18',
-    status: 'Pending',
-  },
-];
-
-const evacuationCenters = [
-  {
-    id: 1,
-    name: 'Community Center Plaza',
-    status: 'Open',
-    capacity: 500,
-    current: 145,
-    location: 'Downtown',
-  },
-  {
-    id: 2,
-    name: 'Riverside Elementary',
-    status: 'Full',
-    capacity: 200,
-    current: 200,
-    location: 'Riverside',
-  },
-  {
-    id: 3,
-    name: 'Municipal Gymnasium',
-    status: 'Maintenance',
-    capacity: 300,
-    current: 0,
-    location: 'Central',
-  },
-  {
-    id: 4,
-    name: 'Barangay Hall North',
-    status: 'Open',
-    capacity: 150,
-    current: 67,
-    location: 'North District',
-  },
-];
-
-const getSeverityColor = (severity: string) => {
-  switch (severity.toLowerCase()) {
-    case 'critical':
-      return 'bg-red-100 text-red-800 border-red-200';
-    case 'high':
-      return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'low':
-      return 'bg-green-100 text-green-800 border-green-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'active':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'resolved':
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'open':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'full':
-      return 'bg-red-100 text-red-800 border-red-200';
-    case 'maintenance':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'closed':
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
-
-const getRoleColor = (role: string) => {
-  switch (role.toLowerCase()) {
-    case 'admin':
-      return 'bg-purple-100 text-purple-800 border-purple-200';
-    case 'user':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
+import { useEffect, useMemo, useState } from 'react';
 
 const Dashboard = () => {
+  // Get data from context instead of local state
+  const {
+    alerts,
+    evacuationCenters,
+    users,
+    userStats,
+    alertsLoading,
+    evacuationLoading,
+    usersLoading,
+    refreshAll,
+  } = useData();
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Overall loading state
+  const loading = alertsLoading || evacuationLoading || usersLoading;
+
+  // Simple PDF export functionality
+  const exportToPDF = () => {
+    try {
+      setIsExporting(true);
+
+      const timestamp = new Date().toLocaleString();
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Amayalert Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.4; }
+            .header { text-align: center; margin-bottom: 40px; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .header p { margin: 5px 0; color: #666; }
+            .section { margin: 30px 0; }
+            .section h2 { font-size: 18px; margin: 0 0 15px 0; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+            .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0; }
+            .stat { padding: 15px; border: 1px solid #ddd; }
+            .stat-value { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            .stat-label { color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Amayalert Report</h1>
+            <p>Generated on: ${timestamp}</p>
+          </div>
+
+          <div class="section">
+            <h2>Overview Statistics</h2>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-value">${stats.totalUsers.toLocaleString()}</div>
+                <div class="stat-label">Total Users</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${stats.activeAlerts}</div>
+                <div class="stat-label">Active Alerts</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${stats.evacuationCenters}</div>
+                <div class="stat-label">Evacuation Centers</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${stats.criticalAlerts}</div>
+                <div class="stat-label">Critical Alerts</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Recent Alerts</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Level</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentAlerts
+                  .map(
+                    (alert) => `
+                  <tr>
+                    <td>#${alert.id}</td>
+                    <td>${alert.title}</td>
+                    <td>${alert.severity}</td>
+                    <td>${alert.time}</td>
+                    <td>${alert.status}</td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Recent Users</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Join Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentUsers
+                  .map(
+                    (user) => `
+                  <tr>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.role}</td>
+                    <td>${new Date(user.joinDate).toLocaleDateString()}</td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2>Evacuation Centers</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Occupancy</th>
+                  <th>Capacity</th>
+                  <th>Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${evacuationCenters
+                  .map(
+                    (center) => `
+                  <tr>
+                    <td>${center.name}</td>
+                    <td>${(center.status || 'closed').toUpperCase()}</td>
+                    <td>${center.current_occupancy || 0}</td>
+                    <td>${center.capacity || 0}</td>
+                    <td>${center.address}</td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle export action
+  const handleExport = () => {
+    exportToPDF();
+  };
+
+  // Auto-refresh data when component mounts
+  useEffect(() => {
+    if (alerts.length === 0 && evacuationCenters.length === 0 && users.length === 0) {
+      refreshAll();
+    }
+  }, [alerts, evacuationCenters, users, refreshAll]);
+
+  // Calculate statistics from cached data
+  const stats = useMemo(
+    () => ({
+      totalUsers: userStats.totalUsers,
+      activeAlerts: alerts.filter(
+        (alert) => !alert.deleted_at, // Active alerts are not deleted
+      ).length,
+      evacuationCenters: evacuationCenters.length,
+      criticalAlerts: alerts.filter((alert) => alert.alert_level === 'critical').length,
+      userGrowth: userStats.userGrowth,
+      alertsToday: alerts.filter(
+        (alert) =>
+          alert.created_at &&
+          new Date(alert.created_at).toDateString() === new Date().toDateString(),
+      ).length,
+      availableCenters: evacuationCenters.filter((center) => center.status === 'open').length,
+      responseTime: '4.2 min',
+    }),
+    [alerts, evacuationCenters, userStats],
+  );
+
+  // Prepare recent data for display
+  const recentAlerts = alerts.slice(0, 5).map((alert) => ({
+    id: alert.id,
+    title: alert.title || 'Untitled Alert',
+    severity: alert.alert_level || 'medium',
+    time: new Date(alert.created_at).toLocaleTimeString(),
+    status: alert.deleted_at ? 'deleted' : 'active', // Use deleted_at to determine status
+  }));
+
+  const recentUsers = users.slice(0, 5).map((user) => ({
+    id: user.id,
+    name: user.full_name || 'Unknown User',
+    email: user.email,
+    role: user.role || 'user',
+    joinDate: user.created_at,
+    status: 'active', // Default since no status field
+  }));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-6 max-w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-foreground text-balance">
-                Emergency Command Center
-              </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
-                Real-time monitoring and response coordination
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-600 mt-1">
+                Real-time overview of emergency management system
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Download size={16} />
-                Export Report
-              </Button>
-              <Button className="gap-2 bg-primary hover:bg-primary/90">
-                <Activity size={16} />
-                Live Monitor
+            <div className="flex gap-3">
+              <Button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export PDF
               </Button>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card className="border-l-4 border-l-chart-4">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Users
-                </CardTitle>
-                <Users className="h-5 w-5 text-chart-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-card-foreground">
-                  {sampleStats.totalUsers.toLocaleString()}
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <TrendingUp className="h-4 w-4 text-chart-1 mr-1" />
-                  <span className="text-chart-1 font-medium">+{sampleStats.userGrowth}%</span>
-                  <span className="text-muted-foreground ml-1">this month</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-chart-2">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Alerts
-                </CardTitle>
-                <Bell className="h-5 w-5 text-chart-2" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-card-foreground">
-                  {sampleStats.activeAlerts}
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 text-chart-2 mr-1" />
-                  <span className="text-chart-2 font-medium">
-                    {sampleStats.criticalAlerts} critical
-                  </span>
-                  <span className="text-muted-foreground ml-1">requiring attention</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-secondary">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Evacuation Centers
-                </CardTitle>
-                <Building2 className="h-5 w-5 text-secondary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-card-foreground">
-                  {sampleStats.evacuationCenters}
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <Shield className="h-4 w-4 text-chart-1 mr-1" />
-                  <span className="text-chart-1 font-medium">
-                    {sampleStats.availableCenters} operational
-                  </span>
-                  <span className="text-muted-foreground ml-1">and ready</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-chart-1">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Response Time
-                </CardTitle>
-                <Clock className="h-5 w-5 text-chart-1" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-card-foreground">
-                  {sampleStats.responseTime}
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <TrendingDown className="h-4 w-4 text-chart-1 mr-1" />
-                  <span className="text-chart-1 font-medium">12% faster</span>
-                  <span className="text-muted-foreground ml-1">than target</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          {/* Recent Alerts Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Bell className="h-5 w-5 text-chart-2" />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Users</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {stats.totalUsers.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-green-600 flex items-center mt-1">
+                    <TrendingUp className="h-3 w-3 mr-1" />+{stats.userGrowth}% this month
+                  </p>
+                </div>
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Active Alerts</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.activeAlerts}</p>
+                  <p className="text-sm text-orange-600 flex items-center mt-1">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {stats.criticalAlerts} critical
+                  </p>
+                </div>
+                <div className="bg-orange-100 p-3 rounded-lg">
+                  <Bell className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Evacuation Centers</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.evacuationCenters}</p>
+                  <p className="text-sm text-green-600 flex items-center mt-1">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {stats.availableCenters} operational
+                  </p>
+                </div>
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <Shield className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Response Time</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.responseTime}</p>
+                  <p className="text-sm text-green-600 flex items-center mt-1">
+                    <TrendingDown className="h-3 w-3 mr-1" />
+                    12% faster than target
+                  </p>
+                </div>
+                <div className="bg-purple-100 p-3 rounded-lg">
+                  <Clock className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Recent Alerts */}
+          <Card className="border-0 shadow-lg bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-lg">
+                <Bell className="h-5 w-5 mr-2 text-orange-600" />
                 Recent Alerts
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                View All
-              </Button>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/20">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Alert Details
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Severity
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Time
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recentAlerts.map((alert) => (
-                      <tr key={alert.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-card-foreground truncate max-w-48">
-                            {alert.title}
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {alert.location}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="outline" className={getSeverityColor(alert.severity)}>
-                            {alert.severity}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="outline" className={getStatusColor(alert.status)}>
-                            {alert.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{alert.time}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <CardContent>
+              <div className="space-y-3">
+                {recentAlerts.length > 0 ? (
+                  recentAlerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-gray-900">{alert.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            alert.severity === 'critical'
+                              ? 'destructive'
+                              : alert.severity === 'high'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                        >
+                          {alert.severity}
+                        </Badge>
+                        <Badge variant="outline">{alert.status}</Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+                    <p>No recent alerts</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Recent Users Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Users className="h-5 w-5 text-chart-4" />
+          {/* Recent Users */}
+          <Card className="border-0 shadow-lg bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-lg">
+                <Users className="h-5 w-5 mr-2 text-blue-600" />
                 Recent Users
               </CardTitle>
-              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                View All
-              </Button>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/20">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        User
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Role
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Joined
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recentUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-card-foreground">{user.name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="outline" className={getRoleColor(user.role)}>
-                            {user.role}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="outline" className={getStatusColor(user.status)}>
-                            {user.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">
-                          {new Date(user.joinDate).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <CardContent>
+              <div className="space-y-3">
+                {recentUsers.length > 0 ? (
+                  recentUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-gray-900">{user.name}</p>
+                        <p className="text-xs text-gray-500 mt-1">{user.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{user.role}</Badge>
+                        <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                          {user.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-8 w-8 mx-auto mb-2" />
+                    <p>No recent users</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-secondary" />
+        {/* Evacuation Centers Status */}
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center text-lg">
+              <Building2 className="h-5 w-5 mr-2 text-green-600" />
               Evacuation Centers Status
             </CardTitle>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-              Manage Centers
-            </Button>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/20">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Center Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Occupancy
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Capacity
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Location
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {evacuationCenters.map((center) => (
-                    <tr key={center.id} className="hover:bg-muted/10 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-4 w-4 text-secondary" />
-                          <span className="font-medium text-card-foreground">{center.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={getStatusColor(center.status)}>
-                          {center.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-20 bg-muted rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all ${
-                                center.status === 'Full'
-                                  ? 'bg-chart-2'
-                                  : center.current > center.capacity * 0.8
-                                  ? 'bg-chart-3'
-                                  : center.current > 0
-                                  ? 'bg-chart-4'
-                                  : 'bg-chart-1'
-                              }`}
-                              style={{
-                                width: `${Math.min(
-                                  (center.current / center.capacity) * 100,
-                                  100,
-                                )}%`,
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium text-card-foreground min-w-[3rem]">
-                            {center.current}/{center.capacity}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-card-foreground">
-                        {center.capacity}
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {center.location}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical size={16} />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <CardContent>
+            <div className="space-y-3">
+              {evacuationCenters.length > 0 ? (
+                evacuationCenters.slice(0, 5).map((center) => (
+                  <div
+                    key={center.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-900">{center.name}</p>
+                      <p className="text-xs text-gray-500 mt-1 flex items-center">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {center.address}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Occupancy</p>
+                        <p className="text-sm font-medium">
+                          {center.current_occupancy || 0}/{center.capacity || 0}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          center.status === 'open'
+                            ? 'default'
+                            : center.status === 'full'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                      >
+                        {center.status || 'closed'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Building2 className="h-8 w-8 mx-auto mb-2" />
+                  <p>No evacuation centers found</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
