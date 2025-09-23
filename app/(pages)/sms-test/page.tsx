@@ -32,7 +32,7 @@ export default function SMSTestPage() {
 
   const sendTestSMS = async () => {
     if (!phoneNumber || !message) {
-      setResult({ success: false, error: 'Please provide both phone number and message' });
+      setResult({ success: false, error: 'Please provide both valid phone number and message' });
       return;
     }
 
