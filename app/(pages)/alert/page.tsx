@@ -1,5 +1,6 @@
 'use client';
 
+import AuthWrapper from '@/app/components/auth-wrapper';
 import alertsAPI, { Alert, AlertInsert, AlertUpdate } from '@/app/lib/alerts-api';
 import { useAlerts } from '@/app/providers/alerts-provider';
 import { Badge } from '@/components/ui/badge';
@@ -183,105 +184,185 @@ export default function AlertPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 md:bg-background">
-      <div className="p-4 md:p-6">
-        {/* Header Section - Responsive */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                  Alert Management
-                </h1>
-                <p className="text-sm md:text-base text-muted-foreground">
-                  Create, manage, and monitor emergency alerts
-                </p>
+    <AuthWrapper>
+      <div className="min-h-screen bg-gray-50 md:bg-background">
+        <div className="p-4 md:p-6">
+          {/* Header Section - Responsive */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                    Alert Management
+                  </h1>
+                  <p className="text-sm md:text-base text-muted-foreground">
+                    Create, manage, and monitor emergency alerts
+                  </p>
+                </div>
               </div>
             </div>
+            <Button
+              onClick={openCreateModal}
+              className="gap-2 w-full md:w-auto rounded-full md:rounded-md"
+            >
+              <Plus className="h-4 w-4" />
+              Create Alert
+            </Button>
           </div>
-          <Button
-            onClick={openCreateModal}
-            className="gap-2 w-full md:w-auto rounded-full md:rounded-md"
-          >
-            <Plus className="h-4 w-4" />
-            Create Alert
-          </Button>
-        </div>
 
-        {/* Search Bar - Responsive */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search alerts..."
-            className="pl-10 bg-gray-50 md:bg-background border-0 md:border rounded-full md:rounded-md"
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-        </div>
+          {/* Search Bar - Responsive */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search alerts..."
+              className="pl-10 bg-gray-50 md:bg-background border-0 md:border rounded-full md:rounded-md"
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+          </div>
 
-        {/* Quick Stats - Responsive Grid */}
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4 mb-4">
-          <div className="bg-blue-50 rounded-lg p-2 md:p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-blue-600">{stats.total}</div>
-            <div className="text-xs md:text-sm text-blue-600">Total</div>
+          {/* Quick Stats - Responsive Grid */}
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-4 mb-4">
+            <div className="bg-blue-50 rounded-lg p-2 md:p-4 text-center">
+              <div className="text-lg md:text-2xl font-bold text-blue-600">{stats.total}</div>
+              <div className="text-xs md:text-sm text-blue-600">Total</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-2 md:p-4 text-center">
+              <div className="text-lg md:text-2xl font-bold text-green-600">{stats.low}</div>
+              <div className="text-xs md:text-sm text-green-600">Low</div>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-2 md:p-4 text-center">
+              <div className="text-lg md:text-2xl font-bold text-yellow-600">{stats.medium}</div>
+              <div className="text-xs md:text-sm text-yellow-600">Medium</div>
+            </div>
+            <div className="bg-orange-50 rounded-lg p-2 md:p-4 text-center">
+              <div className="text-lg md:text-2xl font-bold text-orange-600">{stats.high}</div>
+              <div className="text-xs md:text-sm text-orange-600">High</div>
+            </div>
+            <div className="bg-red-50 rounded-lg p-2 md:p-4 text-center">
+              <div className="text-lg md:text-2xl font-bold text-red-600">{stats.critical}</div>
+              <div className="text-xs md:text-sm text-red-600">Critical</div>
+            </div>
           </div>
-          <div className="bg-green-50 rounded-lg p-2 md:p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-green-600">{stats.low}</div>
-            <div className="text-xs md:text-sm text-green-600">Low</div>
-          </div>
-          <div className="bg-yellow-50 rounded-lg p-2 md:p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-yellow-600">{stats.medium}</div>
-            <div className="text-xs md:text-sm text-yellow-600">Medium</div>
-          </div>
-          <div className="bg-orange-50 rounded-lg p-2 md:p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-orange-600">{stats.high}</div>
-            <div className="text-xs md:text-sm text-orange-600">High</div>
-          </div>
-          <div className="bg-red-50 rounded-lg p-2 md:p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-red-600">{stats.critical}</div>
-            <div className="text-xs md:text-sm text-red-600">Critical</div>
-          </div>
-        </div>
 
-        {/* Filter - Responsive */}
-        <div className="flex items-center justify-between mb-4">
-          <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
-            <SelectTrigger className="w-[120px] md:w-[180px] h-8 md:h-10 rounded-full md:rounded-md bg-gray-100 md:bg-background border-0 md:border">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Filter - Responsive */}
+          <div className="flex items-center justify-between mb-4">
+            <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
+              <SelectTrigger className="w-[120px] md:w-[180px] h-8 md:h-10 rounded-full md:rounded-md bg-gray-100 md:bg-background border-0 md:border">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* Results Info */}
-          <div className="text-sm text-gray-500">
-            Showing {startIndex + 1}-{Math.min(endIndex, filteredAlerts.length)} of{' '}
-            {filteredAlerts.length} alerts
+            {/* Results Info */}
+            <div className="text-sm text-gray-500">
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredAlerts.length)} of{' '}
+              {filteredAlerts.length} alerts
+            </div>
           </div>
-        </div>
 
-        {/* Alert Table - Responsive */}
-        <div className="bg-white rounded-lg md:rounded-md shadow-sm border-0 md:border overflow-hidden">
-          {/* Mobile View - Stack Cards */}
-          <div className="block md:hidden">
-            <div className="divide-y divide-gray-200">
-              {paginatedAlerts.map((alert) => {
-                const LevelIcon =
-                  alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
-                  Bell;
-                return (
-                  <div key={alert.id} className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
+          {/* Alert Table - Responsive */}
+          <div className="bg-white rounded-lg md:rounded-md shadow-sm border-0 md:border overflow-hidden">
+            {/* Mobile View - Stack Cards */}
+            <div className="block md:hidden">
+              <div className="divide-y divide-gray-200">
+                {paginatedAlerts.map((alert) => {
+                  const LevelIcon =
+                    alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
+                    Bell;
+                  return (
+                    <div key={alert.id} className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              {alert.title || 'Untitled Alert'}
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className={alertLevelColor(alert.alert_level) + ' text-xs'}
+                            >
+                              <LevelIcon className="h-3 w-3 mr-1" />
+                              {alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]
+                                ?.label || alert.alert_level}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                            {alert.content || 'No content'}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{new Date(alert.created_at).toLocaleDateString()}</span>
+                            <span>•</span>
+                            <span>
+                              {new Date(alert.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditModal(alert)}
+                            className="h-8 w-8 rounded-full"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(alert.id)}
+                            className="h-8 w-8 rounded-full text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop View - Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold">Title</TableHead>
+                    <TableHead className="font-semibold">Content</TableHead>
+                    <TableHead className="font-semibold">Level</TableHead>
+                    <TableHead className="font-semibold">Created</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAlerts.map((alert) => {
+                    const LevelIcon =
+                      alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
+                      Bell;
+                    return (
+                      <TableRow key={alert.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          <div className="max-w-[200px] truncate">
                             {alert.title || 'Untitled Alert'}
-                          </h3>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[300px] truncate text-gray-600">
+                            {alert.content || 'No content'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <Badge
                             variant="outline"
                             className={alertLevelColor(alert.alert_level) + ' text-xs'}
@@ -290,219 +371,141 @@ export default function AlertPage() {
                             {alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]
                               ?.label || alert.alert_level}
                           </Badge>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-2 line-clamp-2">
-                          {alert.content || 'No content'}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{new Date(alert.created_at).toLocaleDateString()}</span>
-                          <span>•</span>
-                          <span>
-                            {new Date(alert.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 ml-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditModal(alert)}
-                          className="h-8 w-8 rounded-full"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(alert.id)}
-                          className="h-8 w-8 rounded-full text-red-500"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Desktop View - Table */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold">Title</TableHead>
-                  <TableHead className="font-semibold">Content</TableHead>
-                  <TableHead className="font-semibold">Level</TableHead>
-                  <TableHead className="font-semibold">Created</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedAlerts.map((alert) => {
-                  const LevelIcon =
-                    alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]?.icon ||
-                    Bell;
-                  return (
-                    <TableRow key={alert.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        <div className="max-w-[200px] truncate">
-                          {alert.title || 'Untitled Alert'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[300px] truncate text-gray-600">
-                          {alert.content || 'No content'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={alertLevelColor(alert.alert_level) + ' text-xs'}
-                        >
-                          <LevelIcon className="h-3 w-3 mr-1" />
-                          {alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig]
-                            ?.label || alert.alert_level}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        <div className="text-sm">
-                          <div>{new Date(alert.created_at).toLocaleDateString()}</div>
-                          <div className="text-xs text-gray-400">
-                            {new Date(alert.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          <div className="text-sm">
+                            <div>{new Date(alert.created_at).toLocaleDateString()}</div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(alert.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={alert.deleted_at ? 'destructive' : 'default'}
-                          className="text-xs"
-                        >
-                          {alert.deleted_at ? 'Deleted' : 'Active'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditModal(alert)}
-                            className="h-8 w-8"
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={alert.deleted_at ? 'destructive' : 'default'}
+                            className="text-xs"
                           >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(alert.id)}
-                            className="h-8 w-8 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            {alert.deleted_at ? 'Deleted' : 'Active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(alert)}
+                              className="h-8 w-8"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(alert.id)}
+                              className="h-8 w-8 text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Empty State */}
+            {filteredAlerts.length === 0 && (
+              <div className="text-center py-12">
+                <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No alerts found</p>
+                <p className="text-sm text-gray-400">Try adjusting your search or filter</p>
+              </div>
+            )}
           </div>
 
-          {/* Empty State */}
-          {filteredAlerts.length === 0 && (
-            <div className="text-center py-12">
-              <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No alerts found</p>
-              <p className="text-sm text-gray-400">Try adjusting your search or filter</p>
+          {/* Pagination */}
+          {filteredAlerts.length > 0 && totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Previous</span>
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      // Show first page, last page, current page, and one page on each side of current
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      );
+                    })
+                    .map((page, index, array) => {
+                      // Add ellipsis if there's a gap
+                      const showEllipsis = index > 0 && array[index - 1] < page - 1;
+                      return (
+                        <div key={page} className="flex items-center">
+                          {showEllipsis && <span className="px-2 text-gray-400">...</span>}
+                          <Button
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {page}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="gap-1"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="text-sm text-gray-500">
+                Page {currentPage} of {totalPages}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Pagination */}
-        {filteredAlerts.length > 0 && totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Previous</span>
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((page) => {
-                    // Show first page, last page, current page, and one page on each side of current
-                    return (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    );
-                  })
-                  .map((page, index, array) => {
-                    // Add ellipsis if there's a gap
-                    const showEllipsis = index > 0 && array[index - 1] < page - 1;
-                    return (
-                      <div key={page} className="flex items-center">
-                        {showEllipsis && <span className="px-2 text-gray-400">...</span>}
-                        <Button
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {page}
-                        </Button>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="gap-1"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="text-sm text-gray-500">
-              Page {currentPage} of {totalPages}
-            </div>
-          </div>
-        )}
+        {/* Unified Modal */}
+        <AlertModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingAlert(null);
+          }}
+          alert={editingAlert}
+          onSave={
+            editingAlert ? (data: AlertUpdate) => handleUpdate(editingAlert.id, data) : handleCreate
+          }
+          loading={modalLoading}
+        />
       </div>
-
-      {/* Unified Modal */}
-      <AlertModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingAlert(null);
-        }}
-        alert={editingAlert}
-        onSave={
-          editingAlert ? (data: AlertUpdate) => handleUpdate(editingAlert.id, data) : handleCreate
-        }
-        loading={modalLoading}
-      />
-    </div>
+    </AuthWrapper>
   );
 }
 

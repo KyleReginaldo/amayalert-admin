@@ -1,5 +1,6 @@
 'use client';
 
+import AuthWrapper from '@/app/components/auth-wrapper';
 import rescueAPI, { Rescue, RescueStatus } from '@/app/lib/rescue-api';
 import { useRescue } from '@/app/providers/rescue-provider';
 import { Badge } from '@/components/ui/badge';
@@ -266,7 +267,11 @@ export default function RescuePage() {
                   <strong className="text-gray-700">Reported by:</strong>
                   <div className="flex items-center gap-1 mt-1">
                     <UserCheck className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">{rescue.user}</span>
+                    <span className="text-gray-600">
+                      {typeof rescue.user === 'object'
+                        ? rescue.user.full_name || rescue.user.email || 'Unknown User'
+                        : rescue.user}
+                    </span>
                   </div>
                 </div>
               )}
@@ -428,7 +433,7 @@ export default function RescuePage() {
   }
 
   return (
-    <>
+    <AuthWrapper>
       {/* Mobile Layout */}
       <div className="block md:hidden min-h-screen bg-gray-50">
         {/* Mobile Header */}
@@ -840,6 +845,6 @@ export default function RescuePage() {
           loading={modalLoading}
         />
       )}
-    </>
+    </AuthWrapper>
   );
 }

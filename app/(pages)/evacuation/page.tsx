@@ -1,5 +1,6 @@
 'use client';
 
+import AuthWrapper from '@/app/components/auth-wrapper';
 import SmartMapPicker from '@/app/components/SmartMapPicker';
 import evacuationAPI, { EvacuationCenter, EvacuationStatus } from '@/app/lib/evacuation-api';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
@@ -503,7 +504,7 @@ export default function EvacuationPage() {
     );
   }
   return (
-    <>
+    <AuthWrapper>
       {/* Mobile Layout */}
       <div className="block md:hidden min-h-screen bg-gray-50">
         {/* Mobile Header - Clean and Simple */}
@@ -890,6 +891,6 @@ export default function EvacuationPage() {
           loading={modalLoading}
         />
       )}
-    </>
+    </AuthWrapper>
   );
 }

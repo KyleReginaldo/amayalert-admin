@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../client/supabase';
 
 // Create context for sidebar state
 const SidebarContext = createContext<{
@@ -172,6 +173,7 @@ const Sidebar = () => {
             <button
               onClick={() => {
                 // Add logout logic here
+                supabase.auth.signOut();
                 window.location.href = '/signin';
               }}
               className="flex items-center gap-3 px-4 py-2  text-blue-100 hover:bg-red-500/30 transition-all duration-200 hover:translate-x-1 w-full text-left"

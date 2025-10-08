@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
+import AuthWrapper from '@/app/components/auth-wrapper';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -364,132 +365,219 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600 text-sm">Manage user accounts, roles, and permissions</p>
-          </div>
-          <Button onClick={openCreateModal} className="gap-2 w-full md:w-auto">
-            <Plus className="h-4 w-4" />
-            Add User
-          </Button>
-        </div>
-
-        {/* Minimal Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Total Users</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <div className="text-sm text-gray-600">With Phone</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
-            <div className="text-sm text-gray-600">Admins</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
-            <div className="text-sm text-gray-600">Users</div>
-          </div>
-        </div>
-
-        {/* Minimal Filters */}
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Search users..."
-                className="pl-10 border-gray-300 focus:border-gray-400"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
+    <AuthWrapper>
+      <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
+        <div className="mx-auto max-w-7xl space-y-6">
+          {/* Header */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+              <p className="text-gray-600 text-sm">Manage user accounts, roles, and permissions</p>
             </div>
-            <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button onClick={openCreateModal} className="gap-2 w-full md:w-auto">
+              <Plus className="h-4 w-4" />
+              Add User
+            </Button>
           </div>
-        </div>
 
-        {/* Users Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Mobile View - Stack Cards */}
-          <div className="block md:hidden">
-            <div className="divide-y divide-gray-200">
-              {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user) => {
-                  const RoleIcon = getRoleIcon(user.role);
-                  return (
-                    <div key={user.id} className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-sm text-gray-900">
-                              {user.full_name || 'No Name'}
-                            </p>
-                            <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                              <RoleIcon className="h-3 w-3 mr-1" />
-                              {user.role}
-                            </Badge>
+          {/* Minimal Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-600">Total Users</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+              <div className="text-sm text-gray-600">With Phone</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
+              <div className="text-sm text-gray-600">Admins</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
+              <div className="text-sm text-gray-600">Users</div>
+            </div>
+          </div>
+
+          {/* Minimal Filters */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search users..."
+                  className="pl-10 border-gray-300 focus:border-gray-400"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Mobile View - Stack Cards */}
+            <div className="block md:hidden">
+              <div className="divide-y divide-gray-200">
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((user) => {
+                    const RoleIcon = getRoleIcon(user.role);
+                    return (
+                      <div key={user.id} className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm text-gray-900">
+                                {user.full_name || 'No Name'}
+                              </p>
+                              <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                <RoleIcon className="h-3 w-3 mr-1" />
+                                {user.role}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-1">{user.email}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                Phone: {user.phone_number || 'Not provided'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500">
+                                Joined {new Date(user.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500 mb-1">{user.email}</p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">
-                              Phone: {user.phone_number || 'Not provided'}
-                            </span>
+                          <div className="flex gap-1 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(user)}
+                              disabled={currentUserId === user.id}
+                              className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                currentUserId === user.id
+                                  ? 'Cannot edit your own account'
+                                  : 'Edit user'
+                              }
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(user.id)}
+                              disabled={currentUserId === user.id}
+                              className="h-8 w-8 rounded-full text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                currentUserId === user.id
+                                  ? 'Cannot delete your own account'
+                                  : 'Delete user'
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500">
-                              Joined {new Date(user.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditModal(user)}
-                            disabled={currentUserId === user.id}
-                            className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={
-                              currentUserId === user.id
-                                ? 'Cannot edit your own account'
-                                : 'Edit user'
-                            }
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={currentUserId === user.id}
-                            className="h-8 w-8 rounded-full text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={
-                              currentUserId === user.id
-                                ? 'Cannot delete your own account'
-                                : 'Delete user'
-                            }
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <UsersIcon className="h-8 w-8 mx-auto mb-2" />
+                    <p>No users found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop View - Table */}
+            <div className="hidden md:block">
+              {paginatedUsers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-gray-200">
+                      <TableHead className="font-medium text-gray-900">User</TableHead>
+                      <TableHead className="font-medium text-gray-900">Role</TableHead>
+                      <TableHead className="font-medium text-gray-900">Phone</TableHead>
+                      <TableHead className="font-medium text-gray-900">Joined</TableHead>
+                      <TableHead className="font-medium text-gray-900">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedUsers.map((user) => {
+                      const RoleIcon = getRoleIcon(user.role);
+                      return (
+                        <TableRow key={user.id} className="hover:bg-gray-50 border-gray-200">
+                          <TableCell>
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {user.full_name || 'No Name'}
+                              </div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                              <RoleIcon className="h-3 w-3 mr-1" />
+                              {user.role || 'user'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            <div className="text-sm">{user.phone_number || 'Not provided'}</div>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            <div className="text-sm">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditModal(user)}
+                                disabled={currentUserId === user.id}
+                                className="h-8 w-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                  currentUserId === user.id
+                                    ? 'Cannot edit your own account'
+                                    : 'Edit user'
+                                }
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(user.id)}
+                                disabled={currentUserId === user.id}
+                                className="h-8 w-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                  currentUserId === user.id
+                                    ? 'Cannot delete your own account'
+                                    : 'Delete user'
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <UsersIcon className="h-8 w-8 mx-auto mb-2" />
@@ -497,124 +585,39 @@ export default function UsersPage() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Desktop View - Table */}
-          <div className="hidden md:block">
-            {paginatedUsers.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-200">
-                    <TableHead className="font-medium text-gray-900">User</TableHead>
-                    <TableHead className="font-medium text-gray-900">Role</TableHead>
-                    <TableHead className="font-medium text-gray-900">Phone</TableHead>
-                    <TableHead className="font-medium text-gray-900">Joined</TableHead>
-                    <TableHead className="font-medium text-gray-900">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedUsers.map((user) => {
-                    const RoleIcon = getRoleIcon(user.role);
-                    return (
-                      <TableRow key={user.id} className="hover:bg-gray-50 border-gray-200">
-                        <TableCell>
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {user.full_name || 'No Name'}
-                            </div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                            <RoleIcon className="h-3 w-3 mr-1" />
-                            {user.role || 'user'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          <div className="text-sm">{user.phone_number || 'Not provided'}</div>
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          <div className="text-sm">
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(user)}
-                              disabled={currentUserId === user.id}
-                              className="h-8 w-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === user.id
-                                  ? 'Cannot edit your own account'
-                                  : 'Edit user'
-                              }
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(user.id)}
-                              disabled={currentUserId === user.id}
-                              className="h-8 w-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === user.id
-                                  ? 'Cannot delete your own account'
-                                  : 'Delete user'
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <UsersIcon className="h-8 w-8 mx-auto mb-2" />
-                <p>No users found</p>
+            {/* Pagination */}
+            {filteredUsers.length > itemsPerPage && (
+              <div className="p-4 border-t border-gray-200">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredUsers.length}
+                  itemsPerPage={itemsPerPage}
+                />
               </div>
             )}
           </div>
-
-          {/* Pagination */}
-          {filteredUsers.length > itemsPerPage && (
-            <div className="p-4 border-t border-gray-200">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredUsers.length}
-                itemsPerPage={itemsPerPage}
-              />
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Create/Edit Modal */}
-      <UserModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingUser(null);
-        }}
-        user={editingUser}
-        onSave={
-          editingUser
-            ? (data) => handleUpdate(editingUser.id, data as UserUpdate)
-            : (data) => handleCreate(data as UserInsert)
-        }
-        loading={modalLoading}
-      />
-    </div>
+        {/* Create/Edit Modal */}
+        <UserModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingUser(null);
+          }}
+          user={editingUser}
+          onSave={
+            editingUser
+              ? (data) => handleUpdate(editingUser.id, data as UserUpdate)
+              : (data) => handleCreate(data as UserInsert)
+          }
+          loading={modalLoading}
+        />
+      </div>
+    </AuthWrapper>
   );
 }
 

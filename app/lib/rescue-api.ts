@@ -1,10 +1,16 @@
 import { Database } from '@/database.types';
 
-// Types
-export type Rescue = Database['public']['Tables']['rescues']['Row'];
+// Base types
+export type RescueBase = Database['public']['Tables']['rescues']['Row'];
 export type RescueInsert = Database['public']['Tables']['rescues']['Insert'];
 export type RescueUpdate = Database['public']['Tables']['rescues']['Update'];
 export type RescueStatus = Database['public']['Enums']['rescue_status'];
+export type User = Database['public']['Tables']['users']['Row'];
+
+// Extended type for rescues with joined user data
+export interface Rescue extends Omit<RescueBase, 'user'> {
+  user?: User | string | null; // Can be either joined user object or string ID
+}
 
 export interface ApiResponse<T> {
   success: boolean;
