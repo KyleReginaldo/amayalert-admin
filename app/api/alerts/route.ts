@@ -39,6 +39,7 @@ async function sendSMS(to: string, message: string) {
     } = {
       body: message,
       to: to.startsWith('+') ? to : `+${to}`,
+      from: process.env.TWILIO_FROM,
     };
 
     // Use messaging service if available, otherwise use Twilio number
@@ -47,7 +48,6 @@ async function sendSMS(to: string, message: string) {
     } else {
       messageOptions.from = config.twilioNumber;
     }
-
     const twilioMessage = await config.client.messages.create(messageOptions);
     console.log(`twilio message: ${JSON.stringify(twilioMessage)}`);
     return { success: true, sid: twilioMessage.sid };
@@ -153,7 +153,6 @@ export async function POST(request: NextRequest) {
               user.phone_number,
               `EMERGENCY ALERT!!!\n\n${newAlert?.title}\n\n${newAlert?.content}\n\nThis is an official emergency notification.`,
             );
-
             if (smsResult.success) {
               console.log(`SMS sent successfully to ${user.phone_number}, SID: ${smsResult.sid}`);
             } else {

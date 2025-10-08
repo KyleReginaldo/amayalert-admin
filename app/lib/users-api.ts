@@ -101,7 +101,16 @@ class UsersAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to get detailed error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // If response is not JSON, use the status message
+          errorMessage = `HTTP error! status: ${response.status} - ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       return await response.json();

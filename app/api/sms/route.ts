@@ -1,24 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
-// Twilio configuration - support both live and test environments
-const getConfig = (useTest: boolean = false) => {
-  const accountSid = useTest ? process.env.TEST_ACCOUNT_SID : process.env.ACCOUNT_SID;
-  const authToken = useTest ? process.env.TEST_AUTH_TOKEN : process.env.AUTH_TOKEN;
-  const twilioNumber = useTest ? process.env.TEST_TWILIO_NUMBER : process.env.TWILIO_NUMBER;
-
-  if (!accountSid || !authToken || !twilioNumber) {
-    throw new Error('Missing required Twilio configuration');
-  }
-
-  return {
-    accountSid,
-    authToken,
-    twilioNumber,
-    client: twilio(accountSid, authToken),
-  };
-};
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -47,35 +29,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Twilio configuration
-    const config = getConfig();
-
-    // Prepare message options
-    const messageOptions: {
-      body: string;
-      to: string;
-      from: string;
-      messagingServiceSid?: string;
-    } = {
+    console.log('from twilio:', process.env.TWILIO_FROM);
+    const twilioIns = twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN);
+    const twilioMessage = await twilioIns.messages.create({
+      messagingServiceSid: process.env.MESSAGING_SERVICE_SID,
+      // from: process.env.TWILIO_FROM,
+      to: to,
       body: message,
-      to: to.startsWith('+') ? to : `+${to}`,
-      from: '+639221200726',
-    };
-
-    // Send SMS
-    const twilioMessage = await config.client.messages.create(messageOptions);
-
+    });
+    console.log('Twilio response:', twilioMessage);
     return NextResponse.json({
       success: true,
-      data: {
-        sid: twilioMessage.sid,
-        status: twilioMessage.status,
-        to: twilioMessage.to,
-        from: twilioMessage.from,
-        body: twilioMessage.body,
-        dateCreated: twilioMessage.dateCreated,
-        messagingServiceSid: twilioMessage.messagingServiceSid,
-      },
+      data: twilioMessage.body,
       message: 'SMS sent successfully',
     });
   } catch (error) {
@@ -115,33 +80,6 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: 'An unexpected error occurred',
-      },
-      { status: 500 },
-    );
-  }
-}
-
-// GET endpoint to check SMS service status
-export async function GET() {
-  try {
-    // Try to initialize Twilio client to check configuration
-    const config = getConfig(false);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        configured: true,
-        twilioNumber: config.twilioNumber,
-        environment: process.env.NODE_ENV,
-      },
-      message: 'SMS service is configured and ready',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'SMS service not properly configured',
-        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
       },
       { status: 500 },
     );

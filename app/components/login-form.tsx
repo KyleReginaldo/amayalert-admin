@@ -48,9 +48,9 @@ export function LoginForm() {
         <div className="flex items-center justify-center mb-2">
           <Shield className="h-8 w-8 text-primary mr-2" />
         </div>
-        <CardTitle className="text-2xl font-bold text-card-foreground">Admin Sign In</CardTitle>
+        <CardTitle className="text-2xl font-bold text-card-foreground">Sign In</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Access the admin dashboard with your credentials
+          Access the dashboard with your credentials
         </CardDescription>
       </CardHeader>
       {/* Alert is handled globally via AlertProvider / TopRightDialog */}

@@ -96,18 +96,42 @@ export async function POST(request: NextRequest) {
     const body: UserInsert = await request.json();
 
     // Validate required fields
-    if (!body.email || !body.full_name || !body.phone_number) {
+    if (!body.email || !body.full_name) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          message: 'Email, full name, and phone number are required',
+          message: 'Email and full name are required',
         } as ApiResponse<User>,
         { status: 400 },
       );
     }
 
-    const { data: user, error } = await supabase.from('users').insert([body]).select().single();
+    // Ensure phone_number is provided (database requires it)
+    const { data: userAuth, error: errorAuth } = await supabase.auth.admin.createUser({
+      email: body.email,
+      password: crypto.randomUUID(),
+    });
+    if (errorAuth) {
+      console.error('Error creating user:', errorAuth);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to create user',
+          message: errorAuth.message,
+        } as ApiResponse<User>,
+        { status: 500 },
+      );
+    }
+    const userData: UserInsert = {
+      ...body,
+      phone_number:
+        body.phone_number && body.phone_number.trim() !== '' ? body.phone_number.trim() : '',
+      // Ensure we have a valid UUID for the ID
+      id: userAuth.user?.id ?? '',
+    };
+
+    const { data: user, error } = await supabase.from('users').insert([userData]).select().single();
 
     if (error) {
       console.error('Error creating user:', error);

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 
 type EvacuationCenterInsert = Database['public']['Tables']['evacuation_centers']['Insert'];
+type EvacuationCenter = Database['public']['Tables']['evacuation_centers']['Row'];
 
 // Twilio configuration
 const getTwilioConfig = () => {
@@ -23,11 +24,31 @@ const getTwilioConfig = () => {
   };
 };
 
-// Function to send SMS
-async function sendSMS(to: string, message: string) {
+// Simple in-memory deduplication store (for production, use Redis or database)
+const recentNotifications = new Map<string, number>();
+const NOTIFICATION_COOLDOWN = 60000; // 1 minute cooldown
+
+// Function to send SMS with deduplication
+async function sendSMSWithDeduplication(to: string, message: string, centerData: EvacuationCenter) {
+  // Create a unique key for this notification
+  const notificationKey = `evacuation_${centerData.name}_${centerData.address}`;
+  const now = Date.now();
+
+  // Check if we recently sent a notification for this evacuation center
+  const lastSent = recentNotifications.get(notificationKey);
+  if (lastSent && now - lastSent < NOTIFICATION_COOLDOWN) {
+    console.log(
+      `Skipping duplicate SMS for ${notificationKey} - sent ${Math.round(
+        (now - lastSent) / 1000,
+      )}s ago`,
+    );
+    return { success: true, skipped: true };
+  }
+
   try {
     const config = getTwilioConfig();
 
+    // Prepare message options similar to main SMS route
     const messageOptions: {
       body: string;
       to: string;
@@ -38,15 +59,32 @@ async function sendSMS(to: string, message: string) {
       to: to.startsWith('+') ? to : `+${to}`,
     };
 
-    // Use messaging service if available, otherwise use Twilio number
-    if (config.messagingService) {
-      messageOptions.messagingServiceSid = config.messagingService;
+    // Check if we should use a Messaging Service or direct phone number
+    const messagingServiceSid = process.env.MESSAGING_SERVICE_SID;
+
+    if (messagingServiceSid) {
+      // Use Messaging Service (recommended for production)
+      messageOptions.messagingServiceSid = messagingServiceSid;
+      console.log('Using Messaging Service SID for evacuation SMS:', messagingServiceSid);
     } else {
+      // Use direct phone number
       messageOptions.from = config.twilioNumber;
+      console.log('Using direct phone number for evacuation SMS:', config.twilioNumber);
     }
 
     const twilioMessage = await config.client.messages.create(messageOptions);
-    console.log(`twilio message: ${JSON.stringify(twilioMessage)}`);
+    console.log(`SMS sent successfully to ${to}, SID: ${twilioMessage.sid}`);
+
+    // Mark this notification as sent
+    recentNotifications.set(notificationKey, now);
+
+    // Clean up old entries to prevent memory leaks
+    for (const [key, timestamp] of recentNotifications.entries()) {
+      if (now - timestamp > NOTIFICATION_COOLDOWN) {
+        recentNotifications.delete(key);
+      }
+    }
+
     return { success: true, sid: twilioMessage.sid };
   } catch (error) {
     console.error('SMS sending error:', error);
@@ -173,13 +211,18 @@ export async function POST(request: NextRequest) {
 
         if (user.phone_number) {
           try {
-            const smsResult = await sendSMS(
+            const smsResult = await sendSMSWithDeduplication(
               user.phone_number,
-              `NEW EVACUATION CENTER\nAng bagong evacuation ay mahahanap niyo sa ${newCenter.address}\nkasalukuyang kapasidad ay ${newCenter.current_occupancy}/${newCenter.capacity}\nMaaring kontakin si ${newCenter.contact_name} ${newCenter.contact_phone}`,
+              `NEW EVACUATION CENTER\nAng bagong evacuation ay mahahanap niyo sa ${data.address}\nkasalukuyang kapasidad ay ${data.current_occupancy}/${data.capacity}\nMaaring kontakin si ${data.contact_name} ${data.contact_phone}`,
+              data,
             );
 
             if (smsResult.success) {
-              console.log(`SMS sent successfully to ${user.phone_number}, SID: ${smsResult.sid}`);
+              if (smsResult.skipped) {
+                console.log(`SMS skipped for ${user.phone_number} - duplicate notification`);
+              } else {
+                console.log(`SMS sent successfully to ${user.phone_number}, SID: ${smsResult.sid}`);
+              }
             } else {
               console.error(`Failed to send SMS to ${user.phone_number}:`, smsResult.error);
             }

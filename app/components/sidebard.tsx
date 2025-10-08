@@ -1,6 +1,14 @@
 'use client';
 
-import { LayoutDashboard, LogOut, MapPinHouse, Settings, TriangleAlert } from 'lucide-react';
+import {
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  MapPinHouse,
+  Settings,
+  TriangleAlert,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -82,6 +90,18 @@ const Sidebar = () => {
       label: 'Evacuation Centers',
       isActive: pathname === '/evacuation',
     },
+    {
+      href: '/rescue',
+      icon: LifeBuoy,
+      label: 'Rescue Operations',
+      isActive: pathname === '/rescue',
+    },
+    {
+      href: '/users',
+      icon: Users,
+      label: 'User Management',
+      isActive: pathname === '/users',
+    },
   ];
 
   return (
@@ -98,7 +118,7 @@ const Sidebar = () => {
       <div
         id="mobile-sidebar"
         className={`
-          bg-[#3396D3] h-screen w-64 flex flex-col text-white shadow-lg z-30
+          bg-[#234C6A] h-screen w-64 flex flex-col text-white shadow-lg z-30
           fixed left-0 top-0 transform transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0
@@ -107,7 +127,7 @@ const Sidebar = () => {
         {/* Header */}
         <div className="px-6 py-6 border-b border-blue-400/20 flex-shrink-0">
           <h1 className="text-xl font-bold">AmayAlert</h1>
-          <p className="text-blue-100 text-sm">Admin Dashboard</p>
+          <p className="text-blue-100 text-md">Admin</p>
         </div>
 
         {/* Navigation */}
@@ -119,10 +139,8 @@ const Sidebar = () => {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-blue-500/30 ${
-                      item.isActive
-                        ? 'bg-blue-500/40 border-l-4 border-white shadow-sm'
-                        : 'hover:translate-x-1'
+                    className={`flex items-center gap-3 px-4 py-3  transition-all duration-200 hover:bg-blue-500/30 ${
+                      item.isActive ? 'bg-blue-500/40 border-l-4 shadow-sm' : 'hover:translate-x-1'
                     }`}
                   >
                     <IconComponent
@@ -146,7 +164,7 @@ const Sidebar = () => {
           <div className="space-y-2">
             <Link
               href="/settings"
-              className="flex items-center gap-3 px-4 py-2 rounded-lg text-blue-100 hover:bg-blue-500/30 transition-all duration-200 hover:translate-x-1"
+              className="flex items-center gap-3 px-4 py-2  text-blue-100 hover:bg-blue-500/30 transition-all duration-200 hover:translate-x-1"
             >
               <Settings size={18} />
               <span className="text-sm">Settings</span>
@@ -156,7 +174,7 @@ const Sidebar = () => {
                 // Add logout logic here
                 window.location.href = '/signin';
               }}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg text-blue-100 hover:bg-red-500/30 transition-all duration-200 hover:translate-x-1 w-full text-left"
+              className="flex items-center gap-3 px-4 py-2  text-blue-100 hover:bg-red-500/30 transition-all duration-200 hover:translate-x-1 w-full text-left"
             >
               <LogOut size={18} />
               <span className="text-sm">Sign Out</span>

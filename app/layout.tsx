@@ -7,7 +7,10 @@ import { useEffect } from 'react';
 import { AlertProvider } from './components/alert-context';
 import Sidebar, { SidebarProvider, useSidebar } from './components/sidebard';
 import './globals.css';
+import { AlertsProvider } from './providers/alerts-provider';
 import { DataProvider } from './providers/data-provider';
+import { EvacuationProvider } from './providers/evacuation-provider';
+import { RescueProvider } from './providers/rescue-provider';
 
 // Global Mobile Header Component
 function GlobalMobileHeader() {
@@ -19,6 +22,7 @@ function GlobalMobileHeader() {
     if (path === '/') return 'Dashboard';
     if (path === '/alert') return 'Alerts';
     if (path === '/evacuation') return 'Evacuation Centers';
+    if (path === '/rescue') return 'Rescue Operations';
     if (path === '/sms-test') return 'SMS Test';
     return 'AmayAlert';
   };
@@ -60,21 +64,27 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${isAuthPage ? 'bg-gray-50' : 'flex h-screen bg-gray-50 overflow-hidden'}`}>
         <DataProvider>
-          <AlertProvider>
-            <SidebarProvider>
-              {!isAuthPage && <Sidebar />}
-              <main
-                className={`${
-                  isAuthPage
-                    ? 'min-h-screen w-full'
-                    : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
-                }`}
-              >
-                {!isAuthPage && <GlobalMobileHeader />}
-                {children}
-              </main>
-            </SidebarProvider>
-          </AlertProvider>
+          <AlertsProvider>
+            <EvacuationProvider>
+              <RescueProvider>
+                <AlertProvider>
+                  <SidebarProvider>
+                    {!isAuthPage && <Sidebar />}
+                    <main
+                      className={`${
+                        isAuthPage
+                          ? 'min-h-screen w-full'
+                          : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
+                      }`}
+                    >
+                      {!isAuthPage && <GlobalMobileHeader />}
+                      {children}
+                    </main>
+                  </SidebarProvider>
+                </AlertProvider>
+              </RescueProvider>
+            </EvacuationProvider>
+          </AlertsProvider>
         </DataProvider>
       </body>
     </html>

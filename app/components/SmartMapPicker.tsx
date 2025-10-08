@@ -44,7 +44,7 @@ export default function SmartMapPicker({
           initialLocation={initialLocation}
           onLocationSelect={onLocationSelect}
           height={height}
-          className="w-full"
+          className="w-full border-none"
         />
       </MapProvider>
     </div>
