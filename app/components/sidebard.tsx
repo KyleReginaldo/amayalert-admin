@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  LayoutDashboard,
-  LifeBuoy,
-  LogOut,
-  MapPinHouse,
-  Settings,
-  TriangleAlert,
-  Users,
-} from 'lucide-react';
+import { LayoutDashboard, LifeBuoy, LogOut, MapPinHouse, TriangleAlert, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -52,6 +44,14 @@ export const SidebarProvider = ({ children }: { children: React.ReactNode }) => 
 const Sidebar = () => {
   const pathname = usePathname();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useSidebar();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Open settings if on a settings page
+  useEffect(() => {
+    if (pathname === '/sms-test' || pathname === '/email-test') {
+      setIsSettingsOpen(true);
+    }
+  }, [pathname]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -163,13 +163,6 @@ const Sidebar = () => {
         {/* Footer */}
         <div className="px-4 py-4 border-t border-blue-400/20 flex-shrink-0">
           <div className="space-y-2">
-            <Link
-              href="/settings"
-              className="flex items-center gap-3 px-4 py-2  text-blue-100 hover:bg-blue-500/30 transition-all duration-200 hover:translate-x-1"
-            >
-              <Settings size={18} />
-              <span className="text-sm">Settings</span>
-            </Link>
             <button
               onClick={() => {
                 // Add logout logic here

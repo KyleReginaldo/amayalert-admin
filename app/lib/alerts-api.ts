@@ -5,12 +5,23 @@ export type Alert = Database['public']['Tables']['alert']['Row'];
 export type AlertInsert = Database['public']['Tables']['alert']['Insert'];
 export type AlertUpdate = Database['public']['Tables']['alert']['Update'];
 
+export interface NotificationStatus {
+  sent: number;
+  errors: string[];
+}
+
+export interface NotificationSummary {
+  sms: NotificationStatus;
+  email: NotificationStatus;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   message?: string;
   error?: string;
   total?: number;
+  notifications?: NotificationSummary;
 }
 
 export interface AlertFilters {

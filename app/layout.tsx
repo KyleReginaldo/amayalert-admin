@@ -53,31 +53,44 @@ export default function RootLayout({
     document.title = 'Amayalert Admin';
   }, []);
 
-  // Check if current route is an auth page
+  // Check if current route is an auth page or public page
   const isAuthPage =
     pathname?.startsWith('/signin') ||
     pathname?.startsWith('/signup') ||
     pathname?.startsWith('/login') ||
     pathname?.includes('/(auth)/');
 
+  // Check if current route is a public page (no admin layout needed)
+  const isPublicPage =
+    pathname?.startsWith('/privacy-policy') ||
+    pathname?.startsWith('/terms-of-service') ||
+    pathname?.startsWith('/contact-us');
+
+  // Pages that should not have the admin layout
+  const shouldHideAdminLayout = isAuthPage || isPublicPage;
+
   return (
     <html lang="en">
-      <body className={`${isAuthPage ? 'bg-gray-50' : 'flex h-screen bg-gray-50 overflow-hidden'}`}>
+      <body
+        className={`${
+          shouldHideAdminLayout ? 'bg-gray-50' : 'flex h-screen bg-gray-50 overflow-hidden'
+        }`}
+      >
         <DataProvider>
           <AlertsProvider>
             <EvacuationProvider>
               <RescueProvider>
                 <AlertProvider>
                   <SidebarProvider>
-                    {!isAuthPage && <Sidebar />}
+                    {!shouldHideAdminLayout && <Sidebar />}
                     <main
                       className={`${
-                        isAuthPage
+                        shouldHideAdminLayout
                           ? 'min-h-screen w-full'
                           : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
                       }`}
                     >
-                      {!isAuthPage && <GlobalMobileHeader />}
+                      {!shouldHideAdminLayout && <GlobalMobileHeader />}
                       {children}
                     </main>
                   </SidebarProvider>

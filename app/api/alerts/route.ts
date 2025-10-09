@@ -2,6 +2,7 @@ import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
+import { emailService } from '../../lib/email-service';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -139,39 +140,119 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-    // Send SMS notifications to users
-    const { data: users } = await supabase.from('users').select('phone_number').eq('role', 'user');
+
+    // Send notifications to users (both SMS and Email)
+    const { data: users } = await supabase
+      .from('users')
+      .select('phone_number, email')
+      .eq('role', 'user');
+
+    let smsCount = 0;
+    let emailCount = 0;
+    const smsErrors: string[] = [];
+    const emailErrors: string[] = [];
 
     if (users && users.length > 0) {
-      console.log(`Sending SMS alerts to ${users.length} users`);
+      console.log(`Sending notifications to ${users.length} users`);
 
-      for (let i = 0; i < users.length; i++) {
-        const user = users[i];
+      // Collect SMS and Email recipients
+      const smsRecipients: string[] = [];
+      const emailRecipients: string[] = [];
+
+      users.forEach((user) => {
         if (user.phone_number) {
+          smsRecipients.push(user.phone_number);
+        }
+        if (user.email) {
+          emailRecipients.push(user.email);
+        }
+      });
+
+      // Send SMS notifications
+      if (smsRecipients.length > 0) {
+        console.log(`Sending SMS alerts to ${smsRecipients.length} users`);
+
+        for (const phoneNumber of smsRecipients) {
           try {
             const smsResult = await sendSMS(
-              user.phone_number,
+              phoneNumber,
               `EMERGENCY ALERT!!!\n\n${newAlert?.title}\n\n${newAlert?.content}\n\nThis is an official emergency notification.`,
             );
             if (smsResult.success) {
-              console.log(`SMS sent successfully to ${user.phone_number}, SID: ${smsResult.sid}`);
+              console.log(`SMS sent successfully to ${phoneNumber}, SID: ${smsResult.sid}`);
+              smsCount++;
             } else {
-              console.error(`Failed to send SMS to ${user.phone_number}:`, smsResult.error);
+              console.error(`Failed to send SMS to ${phoneNumber}:`, smsResult.error);
+              smsErrors.push(`${phoneNumber}: ${smsResult.error}`);
             }
           } catch (error) {
-            console.error('Error sending SMS to', user.phone_number, error);
+            console.error('Error sending SMS to', phoneNumber, error);
+            smsErrors.push(
+              `${phoneNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
           }
         }
+      } else {
+        console.log('No users found for SMS notifications');
+      }
+
+      // Send Email notifications
+      if (emailRecipients.length > 0) {
+        console.log(`Sending email alerts to ${emailRecipients.length} users`);
+
+        try {
+          const emailResult = await emailService.sendEmergencyAlert(emailRecipients, {
+            title: newAlert?.title || 'Emergency Alert',
+            content:
+              newAlert?.content || 'Please check local emergency services for more information.',
+            alertLevel: newAlert?.alert_level || 'medium',
+            location: undefined, // Can be enhanced to include location if available
+          });
+
+          if (emailResult.success) {
+            console.log(`Email alerts sent successfully to ${emailRecipients.length} recipients`);
+            emailCount = emailRecipients.length;
+          } else {
+            console.error('Failed to send email alerts:', emailResult.error);
+            emailErrors.push(`Bulk email failed: ${emailResult.error}`);
+          }
+        } catch (error) {
+          console.error('Error sending email alerts:', error);
+          emailErrors.push(
+            `Email service error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      } else {
+        console.log('No users found for email notifications');
       }
     } else {
-      console.log('No users found for SMS notifications');
+      console.log('No users found for notifications');
+    }
+
+    // Prepare response with notification summary
+    let message = 'Alert created successfully';
+    const notifications = {
+      sms: { sent: smsCount, errors: smsErrors },
+      email: { sent: emailCount, errors: emailErrors },
+    };
+
+    if (smsCount > 0 || emailCount > 0) {
+      const notificationSummary = [];
+      if (smsCount > 0) notificationSummary.push(`${smsCount} SMS`);
+      if (emailCount > 0) notificationSummary.push(`${emailCount} email`);
+      message += ` and ${notificationSummary.join(' and ')} notifications sent`;
+    }
+
+    if (smsErrors.length > 0 || emailErrors.length > 0) {
+      console.warn('Some notifications failed:', { smsErrors, emailErrors });
     }
 
     return NextResponse.json(
       {
         success: true,
         data: newAlert,
-        message: 'Alert created successfully',
+        message,
+        notifications,
       },
       { status: 201 },
     );

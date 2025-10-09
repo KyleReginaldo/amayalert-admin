@@ -87,6 +87,27 @@ export default function AlertPage() {
       const response = await alertsAPI.createAlert(alertData);
       if (response.success && response.data) {
         addAlert(response.data);
+
+        // Show notification status if available
+        if (response.notifications) {
+          const { sms, email } = response.notifications;
+          let statusMessage = 'Alert created successfully!';
+
+          if (sms?.sent > 0 || email?.sent > 0) {
+            const notifications = [];
+            if (sms?.sent > 0) notifications.push(`${sms.sent} SMS`);
+            if (email?.sent > 0) notifications.push(`${email.sent} email`);
+            statusMessage += ` Sent ${notifications.join(' and ')} notifications.`;
+          }
+
+          if (sms?.errors?.length > 0 || email?.errors?.length > 0) {
+            console.warn('Some notifications failed:', response.notifications);
+          }
+
+          // You could show a toast notification here with the status
+          console.log('Notification Status:', statusMessage);
+        }
+
         setIsModalOpen(false);
       }
     } catch (error) {
