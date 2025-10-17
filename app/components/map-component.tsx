@@ -56,78 +56,84 @@ const MapComponent = ({
     initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : defaultMapCenter,
   );
   const [searchValue, setSearchValue] = useState(initialLocation?.address || '');
-  const [hasUserSelected, setHasUserSelected] = useState(!!initialLocation); // Track if user has manually selected a location
+  const [hasUserSelected, setHasUserSelected] = useState(!!initialLocation); // Track if user has manually interacted
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
 
-  // Automatically get current location on component mount if no initial location provided
-  // and no location has been manually selected yet
+  // Automatically get current location only once on mount if no initial location
+  const ranAutoLocate = useRef(false);
   useEffect(() => {
-    if (!initialLocation && !hasUserSelected && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
+    if (ranAutoLocate.current) return;
+    if (initialLocation) return;
+    if (!navigator.geolocation) return;
+    ranAutoLocate.current = true;
 
-          setSelectedLocation({ lat, lng });
-          setMapCenter({ lat, lng });
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
 
-          // Wait for geocoder to be available, then reverse geocode
-          const reverseGeocode = async () => {
-            if (geocoderRef.current) {
-              try {
-                const response = await new Promise<google.maps.GeocoderResult[]>(
-                  (resolve, reject) => {
-                    geocoderRef.current!.geocode({ location: { lat, lng } }, (results, status) => {
-                      if (status === 'OK' && results) {
-                        resolve(results);
-                      } else {
-                        reject(new Error(status));
-                      }
-                    });
-                  },
-                );
+        setSelectedLocation({ lat, lng });
+        setMapCenter({ lat, lng });
 
-                if (response && response[0]) {
-                  const address = response[0].formatted_address;
-                  setSearchValue(address);
+        // Wait for geocoder to be available, then reverse geocode
+        const reverseGeocode = async () => {
+          if (geocoderRef.current) {
+            try {
+              const response = await new Promise<google.maps.GeocoderResult[]>(
+                (resolve, reject) => {
+                  geocoderRef.current!.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results) {
+                      resolve(results);
+                    } else {
+                      reject(new Error(status));
+                    }
+                  });
+                },
+              );
 
-                  if (onLocationSelect) {
-                    onLocationSelect({ lat, lng, address });
-                  }
-                }
-              } catch (error) {
-                console.error('Reverse geocoding failed:', error);
+              if (response && response[0]) {
+                const address = response[0].formatted_address;
+                // Only set autofill if the user hasn't typed yet
+                setSearchValue((prev) => (prev ? prev : address));
+
                 if (onLocationSelect) {
-                  onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+                  onLocationSelect({ lat, lng, address });
                 }
               }
-            } else {
-              // If geocoder is not ready yet, try again after a short delay
-              setTimeout(reverseGeocode, 500);
+            } catch (error) {
+              console.error('Reverse geocoding failed:', error);
+              if (onLocationSelect) {
+                onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+              }
             }
-          };
+          } else {
+            // If geocoder is not ready yet, try again after a short delay
+            setTimeout(reverseGeocode, 500);
+          }
+        };
 
-          reverseGeocode();
-        },
-        (error) => {
-          console.error('Error getting current location:', error);
-          // Optionally show a user-friendly message here
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000, // Cache for 1 minute
-        },
-      );
-    }
-  }, [initialLocation, hasUserSelected, onLocationSelect]);
+        reverseGeocode();
+      },
+      (error) => {
+        console.error('Error getting current location:', error);
+        // Optionally show a user-friendly message here
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000, // Cache for 1 minute
+      },
+    );
+  }, [initialLocation, onLocationSelect]);
 
   // Initialize geocoder when map loads
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const onMapLoad = useCallback((_map: google.maps.Map) => {
+  const onMapLoad = useCallback((map: google.maps.Map) => {
     geocoderRef.current = new google.maps.Geocoder();
+    mapInstanceRef.current = map;
   }, []);
 
   // Handle place selection from autocomplete
@@ -144,6 +150,12 @@ const MapComponent = ({
         setMapCenter(newLocation);
         setSearchValue(address);
         setHasUserSelected(true); // Mark as user selected
+
+        // Zoom the map to the selected place
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.panTo(newLocation);
+          mapInstanceRef.current.setZoom(16);
+        }
 
         if (onLocationSelect) {
           onLocationSelect({ lat, lng, address });
@@ -272,10 +284,28 @@ const MapComponent = ({
                 id="location-search"
                 placeholder="Search for a place..."
                 value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                  setHasUserSelected(true); // typing counts as user interaction
+                }}
+                autoComplete="off"
                 className="pl-10"
               />
             </Autocomplete>
+            {searchValue && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setSearchValue('');
+                  setSelectedLocation(null);
+                  setHasUserSelected(true); // keep user-interacted state to prevent auto-fill
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
           <Button type="button" variant="outline" onClick={getCurrentLocation} className="shrink-0">
             <MapPin className="h-4 w-4 mr-2" />

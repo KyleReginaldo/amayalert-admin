@@ -107,6 +107,7 @@ export type Database = {
           created_at: string
           id: number
           receiver: string
+          seen_at: string | null
           sender: string
           updated_at: string | null
         }
@@ -116,6 +117,7 @@ export type Database = {
           created_at?: string
           id?: number
           receiver: string
+          seen_at?: string | null
           sender: string
           updated_at?: string | null
         }
@@ -125,6 +127,7 @@ export type Database = {
           created_at?: string
           id?: number
           receiver?: string
+          seen_at?: string | null
           sender?: string
           updated_at?: string | null
         }
@@ -232,7 +235,15 @@ export type Database = {
           updated_at?: string
           user?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rescues_user_fkey1"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tickets: {
         Row: {
@@ -273,6 +284,8 @@ export type Database = {
           gender: string | null
           id: string
           id_picture: string | null
+          latitude: number | null
+          longitude: number | null
           phone_number: string
           profile_picture: string | null
           role: Database["public"]["Enums"]["user_role"] | null
@@ -286,6 +299,8 @@ export type Database = {
           gender?: string | null
           id: string
           id_picture?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone_number: string
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
@@ -299,6 +314,8 @@ export type Database = {
           gender?: string | null
           id?: string
           id_picture?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone_number?: string
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null

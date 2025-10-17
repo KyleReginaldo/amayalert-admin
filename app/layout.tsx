@@ -24,6 +24,9 @@ function GlobalMobileHeader() {
     if (path === '/evacuation') return 'Evacuation Centers';
     if (path === '/rescue') return 'Rescue Operations';
     if (path === '/sms-test') return 'SMS Test';
+    if (path === '/users') return 'Users';
+    if (path === '/chat') return 'Chat';
+    if (path === '/settings') return 'Settings';
     return 'AmayAlert';
   };
 

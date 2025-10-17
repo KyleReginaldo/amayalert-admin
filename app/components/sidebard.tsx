@@ -1,10 +1,16 @@
 'use client';
 
-import { LayoutDashboard, LifeBuoy, LogOut, MapPinHouse, TriangleAlert, Users } from 'lucide-react';
+import {
+  LayoutDashboard,
+  LifeBuoy,
+  MapPinHouse,
+  Settings,
+  TriangleAlert,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../client/supabase';
 
 // Create context for sidebar state
 const SidebarContext = createContext<{
@@ -103,6 +109,18 @@ const Sidebar = () => {
       label: 'User Management',
       isActive: pathname === '/users',
     },
+    {
+      href: '/chat',
+      icon: Users,
+      label: 'Chat',
+      isActive: pathname === '/chat',
+    },
+    {
+      href: '/settings',
+      icon: Settings,
+      label: 'Settings',
+      isActive: pathname === '/settings',
+    },
   ];
 
   return (
@@ -160,22 +178,8 @@ const Sidebar = () => {
           </ul>
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-blue-400/20 flex-shrink-0">
-          <div className="space-y-2">
-            <button
-              onClick={() => {
-                // Add logout logic here
-                supabase.auth.signOut();
-                window.location.href = '/signin';
-              }}
-              className="flex items-center gap-3 px-4 py-2  text-blue-100 hover:bg-red-500/30 transition-all duration-200 hover:translate-x-1 w-full text-left"
-            >
-              <LogOut size={18} />
-              <span className="text-sm">Sign Out</span>
-            </button>
-          </div>
-        </div>
+        {/* Footer (kept minimal; sign out moved to Settings) */}
+        <div className="px-4 py-4 border-t border-blue-400/20 flex-shrink-0" />
       </div>
     </>
   );

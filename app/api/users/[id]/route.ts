@@ -139,11 +139,7 @@ export async function DELETE(
     }
 
     // First fetch the user to return it
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { error: fetchError } = await supabase.auth.admin.deleteUser(id);
 
     if (fetchError) {
       console.error('Error fetching user for deletion:', fetchError);
@@ -173,7 +169,6 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      data: user,
       message: 'User deleted successfully',
     } as ApiResponse<User>);
   } catch (error) {

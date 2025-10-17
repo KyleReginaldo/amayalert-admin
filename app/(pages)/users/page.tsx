@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import UsersLiveMap from '@/app/components/UsersLiveMap';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
   Table,
   TableBody,
   TableCell,
@@ -36,6 +44,7 @@ import {
   ChevronRight,
   Crown,
   Edit,
+  Eye,
   Loader2,
   Plus,
   Save,
@@ -135,11 +144,14 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Load users on component mount
   useEffect(() => {
@@ -185,6 +197,9 @@ export default function UsersPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+  const usersWithLocation = filteredUsers.filter(
+    (u) => typeof u.latitude === 'number' && typeof u.longitude === 'number',
+  ) as Array<User & { latitude: number; longitude: number }>;
 
   // Reset to page 1 when filters change
   const handleSearchChange = (value: string) => {
@@ -274,6 +289,11 @@ export default function UsersPage() {
   const openEditModal = (user: User) => {
     setEditingUser(user);
     setIsModalOpen(true);
+  };
+
+  const openUserSheet = (user: User) => {
+    setSelectedUser(user);
+    setIsSheetOpen(true);
   };
 
   const getRoleColor = (role: string | null) => {
@@ -401,202 +421,259 @@ export default function UsersPage() {
           </div>
 
           {/* Minimal Filters */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search users..."
-                  className="pl-10 border-gray-300 focus:border-gray-400"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
-              <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search users..."
+                className="pl-10 border-gray-300 focus:border-gray-400 w-full md:w-md"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* View Toggle */}
+          <div className="flex items-center justify-end">
+            <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 text-sm ${
+                  viewMode === 'table' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                }`}
+              >
+                Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('map')}
+                className={`px-3 py-1.5 text-sm border-l border-gray-200 ${
+                  viewMode === 'map' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                }`}
+              >
+                Map
+              </button>
             </div>
           </div>
 
-          {/* Users Table */}
+          {/* Users Table or Map */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {/* Mobile View - Stack Cards */}
-            <div className="block md:hidden">
-              <div className="divide-y divide-gray-200">
-                {paginatedUsers.length > 0 ? (
-                  paginatedUsers.map((user) => {
-                    const RoleIcon = getRoleIcon(user.role);
-                    return (
-                      <div key={user.id} className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm text-gray-900">
-                                {user.full_name || 'No Name'}
-                              </p>
-                              <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                                <RoleIcon className="h-3 w-3 mr-1" />
-                                {user.role}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-500 mb-1">{user.email}</p>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">
-                                Phone: {user.phone_number || 'Not provided'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-500">
-                                Joined {new Date(user.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1 ml-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(user)}
-                              disabled={currentUserId === user.id}
-                              className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === user.id
-                                  ? 'Cannot edit your own account'
-                                  : 'Edit user'
-                              }
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(user.id)}
-                              disabled={currentUserId === user.id}
-                              className="h-8 w-8 rounded-full text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === user.id
-                                  ? 'Cannot delete your own account'
-                                  : 'Delete user'
-                              }
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <UsersIcon className="h-8 w-8 mx-auto mb-2" />
-                    <p>No users found</p>
+            {viewMode === 'map' ? (
+              <div className="p-4">
+                <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
+                {usersWithLocation.length === 0 && (
+                  <div className="text-center text-sm text-gray-500 mt-3">
+                    No users with location data to display.
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Desktop View - Table */}
-            <div className="hidden md:block">
-              {paginatedUsers.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-gray-200">
-                      <TableHead className="font-medium text-gray-900">User</TableHead>
-                      <TableHead className="font-medium text-gray-900">Role</TableHead>
-                      <TableHead className="font-medium text-gray-900">Phone</TableHead>
-                      <TableHead className="font-medium text-gray-900">Joined</TableHead>
-                      <TableHead className="font-medium text-gray-900">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedUsers.map((user) => {
-                      const RoleIcon = getRoleIcon(user.role);
-                      return (
-                        <TableRow key={user.id} className="hover:bg-gray-50 border-gray-200">
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {user.full_name || 'No Name'}
+            ) : (
+              <>
+                {/* Mobile View - Stack Cards */}
+                <div className="block md:hidden">
+                  <div className="divide-y divide-gray-200">
+                    {paginatedUsers.length > 0 ? (
+                      paginatedUsers.map((user) => {
+                        const RoleIcon = getRoleIcon(user.role);
+                        return (
+                          <div key={user.id} className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-medium text-sm text-gray-900">
+                                    {user.full_name || 'No Name'}
+                                  </p>
+                                  <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                    <RoleIcon className="h-3 w-3 mr-1" />
+                                    {user.role}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-1">{user.email}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500">
+                                    Phone: {user.phone_number || 'Not provided'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-500">
+                                    Joined {new Date(user.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500">{user.email}</div>
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditModal(user)}
+                                  disabled={currentUserId === user.id}
+                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={
+                                    currentUserId === user.id
+                                      ? 'Cannot edit your own account'
+                                      : 'Edit user'
+                                  }
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openUserSheet(user)}
+                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900"
+                                  title={'View details'}
+                                >
+                                  <Eye className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(user.id)}
+                                  disabled={currentUserId === user.id}
+                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={
+                                    currentUserId === user.id
+                                      ? 'Cannot delete your own account'
+                                      : 'Delete user'
+                                  }
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                              <RoleIcon className="h-3 w-3 mr-1" />
-                              {user.role || 'user'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-gray-600">
-                            <div className="text-sm">{user.phone_number || 'Not provided'}</div>
-                          </TableCell>
-                          <TableCell className="text-gray-600">
-                            <div className="text-sm">
-                              {new Date(user.created_at).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditModal(user)}
-                                disabled={currentUserId === user.id}
-                                className="h-8 w-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                  currentUserId === user.id
-                                    ? 'Cannot edit your own account'
-                                    : 'Edit user'
-                                }
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(user.id)}
-                                disabled={currentUserId === user.id}
-                                className="h-8 w-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                  currentUserId === user.id
-                                    ? 'Cannot delete your own account'
-                                    : 'Delete user'
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <UsersIcon className="h-8 w-8 mx-auto mb-2" />
-                  <p>No users found</p>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <UsersIcon className="h-8 w-8 mx-auto mb-2" />
+                        <p>No users found</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Pagination */}
-            {filteredUsers.length > itemsPerPage && (
-              <div className="p-4 border-t border-gray-200">
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  totalItems={filteredUsers.length}
-                  itemsPerPage={itemsPerPage}
-                />
-              </div>
+                {/* Desktop View - Table */}
+                <div className="hidden md:block">
+                  {paginatedUsers.length > 0 ? (
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow className="border-gray-200">
+                          <TableHead className="w-[32%] font-medium text-gray-900">User</TableHead>
+                          <TableHead className="w-[14%] font-medium text-gray-900">Role</TableHead>
+                          <TableHead className="w-[18%] font-medium text-gray-900">Phone</TableHead>
+                          <TableHead className="w-[18%] font-medium text-gray-900">
+                            Joined
+                          </TableHead>
+                          <TableHead className="w-[18%] font-medium text-gray-900 text-right">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedUsers.map((user) => {
+                          const RoleIcon = getRoleIcon(user.role);
+                          return (
+                            <TableRow key={user.id} className="hover:bg-gray-50 border-gray-200">
+                              <TableCell className="w-[32%]">
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {user.full_name || 'No Name'}
+                                  </div>
+                                  <div className="text-sm text-gray-500">{user.email}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-[14%]">
+                                <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                  <RoleIcon className="h-3 w-3 mr-1" />
+                                  {user.role || 'user'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="w-[18%] text-gray-600">
+                                <div className="text-sm">{user.phone_number || 'Not provided'}</div>
+                              </TableCell>
+                              <TableCell className="w-[18%] text-gray-600">
+                                <div className="text-sm">
+                                  {new Date(user.created_at).toLocaleDateString()}
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-[18%] text-right">
+                                <div className="ml-auto flex items-center gap-1 justify-end">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditModal(user)}
+                                    disabled={currentUserId === user.id}
+                                    className="h-8 w-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title={
+                                      currentUserId === user.id
+                                        ? 'Cannot edit your own account'
+                                        : 'Edit user'
+                                    }
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openUserSheet(user)}
+                                    className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                                    title={'View details'}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(user.id)}
+                                    disabled={currentUserId === user.id}
+                                    className="h-8 w-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title={
+                                      currentUserId === user.id
+                                        ? 'Cannot delete your own account'
+                                        : 'Delete user'
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <UsersIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p>No users found</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {filteredUsers.length > itemsPerPage && (
+                  <div className="p-4 border-t border-gray-200">
+                    <PaginationControls
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      totalItems={filteredUsers.length}
+                      itemsPerPage={itemsPerPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -616,6 +693,72 @@ export default function UsersPage() {
           }
           loading={modalLoading}
         />
+
+        {/* Right-side User Details Sheet */}
+        <Sheet
+          open={isSheetOpen}
+          onOpenChange={(open) => {
+            setIsSheetOpen(open);
+            if (!open) setSelectedUser(null);
+          }}
+        >
+          <SheetContent className="sm:max-w-xl">
+            {selectedUser && (
+              <div className="flex h-full flex-col">
+                <SheetHeader>
+                  <SheetTitle>User Details</SheetTitle>
+                  <SheetDescription>Read-only profile snapshot.</SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 overflow-auto space-y-3 text-sm text-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-500">Full name</div>
+                    <div>{selectedUser.full_name || 'No Name'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Email</div>
+                    <div>{selectedUser.email}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Role</div>
+                    <div className="inline-flex items-center gap-2">
+                      <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
+                        {selectedUser.role || 'user'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Phone</div>
+                    <div>{selectedUser.phone_number || 'Not provided'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Joined</div>
+                    <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsSheetOpen(false);
+                      openEditModal(selectedUser);
+                    }}
+                    disabled={currentUserId === selectedUser.id}
+                    title={
+                      currentUserId === selectedUser.id
+                        ? 'Cannot edit your own account'
+                        : 'Edit user'
+                    }
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     </AuthWrapper>
   );

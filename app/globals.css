@@ -124,3 +124,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure Google Places Autocomplete dropdown appears above modals and content */
+.pac-container {
+  z-index: 10000 !important;
+}

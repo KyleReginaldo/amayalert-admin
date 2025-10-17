@@ -24,6 +24,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
   Table,
   TableBody,
   TableCell,
@@ -78,6 +85,8 @@ export default function RescuePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRescue, setSelectedRescue] = useState<Rescue | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  // Right-side sheet state (read-only details)
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // Load rescues on component mount if needed
   useEffect(() => {
@@ -133,6 +142,11 @@ export default function RescuePage() {
   const openRescueModal = (rescue: Rescue) => {
     setSelectedRescue(rescue);
     setIsModalOpen(true);
+  };
+
+  const openRescueSheet = (rescue: Rescue) => {
+    setSelectedRescue(rescue);
+    setIsSheetOpen(true);
   };
 
   const getPriorityBadge = (priority: number) => {
@@ -562,6 +576,16 @@ export default function RescuePage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => openRescueSheet(rescue)}
+                        className="h-8 w-8 rounded-full"
+                        aria-label="View details"
+                        title="View details"
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDelete(rescue.id)}
                         className="h-8 w-8 rounded-full text-red-500"
                       >
@@ -661,42 +685,40 @@ export default function RescuePage() {
           </div>
 
           {/* Filters */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search rescue requests..."
-                  className="pl-10 border-gray-300 focus:border-gray-400"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="1">Critical</SelectItem>
-                  <SelectItem value="2">High</SelectItem>
-                  <SelectItem value="3">Medium</SelectItem>
-                  <SelectItem value="4">Low</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search rescue requests..."
+                className="pl-10 border-gray-300 focus:border-gray-400 w-full md:w-md"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="1">Critical</SelectItem>
+                <SelectItem value="2">High</SelectItem>
+                <SelectItem value="3">Medium</SelectItem>
+                <SelectItem value="4">Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Table View */}
@@ -780,6 +802,16 @@ export default function RescuePage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => openRescueSheet(rescue)}
+                            className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                            aria-label="View details"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDelete(rescue.id)}
                             className="h-8 w-8 text-gray-600 hover:text-red-600"
                           >
@@ -845,6 +877,207 @@ export default function RescuePage() {
           loading={modalLoading}
         />
       )}
+
+      {/* Right-side Details Sheet */}
+      <Sheet
+        open={isSheetOpen}
+        onOpenChange={(open) => {
+          setIsSheetOpen(open);
+          if (!open) setSelectedRescue(null);
+        }}
+      >
+        <SheetContent className="sm:max-w-xl">
+          {selectedRescue && (
+            <div className="flex h-full flex-col">
+              <SheetHeader>
+                <SheetTitle>Rescue Details</SheetTitle>
+                <SheetDescription>Quick read-only overview of the rescue request.</SheetDescription>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-auto space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{selectedRescue.title}</h3>
+                    <div className="mt-2 flex gap-2">
+                      <Badge className={getStatusBadge(selectedRescue.status).class}>
+                        {getStatusBadge(selectedRescue.status).label}
+                      </Badge>
+                      <Badge className={getPriorityBadge(selectedRescue.priority).class}>
+                        {getPriorityBadge(selectedRescue.priority).label}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-500">
+                    <div>Reported: {new Date(selectedRescue.created_at).toLocaleString()}</div>
+                    <div>ID: #{selectedRescue.id}</div>
+                  </div>
+                </div>
+
+                {selectedRescue.description && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Description</div>
+                    <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">
+                      {selectedRescue.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedRescue.lat && selectedRescue.lng ? (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Location</div>
+                      <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        {selectedRescue.lat.toFixed(4)}, {selectedRescue.lng.toFixed(4)}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(
+                              `https://maps.google.com/?q=${selectedRescue.lat},${selectedRescue.lng}`,
+                              '_blank',
+                            )
+                          }
+                          className="ml-2 h-7 text-xs"
+                        >
+                          View Map
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Location</div>
+                      <div className="mt-1 text-sm text-gray-500">No location available</div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Status</div>
+                    <div className="mt-1 text-sm text-gray-600 capitalize">
+                      {selectedRescue.status.replace('_', ' ')}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Priority</div>
+                    <div className="mt-1 text-sm text-gray-600">
+                      {getPriorityBadge(selectedRescue.priority).label}
+                    </div>
+                  </div>
+
+                  {selectedRescue.scheduled_for && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Scheduled For</div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        {new Date(selectedRescue.scheduled_for).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metadata - formatted */}
+                {selectedRescue.metadata && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Additional Info</div>
+                    {(() => {
+                      const meta =
+                        (selectedRescue.metadata as unknown as Partial<{
+                          notes?: string;
+                          lastUpdatedBy?: string;
+                          lastUpdatedAt?: string;
+                          teamAssigned?: string;
+                          equipment?: string[] | string;
+                          outcome?: string;
+                          evacuatedTo?: string;
+                          reportedVia?: string;
+                          contactNumber?: string;
+                        }>) || {};
+                      const equipment = Array.isArray(meta.equipment)
+                        ? meta.equipment.join(', ')
+                        : meta.equipment;
+                      const lastUpdatedAt = meta.lastUpdatedAt
+                        ? new Date(meta.lastUpdatedAt).toLocaleString()
+                        : undefined;
+                      return (
+                        <div className="mt-2 space-y-2 text-sm text-gray-700">
+                          {meta.reportedVia && (
+                            <div>
+                              <span className="font-medium">Reported via: </span>
+                              <span className="text-gray-600">{meta.reportedVia}</span>
+                            </div>
+                          )}
+                          {meta.contactNumber && (
+                            <div>
+                              <span className="font-medium">Contact number: </span>
+                              <span className="text-gray-600">{meta.contactNumber}</span>
+                            </div>
+                          )}
+                          {meta.teamAssigned && (
+                            <div>
+                              <span className="font-medium">Team assigned: </span>
+                              <span className="text-gray-600">{meta.teamAssigned}</span>
+                            </div>
+                          )}
+                          {equipment && (
+                            <div>
+                              <span className="font-medium">Equipment: </span>
+                              <span className="text-gray-600">{equipment}</span>
+                            </div>
+                          )}
+                          {meta.outcome && (
+                            <div>
+                              <span className="font-medium">Outcome: </span>
+                              <span className="text-gray-600">{meta.outcome}</span>
+                            </div>
+                          )}
+                          {meta.evacuatedTo && (
+                            <div>
+                              <span className="font-medium">Evacuated to: </span>
+                              <span className="text-gray-600">{meta.evacuatedTo}</span>
+                            </div>
+                          )}
+                          {(meta.lastUpdatedBy || lastUpdatedAt) && (
+                            <div>
+                              <span className="font-medium">Last updated: </span>
+                              <span className="text-gray-600">
+                                {meta.lastUpdatedBy ? `${meta.lastUpdatedBy}` : ''}
+                                {meta.lastUpdatedBy && lastUpdatedAt ? ' • ' : ''}
+                                {lastUpdatedAt ? lastUpdatedAt : ''}
+                              </span>
+                            </div>
+                          )}
+                          {meta.notes && (
+                            <div>
+                              <div className="font-medium">Notes</div>
+                              <div className="mt-1 whitespace-pre-wrap rounded border bg-gray-50 p-3 text-gray-700">
+                                {meta.notes}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsSheetOpen(false);
+                    if (selectedRescue) openRescueModal(selectedRescue);
+                  }}
+                >
+                  Edit
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </AuthWrapper>
   );
 }

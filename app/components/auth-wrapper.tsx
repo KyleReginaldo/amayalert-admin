@@ -140,31 +140,27 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     };
   }, [router]);
 
-  // Loading state with modern design
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8 max-w-md w-full text-center">
-          <div className="mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4 animate-pulse">
-              <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Verifying Access</h2>
-            <p className="text-gray-600 text-sm">Checking your admin credentials...</p>
+  // Non-destructive loading overlay to avoid unmounting children (prevents modal/input loss)
+  const LoadingOverlay = () => (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/60 backdrop-blur-sm">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8 max-w-md w-full text-center">
+        <div className="mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4 animate-pulse">
+            <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
-
-          <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-purple-600 h-full rounded-full animate-pulse"
-              style={{ width: '70%' }}
-            ></div>
-          </div>
-
-          <p className="text-xs text-gray-500">This may take a few seconds...</p>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Verifying Access</h2>
+          <p className="text-gray-600 text-sm">Checking your admin credentials...</p>
         </div>
+        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
+          <div
+            className="bg-gradient-to-r from-blue-500 to-purple-600 h-full rounded-full animate-pulse"
+            style={{ width: '70%' }}
+          ></div>
+        </div>
+        <p className="text-xs text-gray-500">This may take a few seconds...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   // Error state with modern design
   if (error) {
@@ -210,11 +206,11 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     );
   }
 
-  // If authenticated, render children
-  if (isAuthenticated) {
-    return <>{children}</>;
-  }
-
-  // Fallback (shouldn't reach here)
-  return null;
+  // Render children always; overlay when loading; redirect logic still handled in effects
+  return (
+    <>
+      {children}
+      {isLoading && <LoadingOverlay />}
+    </>
+  );
 }

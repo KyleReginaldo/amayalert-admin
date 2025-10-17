@@ -2,6 +2,7 @@
 'use client';
 
 // Import necessary modules and functions from external libraries and our own project
+import { assertGoogleMapsApiKey } from '@/app/lib/env';
 import { Libraries, useJsApiLoader } from '@react-google-maps/api';
 import { ReactNode } from 'react';
 
@@ -12,11 +13,17 @@ const libraries: Libraries = ['places', 'drawing', 'geometry'];
 export function MapProvider({ children }: { children: ReactNode }) {
   // Load the Google Maps JavaScript API asynchronously
   const { isLoaded: scriptLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
+    googleMapsApiKey: assertGoogleMapsApiKey(),
     libraries: libraries,
   });
 
-  if (loadError) return <p>Encountered error while loading google maps</p>;
+  if (loadError)
+    return (
+      <p>
+        Encountered error while loading Google Maps. Verify your API key, billing status, and domain
+        restrictions.
+      </p>
+    );
 
   if (!scriptLoaded) return <p>Map Script is loading ...</p>;
 

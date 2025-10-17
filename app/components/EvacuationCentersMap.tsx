@@ -1,5 +1,6 @@
 'use client';
 
+import { assertGoogleMapsApiKey } from '@/app/lib/env';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +168,7 @@ export default function EvacuationCentersMap({
         setError(null);
 
         const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API || '',
+          apiKey: assertGoogleMapsApiKey(),
           version: 'weekly',
           libraries: ['places', 'geometry'],
         });
@@ -212,7 +213,9 @@ export default function EvacuationCentersMap({
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading Google Maps:', error);
-        setError('Failed to load Google Maps. Please check your internet connection.');
+        setError(
+          'Failed to load Google Maps. Verify your API key, billing status, and domain restrictions.',
+        );
         setIsLoading(false);
       }
     };

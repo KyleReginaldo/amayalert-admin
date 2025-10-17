@@ -23,6 +23,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
   Table,
   TableBody,
   TableCell,
@@ -38,6 +45,7 @@ import {
   ChevronRight,
   Clock,
   Edit,
+  Eye,
   Plus,
   Save,
   Search,
@@ -71,6 +79,20 @@ export default function AlertPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+
+  // Restore modal open state on mount to prevent losing input on tab switch/refresh
+  useEffect(() => {
+    try {
+      const wasOpen = typeof window !== 'undefined' && localStorage.getItem('alertModal.isOpen');
+      if (wasOpen === 'true') {
+        setIsModalOpen(true);
+      }
+    } catch (_) {
+      // ignore storage issues
+    }
+  }, []);
 
   useEffect(() => {
     if (alerts.length === 0 && !alertsLoading) {
@@ -150,12 +172,29 @@ export default function AlertPage() {
     console.log('Opening create modal');
     setEditingAlert(null);
     setIsModalOpen(true);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alertModal.isOpen', 'true');
+        // clear any previous draft if switching to create mode
+        localStorage.removeItem('alertModal.formData');
+      }
+    } catch (_) {}
   };
 
   const openEditModal = (alert: Alert) => {
     console.log('Opening edit modal for alert:', alert.id);
     setEditingAlert(alert);
     setIsModalOpen(true);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alertModal.isOpen', 'true');
+      }
+    } catch (_) {}
+  };
+
+  const openAlertSheet = (alert: Alert) => {
+    setSelectedAlert(alert);
+    setIsSheetOpen(true);
   };
 
   const filteredAlerts = alerts.filter((alert) => {
@@ -340,6 +379,15 @@ export default function AlertPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => openAlertSheet(alert)}
+                            className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900"
+                            title="View details"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDelete(alert.id)}
                             className="h-8 w-8 rounded-full text-red-500"
                           >
@@ -421,6 +469,15 @@ export default function AlertPage() {
                               className="h-8 w-8"
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openAlertSheet(alert)}
+                              className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                              title="View details"
+                            >
+                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -518,6 +575,12 @@ export default function AlertPage() {
           onClose={() => {
             setIsModalOpen(false);
             setEditingAlert(null);
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('alertModal.isOpen');
+                localStorage.removeItem('alertModal.formData');
+              }
+            } catch (_) {}
           }}
           alert={editingAlert}
           onSave={
@@ -525,6 +588,88 @@ export default function AlertPage() {
           }
           loading={modalLoading}
         />
+
+        {/* Right-side Alert Details Sheet */}
+        <Sheet
+          open={isSheetOpen}
+          onOpenChange={(open) => {
+            setIsSheetOpen(open);
+            if (!open) setSelectedAlert(null);
+          }}
+        >
+          <SheetContent className="sm:max-w-2xl">
+            {selectedAlert && (
+              <div className="flex h-full flex-col">
+                <SheetHeader>
+                  <SheetTitle>Alert Details</SheetTitle>
+                  <SheetDescription>Read-only snapshot of this alert.</SheetDescription>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-auto space-y-4 text-sm text-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-500">ID</div>
+                    <div className="font-mono break-all">{selectedAlert.id}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Title</div>
+                    <div className="font-medium text-gray-900">
+                      {selectedAlert.title || 'Untitled Alert'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Content</div>
+                    <div className="whitespace-pre-wrap">
+                      {selectedAlert.content || 'No content'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Level</div>
+                    <Badge
+                      variant="outline"
+                      className={alertLevelColor(selectedAlert.alert_level) + ' text-xs'}
+                    >
+                      {alertLevelConfig[selectedAlert.alert_level as keyof typeof alertLevelConfig]
+                        ?.label || selectedAlert.alert_level}
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Status</div>
+                    <Badge
+                      variant={selectedAlert.deleted_at ? 'destructive' : 'default'}
+                      className="text-xs"
+                    >
+                      {selectedAlert.deleted_at ? 'Deleted' : 'Active'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Created</div>
+                    <div>
+                      {new Date(selectedAlert.created_at).toLocaleDateString()} ·{' '}
+                      {new Date(selectedAlert.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsSheetOpen(false);
+                      if (selectedAlert) openEditModal(selectedAlert);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     </AuthWrapper>
   );
@@ -547,6 +692,20 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
   });
 
   useEffect(() => {
+    // When alert changes or modal opens, prefer restoring draft from storage
+    if (isOpen) {
+      try {
+        if (typeof window !== 'undefined') {
+          const draft = localStorage.getItem('alertModal.formData');
+          if (draft) {
+            const parsed = JSON.parse(draft);
+            setFormData((prev) => ({ ...prev, ...parsed }));
+            return; // prefer draft over props
+          }
+        }
+      } catch (_) {}
+    }
+
     if (alert) {
       setFormData({
         title: alert.title || '',
@@ -560,7 +719,17 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
         alert_level: 'medium',
       });
     }
-  }, [alert]);
+  }, [alert, isOpen]);
+
+  // Persist draft while typing to avoid losing progress on tab switch/refresh
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alertModal.formData', JSON.stringify(formData));
+      }
+    } catch (_) {}
+  }, [formData, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
