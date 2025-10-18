@@ -21,7 +21,7 @@ let globalAuthState: {
 
 export default function AuthWrapper({ children }: AuthWrapperProps) {
   const [isLoading, setIsLoading] = useState(!globalAuthState.isChecked);
-  const [isAuthenticated, setIsAuthenticated] = useState(globalAuthState.isAuthenticated);
+  const [, setIsAuthenticated] = useState(globalAuthState.isAuthenticated);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 

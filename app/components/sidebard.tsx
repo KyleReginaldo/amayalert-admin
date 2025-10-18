@@ -50,14 +50,6 @@ export const SidebarProvider = ({ children }: { children: React.ReactNode }) => 
 const Sidebar = () => {
   const pathname = usePathname();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useSidebar();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  // Open settings if on a settings page
-  useEffect(() => {
-    if (pathname === '/sms-test' || pathname === '/email-test') {
-      setIsSettingsOpen(true);
-    }
-  }, [pathname]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {

@@ -49,7 +49,6 @@ export default function EvacuationPage() {
   const {
     evacuationCenters,
     evacuationLoading,
-    refreshEvacuationCenters,
     addEvacuationCenter,
     updateEvacuationCenter,
     removeEvacuationCenter,

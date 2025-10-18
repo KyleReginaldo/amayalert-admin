@@ -89,7 +89,7 @@ export default function AlertPage() {
       if (wasOpen === 'true') {
         setIsModalOpen(true);
       }
-    } catch (_) {
+    } catch {
       // ignore storage issues
     }
   }, []);
@@ -178,7 +178,7 @@ export default function AlertPage() {
         // clear any previous draft if switching to create mode
         localStorage.removeItem('alertModal.formData');
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const openEditModal = (alert: Alert) => {
@@ -189,7 +189,7 @@ export default function AlertPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('alertModal.isOpen', 'true');
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const openAlertSheet = (alert: Alert) => {
@@ -580,7 +580,7 @@ export default function AlertPage() {
                 localStorage.removeItem('alertModal.isOpen');
                 localStorage.removeItem('alertModal.formData');
               }
-            } catch (_) {}
+            } catch {}
           }}
           alert={editingAlert}
           onSave={
@@ -703,7 +703,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             return; // prefer draft over props
           }
         }
-      } catch (_) {}
+      } catch {}
     }
 
     if (alert) {
@@ -728,7 +728,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
       if (typeof window !== 'undefined') {
         localStorage.setItem('alertModal.formData', JSON.stringify(formData));
       }
-    } catch (_) {}
+    } catch {}
   }, [formData, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {

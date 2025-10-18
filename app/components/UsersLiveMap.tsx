@@ -5,7 +5,9 @@ import { assertGoogleMapsApiKey } from '@/app/lib/env';
 import { User } from '@/app/lib/users-api';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import type { Database } from '@/database.types';
 import { Loader } from '@googlemaps/js-api-loader';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { MapPin } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -140,35 +142,51 @@ export default function UsersLiveMap({
 
   // Subscribe to realtime updates for users table
   useEffect(() => {
+    type UserRow = Database['public']['Tables']['users']['Row'];
     const channel = supabase
       .channel('users-live-map')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        if (!map || !window.google) return;
-        const g = window.google;
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload: RealtimePostgresChangesPayload<UserRow>) => {
+          if (!map || !window.google) return;
+          const g = window.google;
 
-        const row = (payload.new || payload.old) as Partial<User>;
-        if (!row || !row.id) return;
+          const rowNew = payload.new as UserRow | null;
+          const rowOld = payload.old as UserRow | null;
+          const subject = rowNew ?? rowOld;
+          if (!subject) return;
 
-        const lat = (payload.new as any)?.latitude as number | null;
-        const lng = (payload.new as any)?.longitude as number | null;
+          const marker = markersRef.current.get(subject.id);
 
-        const marker = markersRef.current.get(row.id);
-        if (payload.eventType === 'DELETE' || lat == null || lng == null) {
-          if (marker) {
-            marker.setMap(null);
-            markersRef.current.delete(row.id);
+          if (payload.eventType === 'DELETE') {
+            if (marker) {
+              marker.setMap(null);
+              markersRef.current.delete(subject.id);
+            }
+            return;
           }
-          return;
-        }
 
-        const pos = new g.maps.LatLng(lat, lng);
-        if (marker) {
-          marker.setPosition(pos);
-        } else {
-          const m = new g.maps.Marker({ position: pos, map });
-          markersRef.current.set(row.id, m);
-        }
-      })
+          const lat = rowNew?.latitude ?? null;
+          const lng = rowNew?.longitude ?? null;
+
+          if (lat == null || lng == null) {
+            if (marker) {
+              marker.setMap(null);
+              markersRef.current.delete(subject.id);
+            }
+            return;
+          }
+
+          const pos = new g.maps.LatLng(lat, lng);
+          if (marker) {
+            marker.setPosition(pos);
+          } else {
+            const m = new g.maps.Marker({ position: pos, map });
+            markersRef.current.set(subject.id, m);
+          }
+        },
+      )
       .subscribe();
 
     return () => {

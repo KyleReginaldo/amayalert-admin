@@ -79,8 +79,8 @@ export default function ChatPage() {
       scrollToBottom();
     };
     fetchMessages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, selectedUser?.id]);
+    // We intentionally re-run when selectedUser changes to refetch the thread
+  }, [currentUserId, selectedUser]);
 
   // Realtime subscription
   useEffect(() => {
@@ -117,7 +117,7 @@ export default function ChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, selectedUser?.id]);
+  }, [selectedUser, currentUserId]);
 
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId || !selectedUser) return;

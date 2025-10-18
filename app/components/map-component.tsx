@@ -56,7 +56,7 @@ const MapComponent = ({
     initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : defaultMapCenter,
   );
   const [searchValue, setSearchValue] = useState(initialLocation?.address || '');
-  const [hasUserSelected, setHasUserSelected] = useState(!!initialLocation); // Track if user has manually interacted
+  // Removed hasUserSelected (unused)
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
@@ -96,7 +96,7 @@ const MapComponent = ({
 
               if (response && response[0]) {
                 const address = response[0].formatted_address;
-                // Only set autofill if the user hasn't typed yet
+                // Autofill the address field
                 setSearchValue((prev) => (prev ? prev : address));
 
                 if (onLocationSelect) {
@@ -130,7 +130,6 @@ const MapComponent = ({
   }, [initialLocation, onLocationSelect]);
 
   // Initialize geocoder when map loads
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onMapLoad = useCallback((map: google.maps.Map) => {
     geocoderRef.current = new google.maps.Geocoder();
     mapInstanceRef.current = map;
@@ -149,7 +148,7 @@ const MapComponent = ({
         setSelectedLocation(newLocation);
         setMapCenter(newLocation);
         setSearchValue(address);
-        setHasUserSelected(true); // Mark as user selected
+        // Mark user selection (no-op; state removed)
 
         // Zoom the map to the selected place
         if (mapInstanceRef.current) {
@@ -172,7 +171,7 @@ const MapComponent = ({
         const lng = event.latLng.lng();
 
         setSelectedLocation({ lat, lng });
-        setHasUserSelected(true); // Mark as user selected
+        // Mark user selection (no-op; state removed)
 
         // Reverse geocode to get address
         if (geocoderRef.current) {
@@ -218,7 +217,7 @@ const MapComponent = ({
 
           setSelectedLocation({ lat, lng });
           setMapCenter({ lat, lng });
-          setHasUserSelected(true); // Mark as user selected (intentional button click)
+          // Mark user selection (no-op)
 
           // Reverse geocode to get address
           if (geocoderRef.current) {
@@ -286,7 +285,7 @@ const MapComponent = ({
                 value={searchValue}
                 onChange={(e) => {
                   setSearchValue(e.target.value);
-                  setHasUserSelected(true); // typing counts as user interaction
+                  // typing counts as user interaction (no-op)
                 }}
                 autoComplete="off"
                 className="pl-10"
@@ -300,7 +299,7 @@ const MapComponent = ({
                 onClick={() => {
                   setSearchValue('');
                   setSelectedLocation(null);
-                  setHasUserSelected(true); // keep user-interacted state to prevent auto-fill
+                  // keep user-interacted state (no-op)
                 }}
               >
                 ×
