@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Database } from '@/database.types';
+import axios from 'axios';
 import { Loader2, Search, Send, User as UserIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -127,6 +128,36 @@ export default function ChatPage() {
       sender: currentUserId,
       receiver: selectedUser.id,
     } as Database['public']['Tables']['messages']['Insert']);
+    if (error) {
+      console.error('Failed to send message:', error);
+    }
+    await axios.post(
+      'https://api.onesignal.com/notifications?c=push',
+      {
+        app_id: '1811210d-e4b7-4304-8cd5-3de7a1da8e26',
+        contents: {
+          en: input.trim(),
+        },
+        headings: {
+          en: 'New Message from Admin',
+        },
+        target_channel: 'push',
+        huawei_category: 'MARKETING',
+        huawei_msg_type: 'message',
+        priority: 10,
+        ios_interruption_level: 'active',
+        ios_badgeType: 'None',
+        ttl: 259200,
+        include_aliases: {
+          external_id: ['3a18ce33-0fca-44d2-9898-12596c56e8f3'],
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoeznz7q5k6xkuaxfhko7axlymp6klvsoy34q34c3p3viqwnwq6rgg77br7rke6nuevljrbpx45m5frui`,
+        },
+      },
+    );
     setSending(false);
     if (error) {
       console.error('Failed to send message:', error);
