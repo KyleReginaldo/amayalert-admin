@@ -73,7 +73,7 @@ interface RescueMetadata {
 
 export default function RescuePage() {
   // Get data from context
-  const { rescues, rescueLoading, refreshRescues, updateRescue, removeRescue } = useRescue();
+  const { rescues, rescueLoading, updateRescue, removeRescue } = useRescue();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -88,12 +88,7 @@ export default function RescuePage() {
   // Right-side sheet state (read-only details)
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // Load rescues on component mount if needed
-  useEffect(() => {
-    if (rescues.length === 0 && !rescueLoading) {
-      refreshRescues();
-    }
-  }, [rescues.length, rescueLoading, refreshRescues]);
+  // Note: Initial fetching is handled by RescueProvider to avoid re-fetch loops on empty data
 
   // Admin update rescue (status, notes, scheduling)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
