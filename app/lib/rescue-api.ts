@@ -121,14 +121,22 @@ class RescueAPI {
   }
 
   // PUT /api/rescues/[id] - Update an existing rescue
-  async updateRescue(id: string, rescueData: Partial<RescueUpdate>): Promise<ApiResponse<Rescue>> {
+  async updateRescue(
+    id: string,
+    rescueData: Partial<RescueUpdate>,
+    options?: { sendSMS?: boolean; smsMessage?: string },
+  ): Promise<ApiResponse<Rescue>> {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(rescueData),
+        body: JSON.stringify({
+          ...rescueData,
+          ...(options?.sendSMS ? { send_sms: true } : {}),
+          ...(options?.smsMessage ? { sms_message: options.smsMessage } : {}),
+        }),
       });
 
       if (!response.ok) {

@@ -49,7 +49,9 @@ export default function ChatPage() {
     return users
       .filter((u) => (currentUserId ? u.id !== currentUserId : true))
       .filter((u) =>
-        [u.full_name, u.email, u.phone_number].some((v) => v?.toLowerCase().includes(s)),
+        [u.full_name, u.email, u.phone_number].some(
+          (v) => v?.toLowerCase().includes(s) && !v?.toLowerCase().includes('guest'),
+        ),
       )
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
   }, [users, search, currentUserId]);

@@ -1,7 +1,7 @@
 'use client';
 
 import AuthWrapper from '@/app/components/auth-wrapper';
-import rescueAPI, { Rescue, RescueStatus } from '@/app/lib/rescue-api';
+import rescueAPI, { Rescue, RescueStatus, RescueUpdate } from '@/app/lib/rescue-api';
 import { useRescue } from '@/app/providers/rescue-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,11 +91,14 @@ export default function RescuePage() {
   // Note: Initial fetching is handled by RescueProvider to avoid re-fetch loops on empty data
 
   // Admin update rescue (status, notes, scheduling)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleUpdate = async (id: string, rescueData: Record<string, any>) => {
+  const handleUpdate = async (
+    id: string,
+    rescueData: Partial<RescueUpdate>,
+    options?: { sendSMS?: boolean; smsMessage?: string },
+  ) => {
     try {
       setModalLoading(true);
-      const response = await rescueAPI.updateRescue(id, rescueData);
+      const response = await rescueAPI.updateRescue(id, rescueData, options);
       if (response.success && response.data) {
         updateRescue(id, response.data);
         setIsModalOpen(false);
@@ -169,8 +172,10 @@ export default function RescuePage() {
     isOpen: boolean;
     onClose: () => void;
     rescue: Rescue;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onSave: (data: Record<string, any>) => void;
+    onSave: (
+      data: Partial<RescueUpdate>,
+      options?: { sendSMS?: boolean; smsMessage?: string },
+    ) => void;
     loading?: boolean;
   }
 
@@ -184,6 +189,8 @@ export default function RescuePage() {
       contact_phone: '',
       important_information: '',
     });
+    const [sendSms, setSendSms] = useState(false);
+    const [smsMessage, setSmsMessage] = useState('');
 
     useEffect(() => {
       if (rescue) {
@@ -218,7 +225,10 @@ export default function RescuePage() {
           lastUpdatedAt: new Date().toISOString(),
         },
       };
-      onSave(submitData);
+      onSave(
+        submitData,
+        sendSms ? { sendSMS: true, smsMessage: smsMessage || undefined } : undefined,
+      );
     };
 
     if (!isOpen) return null;
@@ -426,6 +436,46 @@ export default function RescuePage() {
                   rows={3}
                 />
               </div>
+            </div>
+
+            {/* SMS notification toggle */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-start gap-3">
+                <input
+                  id="send_sms"
+                  type="checkbox"
+                  className="mt-1"
+                  checked={sendSms}
+                  onChange={(e) => setSendSms(e.target.checked)}
+                  disabled={loading}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="send_sms">Send SMS notification to contact</Label>
+                  <div className="text-xs text-gray-500 mt-1">
+                    A short update text will be sent to the contact_phone. You can customize it
+                    below. If left blank, a default message will be generated.
+                  </div>
+                  {!formData.contact_phone && (
+                    <div className="text-xs text-orange-600 mt-1">
+                      Tip: Add a contact phone to send SMS.
+                    </div>
+                  )}
+                </div>
+              </div>
+              {sendSms && (
+                <div>
+                  <Label htmlFor="sms_message">SMS Message (optional)</Label>
+                  <Textarea
+                    id="sms_message"
+                    placeholder='e.g., Rescue update: "{title}" is now in progress.'
+                    value={smsMessage}
+                    onChange={(e) => setSmsMessage(e.target.value)}
+                    disabled={loading}
+                    className="mt-2"
+                    rows={2}
+                  />
+                </div>
+              )}
             </div>
 
             <div>
@@ -970,7 +1020,7 @@ export default function RescuePage() {
             setSelectedRescue(null);
           }}
           rescue={selectedRescue}
-          onSave={(data) => handleUpdate(selectedRescue.id, data)}
+          onSave={(data, options) => handleUpdate(selectedRescue.id, data, options)}
           loading={modalLoading}
         />
       )}

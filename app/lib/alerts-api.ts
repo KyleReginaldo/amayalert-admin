@@ -1,4 +1,5 @@
 import { Database } from '@/database.types';
+import axios from 'axios';
 
 // Use database types for the alert table
 export type Alert = Database['public']['Tables']['alert']['Row'];
@@ -90,19 +91,22 @@ class AlertsAPI {
   // POST /api/alerts - Create a new alert
   async createAlert(alertData: AlertInsert): Promise<ApiResponse<Alert>> {
     try {
-      const response = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(alertData),
-      });
+      const response = await axios.post(
+        API_BASE_URL,
 
-      if (!response.ok) {
+        alertData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.status || response.status < 200 || response.status >= 300) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('Error creating alert:', error);
       return {
