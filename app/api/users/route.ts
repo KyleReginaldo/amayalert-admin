@@ -1,5 +1,7 @@
 import { supabase } from '@/app/client/supabase';
+import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
+import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Types
@@ -20,6 +22,66 @@ interface ApiResponse<T> {
   message?: string;
   error?: string;
   total?: number;
+}
+
+// Secure password generator: 8 characters with upper, lower, digit, and symbol
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+const DIGITS = '0123456789';
+// Keep a conservative symbol set to avoid email or form escaping issues
+const SYMBOLS = '!@#$%^&*()-_=+';
+
+function getRandomUint32Array(count: number): Uint32Array {
+  if (typeof globalThis.crypto !== 'undefined' && 'getRandomValues' in globalThis.crypto) {
+    const arr = new Uint32Array(count);
+    globalThis.crypto.getRandomValues(arr);
+    return arr;
+  }
+  // Fallback to Node's crypto
+  const buf = randomBytes(count * 4);
+  const arr = new Uint32Array(count);
+  for (let i = 0; i < count; i++) {
+    arr[i] = buf.readUInt32LE(i * 4);
+  }
+  return arr;
+}
+
+function randomInt(maxExclusive: number): number {
+  // Avoid modulo bias by using 32-bit space; bias is negligible for our small max
+  const [n] = getRandomUint32Array(1);
+  return n % maxExclusive;
+}
+
+function shuffle<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function generateStrongPassword(length = 8): string {
+  const minLen = 8;
+  const L = Math.max(length, minLen);
+  const pools = [UPPER, LOWER, DIGITS, SYMBOLS];
+
+  // Ensure at least one from each pool
+  const required = [
+    UPPER[randomInt(UPPER.length)],
+    LOWER[randomInt(LOWER.length)],
+    DIGITS[randomInt(DIGITS.length)],
+    SYMBOLS[randomInt(SYMBOLS.length)],
+  ];
+
+  const all = UPPER + LOWER + DIGITS + SYMBOLS;
+  const remaining: string[] = [];
+  for (let i = required.length; i < L; i++) {
+    remaining.push(all[randomInt(all.length)]);
+  }
+
+  // Combine and shuffle
+  const passwordChars = shuffle([...required, ...remaining]);
+  return passwordChars.slice(0, L).join('');
 }
 
 // GET /api/users - Fetch all users with optional filtering
@@ -106,11 +168,11 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
+    const password = generateStrongPassword(8);
     // Ensure phone_number is provided (database requires it)
     const { data: userAuth, error: errorAuth } = await supabase.auth.admin.createUser({
       email: body.email,
-      password: crypto.randomUUID(),
+      password,
     });
     if (errorAuth) {
       console.error('Error creating user:', errorAuth);
@@ -144,7 +206,12 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-
+    await emailService.sendEmail({
+      from: 'amayalert.site@gmail.com',
+      to: body.email,
+      subject: 'Welcome to AmayAlert!',
+      text: `Hello ${body.full_name},\n\nYour account has been created successfully\n\nYou can now login with you account\nEmail: ${body.email}\nPassword: ${password}\n\nBest regards,\nAmayAlert Team`,
+    });
     return NextResponse.json({
       success: true,
       data: user,

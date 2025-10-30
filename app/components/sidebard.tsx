@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   MapPinHouse,
+  MessageCircle,
   Settings,
   TriangleAlert,
   Users,
@@ -103,7 +104,7 @@ const Sidebar = () => {
     },
     {
       href: '/chat',
-      icon: Users,
+      icon: MessageCircle,
       label: 'Chat',
       isActive: pathname === '/chat',
     },
