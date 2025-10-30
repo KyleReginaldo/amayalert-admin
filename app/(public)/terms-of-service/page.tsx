@@ -17,11 +17,11 @@ export default function TermsOfServicePage() {
           <section id="agreement">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Agreement to Terms</h2>
             <p className="text-gray-700 mb-4">
-              By accessing and using AmayAlert, you accept and agree to be bound by these terms and
+              By accessing and using Amayalert, you accept and agree to be bound by these terms and
               provisions.
             </p>
             <p className="text-gray-700 text-sm">
-              Welcome to AmayAlert (&quot;Service&quot;). These Terms of Service govern your use of
+              Welcome to Amayalert (&quot;Service&quot;). These Terms of Service govern your use of
               our emergency alert and rescue coordination platform. If you do not agree to abide by
               these terms, please do not use this service.
             </p>
@@ -30,7 +30,7 @@ export default function TermsOfServicePage() {
           <section id="service-description">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Service Description</h2>
             <p className="text-gray-700 mb-4">
-              AmayAlert is a comprehensive emergency alert and rescue coordination platform that
+              Amayalert is a comprehensive emergency alert and rescue coordination platform that
               provides:
             </p>
             <div className="space-y-4">
@@ -102,7 +102,7 @@ export default function TermsOfServicePage() {
           <section id="availability">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Service Availability</h2>
             <p className="text-sm text-gray-700">
-              While we strive to provide continuous service, AmayAlert may be temporarily
+              While we strive to provide continuous service, Amayalert may be temporarily
               unavailable due to maintenance, technical issues, or circumstances beyond our control.
               We do not guarantee uninterrupted service and are not liable for service
               interruptions.
@@ -114,7 +114,7 @@ export default function TermsOfServicePage() {
             <div className="border-l-4 border-gray-300 pl-4 mb-4">
               <h3 className="text-base font-medium text-gray-800 mb-2">Critical Notice</h3>
               <p className="text-sm text-gray-700">
-                AmayAlert is a supplementary emergency tool. In life-threatening situations, always
+                Amayalert is a supplementary emergency tool. In life-threatening situations, always
                 contact local emergency services (911, 112, etc.) first.
               </p>
             </div>
@@ -149,7 +149,7 @@ export default function TermsOfServicePage() {
           <section id="privacy">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Privacy and Data</h2>
             <p className="text-sm text-gray-700">
-              Your use of AmayAlert is also governed by our Privacy Policy. Please review our
+              Your use of Amayalert is also governed by our Privacy Policy. Please review our
               Privacy Policy to understand our practices regarding your personal information.
             </p>
           </section>
@@ -157,7 +157,7 @@ export default function TermsOfServicePage() {
           <section id="liability">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Limitation of Liability</h2>
             <p className="text-sm text-gray-700">
-              AmayAlert and its operators shall not be liable for any indirect, incidental, special,
+              Amayalert and its operators shall not be liable for any indirect, incidental, special,
               consequential, or punitive damages, including without limitation, loss of profits,
               data, use, goodwill, or other intangible losses, resulting from your use of the
               service.
@@ -190,7 +190,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Governing Law</h2>
             <p className="text-sm text-gray-700">
               These terms shall be interpreted and governed in accordance with the laws of the
-              jurisdiction in which AmayAlert operates, without regard to conflict of law
+              jurisdiction in which Amayalert operates, without regard to conflict of law
               provisions.
             </p>
           </section>
@@ -208,7 +208,7 @@ export default function TermsOfServicePage() {
                 <span className="font-medium">Phone:</span> +63 46 123 4567
               </div>
               <div>
-                <span className="font-medium">Address:</span> AmayAlert Legal Department, Tanza,
+                <span className="font-medium">Address:</span> Amayalert Legal Department, Tanza,
                 Cavite
               </div>
             </div>

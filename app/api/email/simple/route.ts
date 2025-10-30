@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   try {
     // Send mail with defined transport object
     const info = await transporter.sendMail({
-      from: `"AmayAlert Support" <amayalert.site@gmail.com>`, // sender address
+      from: `"Amayalert Support" <amayalert.site@gmail.com>`, // sender address
       to,
       subject,
       html: text,

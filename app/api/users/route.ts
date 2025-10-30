@@ -63,7 +63,6 @@ function shuffle<T>(array: T[]): T[] {
 function generateStrongPassword(length = 8): string {
   const minLen = 8;
   const L = Math.max(length, minLen);
-  const pools = [UPPER, LOWER, DIGITS, SYMBOLS];
 
   // Ensure at least one from each pool
   const required = [
@@ -209,7 +208,7 @@ export async function POST(request: NextRequest) {
     await emailService.sendEmail({
       from: 'amayalert.site@gmail.com',
       to: body.email,
-      subject: 'Welcome to AmayAlert!',
+      subject: 'Welcome to Amayalert!',
       text: `Hello ${body.full_name},\n\nYour account has been created successfully\n\nYou can now login with you account\nEmail: ${body.email}\nPassword: ${password}\n\nBest regards,\nAmayAlert Team`,
     });
     return NextResponse.json({

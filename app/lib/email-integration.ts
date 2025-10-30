@@ -92,7 +92,7 @@ export async function sendBulkEmergencyNotification(
 
     const result = await emailService.sendBulkEmails(
       recipients,
-      `[AmayAlert] ${prioritySubjects[priority]}`,
+      `[Amayalert] ${prioritySubjects[priority]}`,
       message,
     );
 
@@ -135,9 +135,9 @@ export function validateAndFormatEmails(emails: string[]): {
 // Example: Send welcome email after user subscribes to alerts
 export async function sendSubscriptionConfirmation(email: string, userName?: string) {
   try {
-    const subject = 'Welcome to AmayAlert Emergency Notifications';
+    const subject = 'Welcome to Amayalert Emergency Notifications';
 
-    const textMessage = `Welcome to AmayAlert Emergency Notification System${
+    const textMessage = `Welcome to Amayalert Emergency Notification System${
       userName ? `, ${userName}` : ''
     }!
 
@@ -153,7 +153,7 @@ To manage your subscription or update your preferences, please contact our suppo
 
 Stay safe!
 
-The AmayAlert Team
+The Amayalert Team
 Email: support@amayalert.com
 `;
 
@@ -174,12 +174,12 @@ Email: support@amayalert.com
     <div class="container">
         <div class="header">
             <div class="alert-icon">🛡️</div>
-            <h1>Welcome to AmayAlert</h1>
+            <h1>Welcome to Amayalert</h1>
             <p>Emergency Notification System</p>
         </div>
         <div class="content">
             <h2>Hello${userName ? `, ${userName}` : ''}!</h2>
-            <p>Thank you for subscribing to AmayAlert. You will now receive important emergency notifications via email.</p>
+            <p>Thank you for subscribing to Amayalert. You will now receive important emergency notifications via email.</p>
             
             <h3>What you can expect:</h3>
             <ul>
@@ -194,7 +194,7 @@ Email: support@amayalert.com
             <p><strong>Stay safe!</strong></p>
         </div>
         <div class="footer">
-            <p>The AmayAlert Team<br>
+            <p>The Amayalert Team<br>
             Email: support@amayalert.com</p>
         </div>
     </div>
@@ -318,8 +318,8 @@ export async function sendTestEmail(
   try {
     const testTypes = {
       connection: {
-        subject: 'AmayAlert Email Service Test',
-        text: 'This is a test email to verify the AmayAlert email service is working correctly.',
+        subject: 'Amayalert Email Service Test',
+        text: 'This is a test email to verify the Amayalert email service is working correctly.',
       },
       alert: {
         subject: '🚨 [TEST] Emergency Alert Test',
@@ -327,7 +327,7 @@ export async function sendTestEmail(
       },
       notification: {
         subject: '[TEST] Notification Service Test',
-        text: 'This is a test notification from the AmayAlert system. Please disregard this message.',
+        text: 'This is a test notification from the Amayalert system. Please disregard this message.',
       },
     };
 

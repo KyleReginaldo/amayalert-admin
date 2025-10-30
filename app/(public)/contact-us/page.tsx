@@ -79,7 +79,7 @@ export default function ContactUsPage() {
       <div className="bg-white border-b">
         <div className="max-w-5xl mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">Contact Us</h1>
-          <p className="text-gray-600">Get in touch with AmayAlert for support or inquiries</p>
+          <p className="text-gray-600">Get in touch with Amayalert for support or inquiries</p>
         </div>
       </div>
 

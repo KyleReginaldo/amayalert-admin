@@ -37,19 +37,15 @@ export interface RescueLocation {
 const API_BASE_URL = '/api/rescues';
 
 class RescueAPI {
-  // GET /api/rescues - Fetch all rescues with optional filtering
   async getAllRescues(filters?: RescueFilters): Promise<ApiResponse<Rescue[]>> {
     try {
       const searchParams = new URLSearchParams();
-
       if (filters?.search) searchParams.append('search', filters.search);
       if (filters?.status) searchParams.append('status', filters.status);
       if (filters?.priority) searchParams.append('priority', filters.priority.toString());
       if (filters?.startDate) searchParams.append('startDate', filters.startDate);
       if (filters?.endDate) searchParams.append('endDate', filters.endDate);
-
       const url = `${API_BASE_URL}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-
       const response = await fetch(url, {
         method: 'GET',
         headers: {

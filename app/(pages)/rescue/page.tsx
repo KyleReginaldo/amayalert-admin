@@ -187,6 +187,7 @@ export default function RescuePage() {
       emergency_type: '',
       number_of_people: '' as string | number,
       contact_phone: '',
+      email: '',
       important_information: '',
     });
     const [sendSms, setSendSms] = useState(false);
@@ -201,6 +202,7 @@ export default function RescuePage() {
           emergency_type: rescue.emergency_type || '',
           number_of_people: rescue.number_of_people ?? '',
           contact_phone: rescue.contact_phone || '',
+          email: rescue.email || '',
           important_information: rescue.important_information || '',
         });
       }
@@ -217,6 +219,7 @@ export default function RescuePage() {
             ? null
             : Number(formData.number_of_people),
         contact_phone: formData.contact_phone || null,
+        email: formData.email || null,
         important_information: formData.important_information || null,
         metadata: {
           ...((rescue.metadata as RescueMetadata) || {}),
@@ -292,6 +295,12 @@ export default function RescuePage() {
                   <div>
                     <strong className="text-gray-700">Contact Phone:</strong>
                     <div className="mt-1 text-gray-600">{rescue.contact_phone}</div>
+                  </div>
+                )}
+                {rescue.email && (
+                  <div>
+                    <strong className="text-gray-700">Contact Email:</strong>
+                    <div className="mt-1 text-gray-600">{rescue.email}</div>
                   </div>
                 )}
                 {rescue.important_information && (

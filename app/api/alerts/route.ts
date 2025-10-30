@@ -1,62 +1,54 @@
+import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
-import { emailService } from '../../lib/email-service';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE!;
 const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+// const getTwilioConfig = () => {
+//   const accountSid = process.env.ACCOUNT_SID;
+//   const authToken = process.env.AUTH_TOKEN;
+//   const twilioNumber = process.env.TWILIO_NUMBER;
 
-// Twilio configuration
-const getTwilioConfig = () => {
-  const accountSid = process.env.ACCOUNT_SID;
-  const authToken = process.env.AUTH_TOKEN;
-  const twilioNumber = process.env.TWILIO_NUMBER;
-  const messagingService = process.env.MESSAGING_SERVICE;
+//   if (!accountSid || !authToken || !twilioNumber) {
+//     throw new Error('Missing required Twilio configuration');
+//   }
 
-  if (!accountSid || !authToken || !twilioNumber) {
-    throw new Error('Missing required Twilio configuration');
-  }
+//   console.log('✅ Twilio config initialized');
 
-  return {
-    client: twilio(accountSid, authToken),
-    twilioNumber,
-    messagingService,
-  };
-};
+//   return {
+//     client: twilio(accountSid, authToken, { timeout: 30000 }),
+//     twilioNumber,
+//   };
+// };
 
-// Function to send SMS
-async function sendSMS(to: string, message: string) {
-  try {
-    const config = getTwilioConfig();
+// async function sendSMS(to: string, message: string) {
+//   try {
+//     const config = getTwilioConfig();
 
-    const messageOptions: {
-      body: string;
-      to: string;
-      from?: string;
-      messagingServiceSid?: string;
-    } = {
-      body: message,
-      to: to.startsWith('+') ? to : `+${to}`,
-      from: process.env.TWILIO_FROM,
-    };
+//     const messageOptions = {
+//       body: message,
+//       to: to.startsWith('+') ? to : `+${to}`,
+//       from: config.twilioNumber, // ✅ Use Twilio number, not messaging service
+//     };
 
-    // Use messaging service if available, otherwise use Twilio number
-    if (config.messagingService) {
-      messageOptions.messagingServiceSid = config.messagingService;
-    } else {
-      messageOptions.from = config.twilioNumber;
-    }
-    const twilioMessage = await config.client.messages.create(messageOptions);
-    console.log(`twilio message: ${JSON.stringify(twilioMessage)}`);
-    return { success: true, sid: twilioMessage.sid };
-  } catch (error) {
-    console.error('SMS sending error:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-  }
-}
+//     console.log('Sending SMS with options:', messageOptions);
+
+//     const twilioMessage = await config.client.messages.create(messageOptions);
+
+//     console.log(`✅ SMS sent to ${to}, SID: ${twilioMessage.sid}`);
+
+//     return { success: true, sid: twilioMessage.sid };
+//   } catch (error) {
+//     console.error('❌ SMS sending error:', error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     };
+//   }
+// }
 
 // GET /api/alerts - Fetch all alerts with optional filtering
 export async function GET(request: NextRequest) {
@@ -68,11 +60,7 @@ export async function GET(request: NextRequest) {
     const alert_level = searchParams.get('alert_level') || '';
 
     // Start building the query
-    let query = supabase
-      .from('alert')
-      .select('*')
-      .is('deleted_at', null) // Only get non-deleted alerts
-      .order('created_at', { ascending: false });
+    let query = supabase.from('alert').select('*');
 
     // Apply search filter
     if (search) {
@@ -85,10 +73,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: alerts, error } = await query;
+    const { data: alerts, error } = await query
+      .is('deleted_at', null) // Only get non-deleted alerts
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('Supabase error2:', error);
       return NextResponse.json(
         { success: false, error: 'Failed to fetch alerts' },
         { status: 500 },
@@ -129,12 +119,12 @@ export async function POST(request: NextRequest) {
     // Insert into database
     const { data: newAlert, error } = await supabase
       .from('alert')
-      .insert([alertData])
+      .insert(alertData)
       .select()
       .single();
 
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('Supabase error3:', error);
       return NextResponse.json(
         { success: false, error: 'Failed to create alert' },
         { status: 500 },
@@ -145,9 +135,11 @@ export async function POST(request: NextRequest) {
     const { data: users } = await supabase
       .from('users')
       .select('phone_number, email')
-      .eq('role', 'user');
+      .eq('role', 'user')
+      .not('phone_number', 'is', null);
+    console.log('users', users);
 
-    let smsCount = 0;
+    const smsCount = 0;
     let emailCount = 0;
     const smsErrors: string[] = [];
     const emailErrors: string[] = [];
@@ -156,78 +148,53 @@ export async function POST(request: NextRequest) {
       console.log(`Sending notifications to ${users.length} users`);
 
       // Collect SMS and Email recipients
-      const smsRecipients: string[] = [];
       const emailRecipients: string[] = [];
 
       users.forEach((user) => {
-        if (user.phone_number) {
-          smsRecipients.push(user.phone_number);
-        }
         if (user.email) {
           emailRecipients.push(user.email);
         }
       });
 
-      // Send SMS notifications
-      if (smsRecipients.length > 0) {
-        console.log(`Sending SMS alerts to ${smsRecipients.length} users`);
+      // Send notifications (email preferred). For large recipient lists consider queuing.
+      for (const user of users) {
+        const email = user.email;
+        const phone = user.phone_number;
+        if (!email && !phone) continue;
 
-        for (const phoneNumber of smsRecipients) {
+        const title = newAlert?.title ?? 'Emergency Alert';
+        const content = newAlert?.content ?? '';
+        const base = process.env.NEXT_PUBLIC_BASE_URL || '';
+        const alertUrl = `${base}/alert`;
+
+        const html = `<!doctype html><html><body><h2>${title}</h2><p>${content}</p><p><a href="${alertUrl}" style="display:inline-block;padding:10px 14px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none">View Alert</a></p><hr/><p style="color:#6b7280;font-size:13px">This is an official notification from AmayAlert.</p></body></html>`;
+        const text = `${title}\n\n${content}\n\nView: ${alertUrl}`;
+
+        if (email) {
           try {
-            const smsResult = await sendSMS(
-              phoneNumber,
-              `EMERGENCY ALERT!!!\n\n${newAlert?.title}\n\n${newAlert?.content}\n\nThis is an official emergency notification.`,
-            );
-            if (smsResult.success) {
-              console.log(`SMS sent successfully to ${phoneNumber}, SID: ${smsResult.sid}`);
-              smsCount++;
-            } else {
-              console.error(`Failed to send SMS to ${phoneNumber}:`, smsResult.error);
-              smsErrors.push(`${phoneNumber}: ${smsResult.error}`);
-            }
-          } catch (error) {
-            console.error('Error sending SMS to', phoneNumber, error);
-            smsErrors.push(
-              `${phoneNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            );
+            await emailService.sendEmail({
+              to: email,
+              from: 'amayalert.site@gmail.com',
+              subject: `[ALERT] ${title}`,
+              text,
+              html,
+              replyTo: 'amayalert.site@gmail.com',
+            });
+            emailCount++;
+          } catch (err) {
+            console.error('Error sending email to', email, err);
+            emailErrors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
-      } else {
-        console.log('No users found for SMS notifications');
-      }
 
-      // Send Email notifications
-      if (emailRecipients.length > 0) {
-        console.log(`Sending email alerts to ${emailRecipients.length} users`);
-
-        try {
-          const emailResult = await emailService.sendEmergencyAlert(emailRecipients, {
-            title: newAlert?.title || 'Emergency Alert',
-            content:
-              newAlert?.content || 'Please check local emergency services for more information.',
-            alertLevel: newAlert?.alert_level || 'medium',
-            location: undefined, // Can be enhanced to include location if available
-          });
-
-          if (emailResult.success) {
-            console.log(`Email alerts sent successfully to ${emailRecipients.length} recipients`);
-            emailCount = emailRecipients.length;
-          } else {
-            console.error('Failed to send email alerts:', emailResult.error);
-            emailErrors.push(`Bulk email failed: ${emailResult.error}`);
-          }
-        } catch (error) {
-          console.error('Error sending email alerts:', error);
-          emailErrors.push(
-            `Email service error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          );
-        }
-      } else {
-        console.log('No users found for email notifications');
+        // Note: SMS sending is intentionally disabled here for bulk alerts to avoid long request times.
+        // Enqueue SMS jobs (or use a worker) instead of sending synchronously for large user lists.
       }
     } else {
-      console.log('No users found for notifications');
+      console.log('No users found for SMS notifications');
     }
+
+    // Send Email notifications
 
     // Prepare response with notification summary
     let message = 'Alert created successfully';

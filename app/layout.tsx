@@ -27,7 +27,7 @@ function GlobalMobileHeader() {
     if (path === '/users') return 'Users';
     if (path === '/chat') return 'Chat';
     if (path === '/settings') return 'Settings';
-    return 'AmayAlert';
+    return 'Amayalert';
   };
 
   return (

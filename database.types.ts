@@ -192,6 +192,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           description: string | null
+          email: string | null
           emergency_type: string | null
           id: string
           important_information: string | null
@@ -212,6 +213,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           emergency_type?: string | null
           id?: string
           important_information?: string | null
@@ -232,6 +234,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           emergency_type?: string | null
           id?: string
           important_information?: string | null

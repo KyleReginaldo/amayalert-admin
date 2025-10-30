@@ -138,7 +138,7 @@ const Sidebar = () => {
       >
         {/* Header */}
         <div className="px-6 py-6 border-b border-blue-400/20 flex-shrink-0">
-          <h1 className="text-xl font-bold">AmayAlert</h1>
+          <h1 className="text-xl font-bold">Amayalert</h1>
           <p className="text-blue-100 text-md">Admin</p>
         </div>
 

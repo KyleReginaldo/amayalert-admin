@@ -126,7 +126,7 @@ export function validateAndFormatPhoneNumbers(phoneNumbers: string[]): {
 // Example: Send confirmation SMS after user subscribes to alerts
 export async function sendSubscriptionConfirmation(phoneNumber: string, userName?: string) {
   try {
-    const message = `Welcome to AmayAlert Emergency Notification System${
+    const message = `Welcome to Amayalert Emergency Notification System${
       userName ? `, ${userName}` : ''
     }! 
 

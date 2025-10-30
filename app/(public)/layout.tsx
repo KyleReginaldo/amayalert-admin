@@ -29,7 +29,7 @@ export default function PublicLayout({
                 <Shield className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">AmayAlert</h1>
+                <h1 className="text-lg font-semibold text-gray-900">Amayalert</h1>
                 <p className="text-xs text-gray-500">Emergency Management</p>
               </div>
             </Link>
@@ -80,7 +80,7 @@ export default function PublicLayout({
             <div className="mb-4 md:mb-0">
               <div className="flex items-center justify-center md:justify-start space-x-2 mb-2">
                 <Shield className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-900">AmayAlert</span>
+                <span className="text-sm font-medium text-gray-900">Amayalert</span>
               </div>
               <p className="text-xs text-gray-500">Emergency Management - Tanza, Cavite</p>
             </div>

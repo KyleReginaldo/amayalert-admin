@@ -86,7 +86,7 @@ class EmailService {
   ): Promise<EmailResponse> {
     try {
       const mailOptions = {
-        from: `"AmayAlert Support" <amayalert.site@gmail.com>`,
+        from: `"Amayalert Support" <amayalert.site@gmail.com>`,
         bcc: recipients, // Use BCC to hide recipients from each other
         subject: subject,
         text: text,
@@ -129,7 +129,7 @@ class EmailService {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #2563eb; color: white; padding: 20px;">
           <h2 style="margin: 0;">New Contact Form Submission</h2>
-          <p style="margin: 5px 0 0 0;">AmayAlert Contact Form</p>
+          <p style="margin: 5px 0 0 0;">Amayalert Contact Form</p>
         </div>
         
         <div style="background-color: white; padding: 20px; border: 1px solid #e5e7eb;">
@@ -167,7 +167,7 @@ class EmailService {
     `;
 
     const textContent = `
-New Contact Form Submission - AmayAlert
+New Contact Form Submission - Amayalert
 
 Name: ${formData.name}
 Email: ${formData.email}
@@ -178,13 +178,13 @@ Message:
 ${formData.message}
 
 ---
-This email was sent from the AmayAlert contact form.
+This email was sent from the Amayalert contact form.
 Reply directly to this email to respond to ${formData.name}.
     `;
 
     return this.sendEmail({
       to: 'amayalert.site@gmail.com', // Send to a different email address
-      subject: `[AmayAlert] ${formData.subject}`,
+      subject: `[Amayalert] ${formData.subject}`,
       text: textContent,
       html: htmlContent,
       replyTo: formData.email, // Set reply-to as the sender's email
@@ -216,7 +216,7 @@ Reply directly to this email to respond to ${formData.name}.
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: ${color}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
           <h1 style="margin: 0; font-size: 24px;">🚨 EMERGENCY ALERT</h1>
-          <p style="margin: 5px 0 0 0; opacity: 0.9;">AmayAlert Emergency Notification</p>
+          <p style="margin: 5px 0 0 0; opacity: 0.9;">Amayalert Emergency Notification</p>
         </div>
         
         <div style="background-color: white; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef; border-top: none;">
@@ -247,14 +247,14 @@ Reply directly to this email to respond to ${formData.name}.
         </div>
         
         <div style="text-align: center; color: #666; font-size: 12px; margin-top: 20px;">
-          <p>This alert was sent by AmayAlert Emergency System</p>
+          <p>This alert was sent by Amayalert Emergency System</p>
           <p>Stay safe and follow official emergency instructions</p>
         </div>
       </div>
     `;
 
     const textContent = `
-🚨 EMERGENCY ALERT - AmayAlert
+🚨 EMERGENCY ALERT - Amayalert
 
 Title: ${alertData.title}
 Priority: ${alertData.alertLevel.toUpperCase()}
@@ -266,7 +266,7 @@ ${alertData.content}
 ⚠️ Important: If this is a life-threatening emergency, call 911 immediately.
 
 ---
-This alert was sent by AmayAlert Emergency System.
+This alert was sent by Amayalert Emergency System.
 Stay safe and follow official emergency instructions.
     `;
 

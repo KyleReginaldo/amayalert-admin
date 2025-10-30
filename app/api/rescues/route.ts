@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
           : null,
       contact_phone: body.contact_phone || null,
       important_information: body.important_information || null,
+      email: body.email || null,
     };
 
     const { data, error } = await supabase.from('rescues').insert([newRescue]).select().single();

@@ -17,11 +17,11 @@ export default function PrivacyPolicyPage() {
           <section id="introduction">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Introduction</h2>
             <p className="text-gray-700 leading-relaxed mb-4">
-              Welcome to AmayAlert. We are committed to protecting your privacy and ensuring the
+              Welcome to Amayalert. We are committed to protecting your privacy and ensuring the
               security of your personal information while providing emergency services.
             </p>
             <p className="text-gray-700 leading-relaxed">
-              This Privacy Policy explains how AmayAlert collects, uses, discloses, and safeguards
+              This Privacy Policy explains how Amayalert collects, uses, discloses, and safeguards
               your information when you use our emergency alert and rescue coordination mobile
               application and administrative dashboard.
             </p>
@@ -157,7 +157,7 @@ export default function PrivacyPolicyPage() {
                 <span className="font-medium">Phone:</span> +63 46 123 4567
               </div>
               <div>
-                <span className="font-medium">Address:</span> AmayAlert Privacy Office, Tanza,
+                <span className="font-medium">Address:</span> Amayalert Privacy Office, Tanza,
                 Cavite
               </div>
             </div>

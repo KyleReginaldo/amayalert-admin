@@ -20,16 +20,16 @@ export async function GET() {
     // Test sending a simple email
     const testResult = await emailService.sendEmail({
       to: process.env.SMTP_USER!, // Send to yourself
-      subject: 'AmayAlert Email Test',
-      text: 'This is a test email from AmayAlert to verify the email service is working correctly.',
+      subject: 'Amayalert Email Test',
+      text: 'This is a test email from Amayalert to verify the email service is working correctly.',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background-color: #007bff; color: white; padding: 20px; border-radius: 8px;">
-            <h1 style="margin: 0;">✅ AmayAlert Email Test</h1>
+            <h1 style="margin: 0;">✅ Amayalert Email Test</h1>
             <p style="margin: 5px 0 0 0;">Email service is working correctly!</p>
           </div>
           <div style="padding: 20px; background-color: #f8f9fa; margin-top: 20px; border-radius: 8px;">
-            <p>This is a test email to verify that your AmayAlert email service is configured and working properly.</p>
+            <p>This is a test email to verify that your Amayalert email service is configured and working properly.</p>
             <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
             <p><strong>Environment:</strong> Development</p>
           </div>

@@ -23,7 +23,7 @@ export async function GET() {
     // Test sending a simple email
     const testResult = await emailService.sendEmail({
       to: 'koyaemer@gmail.com',
-      subject: 'Test Email from AmayAlert',
+      subject: 'Test Email from Amayalert',
       text: 'This is a test email to verify the email service is working.',
     });
 
