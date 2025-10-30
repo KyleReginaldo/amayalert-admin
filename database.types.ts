@@ -189,12 +189,16 @@ export type Database = {
       rescues: {
         Row: {
           completed_at: string | null
+          contact_phone: string | null
           created_at: string
           description: string | null
+          emergency_type: string | null
           id: string
+          important_information: string | null
           lat: number | null
           lng: number | null
           metadata: Json | null
+          number_of_people: number | null
           priority: number
           reported_at: string
           scheduled_for: string | null
@@ -205,12 +209,16 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
+          emergency_type?: string | null
           id?: string
+          important_information?: string | null
           lat?: number | null
           lng?: number | null
           metadata?: Json | null
+          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null
@@ -221,12 +229,16 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
+          emergency_type?: string | null
           id?: string
+          important_information?: string | null
           lat?: number | null
           lng?: number | null
           metadata?: Json | null
+          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null
@@ -279,14 +291,14 @@ export type Database = {
           birth_date: string | null
           created_at: string
           device_token: string | null
-          email: string
+          email: string | null
           full_name: string
           gender: string | null
           id: string
           id_picture: string | null
           latitude: number | null
           longitude: number | null
-          phone_number: string
+          phone_number: string | null
           profile_picture: string | null
           role: Database["public"]["Enums"]["user_role"] | null
         }
@@ -294,14 +306,14 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           device_token?: string | null
-          email: string
+          email?: string | null
           full_name: string
           gender?: string | null
           id: string
           id_picture?: string | null
           latitude?: number | null
           longitude?: number | null
-          phone_number: string
+          phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
         }
@@ -309,14 +321,14 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           device_token?: string | null
-          email?: string
+          email?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           id_picture?: string | null
           latitude?: number | null
           longitude?: number | null
-          phone_number?: string
+          phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
         }

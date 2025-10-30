@@ -92,6 +92,14 @@ export async function POST(request: NextRequest) {
       reported_at: body.reported_at || new Date().toISOString(),
       scheduled_for: body.scheduled_for || null,
       user: body.user || null,
+      // New fields from updated schema
+      emergency_type: body.emergency_type || null,
+      number_of_people:
+        body.number_of_people !== undefined && body.number_of_people !== null
+          ? Number(body.number_of_people)
+          : null,
+      contact_phone: body.contact_phone || null,
+      important_information: body.important_information || null,
     };
 
     const { data, error } = await supabase.from('rescues').insert([newRescue]).select().single();

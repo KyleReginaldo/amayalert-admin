@@ -179,6 +179,10 @@ export default function RescuePage() {
       status: 'pending' as RescueStatus,
       scheduled_for: '',
       notes: '', // Admin notes
+      emergency_type: '',
+      number_of_people: '' as string | number,
+      contact_phone: '',
+      important_information: '',
     });
 
     useEffect(() => {
@@ -187,6 +191,10 @@ export default function RescuePage() {
           status: rescue.status,
           scheduled_for: rescue.scheduled_for ? rescue.scheduled_for.split('T')[0] : '',
           notes: (rescue.metadata as RescueMetadata)?.notes || '',
+          emergency_type: rescue.emergency_type || '',
+          number_of_people: rescue.number_of_people ?? '',
+          contact_phone: rescue.contact_phone || '',
+          important_information: rescue.important_information || '',
         });
       }
     }, [rescue]);
@@ -196,6 +204,13 @@ export default function RescuePage() {
       const submitData = {
         status: formData.status,
         scheduled_for: formData.scheduled_for || null,
+        emergency_type: formData.emergency_type || null,
+        number_of_people:
+          formData.number_of_people === '' || formData.number_of_people === null
+            ? null
+            : Number(formData.number_of_people),
+        contact_phone: formData.contact_phone || null,
+        important_information: formData.important_information || null,
         metadata: {
           ...((rescue.metadata as RescueMetadata) || {}),
           notes: formData.notes,
@@ -242,6 +257,41 @@ export default function RescuePage() {
               <div>
                 <strong className="text-gray-700">Description:</strong>
                 <p className="mt-1 text-gray-600">{rescue.description}</p>
+              </div>
+            )}
+
+            {/* Emergency details (new schema fields) */}
+            {(rescue.emergency_type ||
+              rescue.number_of_people ||
+              rescue.contact_phone ||
+              rescue.important_information) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {rescue.emergency_type && (
+                  <div>
+                    <strong className="text-gray-700">Emergency Type:</strong>
+                    <div className="mt-1 text-gray-600">{rescue.emergency_type}</div>
+                  </div>
+                )}
+                {typeof rescue.number_of_people === 'number' && (
+                  <div>
+                    <strong className="text-gray-700">People Involved:</strong>
+                    <div className="mt-1 text-gray-600">{rescue.number_of_people}</div>
+                  </div>
+                )}
+                {rescue.contact_phone && (
+                  <div>
+                    <strong className="text-gray-700">Contact Phone:</strong>
+                    <div className="mt-1 text-gray-600">{rescue.contact_phone}</div>
+                  </div>
+                )}
+                {rescue.important_information && (
+                  <div className="md:col-span-2">
+                    <strong className="text-gray-700">Important Information:</strong>
+                    <p className="mt-1 text-gray-600 whitespace-pre-wrap">
+                      {rescue.important_information}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -322,6 +372,58 @@ export default function RescuePage() {
                   }
                   disabled={loading}
                   className="mt-2"
+                />
+              </div>
+            </div>
+
+            {/* New fields inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="emergency_type">Emergency Type</Label>
+                <Input
+                  id="emergency_type"
+                  placeholder="e.g., Medical, Fire, Flood"
+                  value={formData.emergency_type}
+                  onChange={(e) => setFormData((p) => ({ ...p, emergency_type: e.target.value }))}
+                  disabled={loading}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="number_of_people">People Involved</Label>
+                <Input
+                  id="number_of_people"
+                  type="number"
+                  min={0}
+                  value={formData.number_of_people}
+                  onChange={(e) => setFormData((p) => ({ ...p, number_of_people: e.target.value }))}
+                  disabled={loading}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="contact_phone">Contact Phone</Label>
+                <Input
+                  id="contact_phone"
+                  placeholder="Contact phone number"
+                  value={formData.contact_phone}
+                  onChange={(e) => setFormData((p) => ({ ...p, contact_phone: e.target.value }))}
+                  disabled={loading}
+                  className="mt-2"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="important_information">Important Information</Label>
+                <Textarea
+                  id="important_information"
+                  placeholder="Any critical info provided by the reporter"
+                  value={formData.important_information}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, important_information: e.target.value }))
+                  }
+                  disabled={loading}
+                  className="mt-2"
+                  rows={3}
                 />
               </div>
             </div>
@@ -959,6 +1061,40 @@ export default function RescuePage() {
                       {getPriorityBadge(selectedRescue.priority).label}
                     </div>
                   </div>
+
+                  {/* New schema fields in details sheet */}
+                  {selectedRescue.emergency_type && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Emergency Type</div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        {selectedRescue.emergency_type}
+                      </div>
+                    </div>
+                  )}
+                  {typeof selectedRescue.number_of_people === 'number' && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">People Involved</div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        {selectedRescue.number_of_people}
+                      </div>
+                    </div>
+                  )}
+                  {selectedRescue.contact_phone && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Contact Phone</div>
+                      <div className="mt-1 text-sm text-gray-600">
+                        {selectedRescue.contact_phone}
+                      </div>
+                    </div>
+                  )}
+                  {selectedRescue.important_information && (
+                    <div className="sm:col-span-2">
+                      <div className="text-sm font-medium text-gray-700">Important Information</div>
+                      <div className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">
+                        {selectedRescue.important_information}
+                      </div>
+                    </div>
+                  )}
 
                   {selectedRescue.scheduled_for && (
                     <div>

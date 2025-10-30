@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch user emails' }, { status: 500 });
       }
 
-      recipients = users?.map((user) => user.email).filter(Boolean) || [];
+      recipients = (users ?? [])
+        .map((user) => user.email)
+        .filter((e): e is string => typeof e === 'string');
     } else {
       // Get all users' emails for broadcast
       const { data: users, error: usersError } = await supabase
@@ -60,7 +62,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch user emails' }, { status: 500 });
       }
 
-      recipients = users?.map((user) => user.email).filter(Boolean) || [];
+      recipients = (users ?? [])
+        .map((user) => user.email)
+        .filter((e): e is string => typeof e === 'string');
     }
 
     if (recipients.length === 0) {

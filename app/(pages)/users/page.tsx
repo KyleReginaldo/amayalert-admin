@@ -785,7 +785,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
     if (user) {
       setFormData({
         full_name: user.full_name || '',
-        email: user.email,
+        email: user.email || '',
         phone_number: user.phone_number || '',
         role: user.role || 'user',
       });

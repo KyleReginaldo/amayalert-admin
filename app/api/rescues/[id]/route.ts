@@ -55,6 +55,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.title !== undefined && (!body.title || !body.title.trim())) {
       return NextResponse.json({ success: false, error: 'Title cannot be empty' }, { status: 400 });
     }
+    if (body.number_of_people !== undefined) {
+      const n = Number(body.number_of_people);
+      if (Number.isNaN(n) || n < 0) {
+        return NextResponse.json(
+          { success: false, error: 'number_of_people must be a non-negative number' },
+          { status: 400 },
+        );
+      }
+    }
 
     // Prepare update data
     const updateData: RescueUpdate = {
@@ -77,6 +86,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.scheduled_for !== undefined) updateData.scheduled_for = body.scheduled_for;
     if (body.completed_at !== undefined) updateData.completed_at = body.completed_at;
     if (body.user !== undefined) updateData.user = body.user;
+    // New schema fields
+    if (body.emergency_type !== undefined) updateData.emergency_type = body.emergency_type;
+    if (body.number_of_people !== undefined)
+      updateData.number_of_people = Number(body.number_of_people);
+    if (body.contact_phone !== undefined) updateData.contact_phone = body.contact_phone;
+    if (body.important_information !== undefined)
+      updateData.important_information = body.important_information;
+    console.log(`status: ${body.status}`);
 
     const { data, error } = await supabase
       .from('rescues')
@@ -95,7 +112,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         { status: 500 },
       );
     }
-
     return NextResponse.json({
       success: true,
       data: data,
