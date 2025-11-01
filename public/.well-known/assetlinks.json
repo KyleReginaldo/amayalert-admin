@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.amayalert.app",
+      "sha256_cert_fingerprints": [
+        "C4:B3:49:E6:9B:00:22:A6:85:A0:CF:7B:6C:17:84:B5:22:54:C5:1E:87:06:E6:FE:E7:C5:A5:7F:AD:D7:78:F4"
+      ]
+    }
+  }
+]
