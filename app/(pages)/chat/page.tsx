@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Database } from '@/database.types';
-import axios from 'axios';
-import { Loader2, Search, Send, User as UserIcon } from 'lucide-react';
+import { Loader2, Paperclip, Search, Send, User as UserIcon, X } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Message = Database['public']['Tables']['messages']['Row'];
@@ -23,7 +23,10 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load current admin user
   useEffect(() => {
@@ -123,49 +126,72 @@ export default function ChatPage() {
   }, [selectedUser, currentUserId]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !currentUserId || !selectedUser) return;
+    if ((!input.trim() && !selectedFile) || !currentUserId || !selectedUser) return;
     setSending(true);
+
+    let attachment_url = null;
+
+    // Upload image if selected
+    if (selectedFile) {
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('bucket', 'chat-attachments');
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json();
+          attachment_url = uploadResult.url;
+        } else {
+          console.error('Failed to upload image');
+          setSending(false);
+          return;
+        }
+      } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        setSending(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.from('messages').insert({
-      content: input.trim(),
+      content: input.trim() || (selectedFile ? 'Image' : ''),
       sender: currentUserId,
       receiver: selectedUser.id,
+      attachment_url,
     } as Database['public']['Tables']['messages']['Insert']);
+
     if (error) {
       console.error('Failed to send message:', error);
-    }
-    await axios.post(
-      'https://api.onesignal.com/notifications?c=push',
-      {
-        app_id: '1811210d-e4b7-4304-8cd5-3de7a1da8e26',
-        contents: {
-          en: input.trim(),
-        },
-        headings: {
-          en: 'New Message from Admin',
-        },
-        target_channel: 'push',
-        huawei_category: 'MARKETING',
-        huawei_msg_type: 'message',
-        priority: 10,
-        ios_interruption_level: 'active',
-        ios_badgeType: 'None',
-        ttl: 259200,
-        include_aliases: {
-          external_id: ['3a18ce33-0fca-44d2-9898-12596c56e8f3'],
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoeznz7q5k6xkuaxfhko7axlymp6klvsoy34q34c3p3viqwnwq6rgg77br7rke6nuevljrbpx45m5frui`,
-        },
-      },
-    );
-    setSending(false);
-    if (error) {
-      console.error('Failed to send message:', error);
+      setSending(false);
       return;
     }
+
+    // Send push notification via server-side API (non-blocking, no CORS issues)
+    try {
+      await fetch('/api/notifications/push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: attachment_url ? 'Sent an image' : input.trim(),
+          userId: selectedUser.id,
+          attachment_url,
+        }),
+      });
+    } catch (pushError) {
+      console.warn('Push notification failed (non-blocking):', pushError);
+      // Continue with chat functionality even if push fails
+    }
+
+    setSending(false);
     setInput('');
+    clearFileSelection();
     scrollToBottomSoon();
   };
 
@@ -173,6 +199,26 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
   };
   const scrollToBottomSoon = () => setTimeout(scrollToBottom, 50);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const clearFileSelection = () => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const ConversationHeader = () => (
     <div className="px-4 py-3 border-b bg-white">
@@ -284,7 +330,18 @@ export default function ChatPage() {
                             : 'bg-white text-gray-800 border-gray-200'
                         }`}
                       >
-                        <div className="whitespace-pre-wrap">{m.content}</div>
+                        {m.attachment_url ? (
+                          <Image
+                            src={m.attachment_url}
+                            alt="attachment"
+                            width={200}
+                            height={200}
+                            className="h-[200px] w-auto rounded-lg object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="whitespace-pre-wrap">{m.content}</div>
+                        )}
                         <div
                           className={`text-[10px] mt-1 ${
                             isMine ? 'text-blue-100' : 'text-gray-400'
@@ -305,7 +362,38 @@ export default function ChatPage() {
 
               {/* Input */}
               <div className="p-3 border-t bg-white">
+                {/* Image preview */}
+                {previewUrl && (
+                  <div className="mb-3 relative">
+                    <div className="relative inline-block">
+                      <Image
+                        src={previewUrl}
+                        alt="Preview"
+                        width={128}
+                        height={128}
+                        className="max-w-32 max-h-32 rounded-lg border object-cover"
+                        unoptimized
+                      />
+                      <button
+                        type="button"
+                        onClick={clearFileSelection}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+                    disabled={sending}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
                   <Input
                     placeholder={
                       selectedUser ? 'Type a message…' : 'Select a user to start chatting'
@@ -322,7 +410,7 @@ export default function ChatPage() {
                   />
                   <Button
                     onClick={sendMessage}
-                    disabled={!selectedUser || sending || !input.trim()}
+                    disabled={!selectedUser || sending || (!input.trim() && !selectedFile)}
                   >
                     {sending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -330,6 +418,13 @@ export default function ChatPage() {
                       <Send className="h-4 w-4" />
                     )}
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
                 </div>
               </div>
             </div>
