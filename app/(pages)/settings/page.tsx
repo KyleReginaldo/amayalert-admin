@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingName, setSavingName] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<Status>(null);
@@ -63,8 +64,8 @@ export default function SettingsPage() {
 
   const canSaveName = useMemo(() => !!userId && fullName.trim().length > 1, [userId, fullName]);
   const canChangePass = useMemo(
-    () => newPassword.length >= 8 && newPassword === confirmPassword,
-    [newPassword, confirmPassword],
+    () => currentPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword,
+    [currentPassword, newPassword, confirmPassword],
   );
 
   const handleSaveName = async () => {
@@ -95,8 +96,21 @@ export default function SettingsPage() {
     setChangingPass(true);
     setStatus(null);
     try {
+      // First verify the current password by attempting to sign in with it
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // If current password is verified, update to new password
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setStatus({
@@ -181,31 +195,44 @@ export default function SettingsPage() {
               <CardTitle>Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">New password</Label>
+                  <Label htmlFor="currentPassword">Current password</Label>
                   <Input
-                    id="newPassword"
+                    id="currentPassword"
                     type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter your current password"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm new password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New password</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 8 characters"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm new password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat new password"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <ShieldCheck className="h-4 w-4" /> Password must be at least 8 characters.
+                  <ShieldCheck className="h-4 w-4" /> Enter current password and new password (8+
+                  characters).
                 </p>
                 <Button
                   variant="secondary"

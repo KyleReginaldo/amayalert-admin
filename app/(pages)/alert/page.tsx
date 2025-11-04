@@ -95,13 +95,15 @@ export default function AlertPage() {
   }, []);
 
   useEffect(() => {
-    if (alerts.length === 0 && !alertsLoading) {
-      refreshAlerts();
-    }
-    alerts.forEach((alert) => {
-      console.log(`alert: ${JSON.stringify(alert)}`);
-    });
-  }, [alerts, alertsLoading, refreshAlerts]);
+    // Refresh alerts on mount to ensure we have fresh data
+    console.log('🚀 Alert page mounted, refreshing alerts...');
+    refreshAlerts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log(`📊 Alert state update - Loading: ${alertsLoading}, Count: ${alerts.length}`);
+  }, [alertsLoading, alerts.length]);
 
   const handleCreate = async (alertData: AlertInsert) => {
     try {
@@ -237,6 +239,7 @@ export default function AlertPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           <span>Loading alerts...</span>
         </div>
       </div>
@@ -497,11 +500,23 @@ export default function AlertPage() {
             </div>
 
             {/* Empty State */}
-            {filteredAlerts.length === 0 && (
+            {filteredAlerts.length === 0 && !alertsLoading && (
               <div className="text-center py-12">
                 <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No alerts found</p>
-                <p className="text-sm text-gray-400">Try adjusting your search or filter</p>
+                <p className="text-gray-500">
+                  {alerts.length === 0 ? 'No alerts created yet' : 'No alerts found'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {alerts.length === 0
+                    ? 'Create your first alert to get started'
+                    : 'Try adjusting your search or filter'}
+                </p>
+                {alerts.length === 0 && (
+                  <Button onClick={openCreateModal} className="mt-4 gap-2" variant="outline">
+                    <Plus className="h-4 w-4" />
+                    Create First Alert
+                  </Button>
+                )}
               </div>
             )}
           </div>

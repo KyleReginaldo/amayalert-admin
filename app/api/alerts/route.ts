@@ -2,53 +2,53 @@ import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
+import twilio from 'twilio';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE!;
 const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
-// const getTwilioConfig = () => {
-//   const accountSid = process.env.ACCOUNT_SID;
-//   const authToken = process.env.AUTH_TOKEN;
-//   const twilioNumber = process.env.TWILIO_NUMBER;
+const getTwilioConfig = () => {
+  const accountSid = process.env.ACCOUNT_SID;
+  const authToken = process.env.AUTH_TOKEN;
+  const twilioNumber = process.env.TWILIO_NUMBER;
 
-//   if (!accountSid || !authToken || !twilioNumber) {
-//     throw new Error('Missing required Twilio configuration');
-//   }
+  if (!accountSid || !authToken || !twilioNumber) {
+    throw new Error('Missing required Twilio configuration');
+  }
 
-//   console.log('✅ Twilio config initialized');
+  console.log('✅ Twilio config initialized');
 
-//   return {
-//     client: twilio(accountSid, authToken, { timeout: 30000 }),
-//     twilioNumber,
-//   };
-// };
+  return {
+    client: twilio(accountSid, authToken, { timeout: 30000 }),
+    twilioNumber,
+  };
+};
 
-// async function sendSMS(to: string, message: string) {
-//   try {
-//     const config = getTwilioConfig();
+async function sendSMS(to: string, message: string) {
+  try {
+    const config = getTwilioConfig();
 
-//     const messageOptions = {
-//       body: message,
-//       to: to.startsWith('+') ? to : `+${to}`,
-//       from: config.twilioNumber, // ✅ Use Twilio number, not messaging service
-//     };
+    const messageOptions = {
+      body: message,
+      to: to.startsWith('+') ? to : `+${to}`,
+      from: config.twilioNumber, // ✅ Use Twilio number, not messaging service
+    };
 
-//     console.log('Sending SMS with options:', messageOptions);
+    console.log('Sending SMS with options:', messageOptions);
 
-//     const twilioMessage = await config.client.messages.create(messageOptions);
+    const twilioMessage = await config.client.messages.create(messageOptions);
 
-//     console.log(`✅ SMS sent to ${to}, SID: ${twilioMessage.sid}`);
+    console.log(`✅ SMS sent to ${to}, SID: ${twilioMessage.sid}`);
 
-//     return { success: true, sid: twilioMessage.sid };
-//   } catch (error) {
-//     console.error('❌ SMS sending error:', error);
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Unknown error',
-//     };
-//   }
-// }
+    return { success: true, sid: twilioMessage.sid };
+  } catch (error) {
+    console.error('❌ SMS sending error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
 
 // GET /api/alerts - Fetch all alerts with optional filtering
 export async function GET(request: NextRequest) {
@@ -187,6 +187,13 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        if (phone) {
+          try {
+            await sendSMS(phone, `Important alert from Amayalert\n\n${title}\n${content}`);
+          } catch {
+            console.error('Error sending SMS to', phone);
+          }
+        }
         // Note: SMS sending is intentionally disabled here for bulk alerts to avoid long request times.
         // Enqueue SMS jobs (or use a worker) instead of sending synchronously for large user lists.
       }

@@ -137,33 +137,51 @@ const MapComponent = ({
 
   // Handle place selection from autocomplete
   const onPlaceSelected = useCallback(() => {
-    if (autocompleteRef.current) {
-      const place = autocompleteRef.current.getPlace();
-      if (place.geometry?.location) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        const address = place.formatted_address || place.name || '';
-
-        const newLocation = { lat, lng };
-        setSelectedLocation(newLocation);
-        setMapCenter(newLocation);
-        setSearchValue(address);
-        // Mark user selection (no-op; state removed)
-
-        // Zoom the map to the selected place
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo(newLocation);
-          mapInstanceRef.current.setZoom(16);
-        }
-
-        if (onLocationSelect) {
-          onLocationSelect({ lat, lng, address });
-        }
+    try {
+      if (!autocompleteRef.current) {
+        console.warn('Autocomplete reference not available');
+        return;
       }
-    }
-  }, [onLocationSelect]);
 
-  // Handle map click to select location
+      const place = autocompleteRef.current.getPlace();
+
+      // Ensure we have a valid place object
+      if (!place) {
+        console.warn('No place data received from autocomplete');
+        return;
+      }
+
+      // Ensure we have geometry data
+      if (!place.geometry?.location) {
+        console.warn('No geometry found for selected place:', place);
+        return;
+      }
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const address = place.formatted_address || place.name || '';
+
+      const newLocation = { lat, lng };
+      setSelectedLocation(newLocation);
+      setMapCenter(newLocation);
+      setSearchValue(address);
+
+      // Zoom the map to the selected place
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.panTo(newLocation);
+        mapInstanceRef.current.setZoom(16);
+      }
+
+      if (onLocationSelect) {
+        onLocationSelect({ lat, lng, address });
+      }
+
+      // Log successful selection for debugging
+      console.log('Place selected successfully:', { lat, lng, address });
+    } catch (error) {
+      console.error('Error in onPlaceSelected:', error);
+    }
+  }, [onLocationSelect]); // Handle map click to select location
   const onMapClick = useCallback(
     async (event: google.maps.MapMouseEvent) => {
       if (event.latLng) {
@@ -268,15 +286,22 @@ const MapComponent = ({
         <Label htmlFor="location-search">Search Location</Label>
         <div className="flex gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-20 pointer-events-none" />
             <Autocomplete
               onLoad={(autocomplete) => {
                 autocompleteRef.current = autocomplete;
+                // Ensure autocomplete dropdown is properly styled and clickable
+                autocomplete.setOptions({
+                  componentRestrictions: { country: ['ph'] }, // Restrict to Philippines
+                  types: ['establishment', 'geocode'],
+                  fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+                });
               }}
               onPlaceChanged={onPlaceSelected}
               options={{
                 componentRestrictions: { country: ['ph'] }, // Restrict to Philippines
                 types: ['establishment', 'geocode'],
+                fields: ['formatted_address', 'geometry', 'name', 'place_id'],
               }}
             >
               <Input
@@ -288,14 +313,15 @@ const MapComponent = ({
                   // typing counts as user interaction (no-op)
                 }}
                 autoComplete="off"
-                className="pl-10"
+                className="pl-10 relative z-10 pac-target-input"
+                style={{ position: 'relative', zIndex: 10 }}
               />
             </Autocomplete>
             {searchValue && (
               <button
                 type="button"
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20"
                 onClick={() => {
                   setSearchValue('');
                   setSelectedLocation(null);
@@ -312,11 +338,11 @@ const MapComponent = ({
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          Search for a location above or click on the map to select a point
+          Search for a location above, click on dropdown suggestions, or click on the map to select
+          a point
         </p>
-      </div>
-
-      <div className="border rounded-lg overflow-hidden">
+      </div>{' '}
+      <div className="border rounded-lg overflow-hidden map-container">
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={mapCenter}
@@ -343,7 +369,6 @@ const MapComponent = ({
           )}
         </GoogleMap>
       </div>
-
       {selectedLocation && (
         <div className="text-sm text-muted-foreground">
           Selected coordinates: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}

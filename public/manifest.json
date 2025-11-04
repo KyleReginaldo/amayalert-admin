@@ -1,0 +1,19 @@
+{
+  "name": "Amayalert Admin",
+  "short_name": "Amayalert",
+  "description": "Emergency alert and rescue management system for Barangay Amaya V, Tanza Cavite",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b5cff",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/amayalert.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

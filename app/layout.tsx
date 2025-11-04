@@ -53,7 +53,7 @@ export default function RootLayout({
 
   // Set document title
   useEffect(() => {
-    document.title = 'Amayalert Admin';
+    document.title = 'Amayalert';
   }, []);
 
   // Check if current route is an auth page or public page
@@ -74,6 +74,38 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <title>Amayalert Admin</title>
+        <meta
+          name="description"
+          content="Emergency alert and rescue management system for Barangay Amaya V, Tanza Cavite"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* Favicon */}
+        <link rel="icon" href="/amayalert.png" />
+        <link rel="icon" type="image/png" href="/amayalert.png" />
+
+        {/* Apple Touch Icons */}
+        <link rel="apple-touch-icon" href="/amayalert.png" />
+
+        {/* Web App Manifest */}
+        <link rel="manifest" href="/manifest.json" />
+
+        {/* Theme Color */}
+        <meta name="theme-color" content="#0b5cff" />
+
+        {/* Open Graph */}
+        <meta property="og:title" content="Amayalert Admin" />
+        <meta property="og:description" content="Emergency alert and rescue management system" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/amayalert.png" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Amayalert Admin" />
+        <meta name="twitter:description" content="Emergency alert and rescue management system" />
+      </head>
       <body
         className={`${
           shouldHideAdminLayout ? 'bg-gray-50' : 'flex h-screen bg-gray-50 overflow-hidden'

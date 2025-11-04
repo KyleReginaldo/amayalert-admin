@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        Authorization: `Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi`,
+        Authorization: `Bearer Key ${process.env.ONESIGNAL_API_KEY}`,
       },
       body: JSON.stringify(payload),
     });

@@ -82,15 +82,23 @@ export function AlertsProvider({ children }: { children: React.ReactNode }) {
   // API functions
   const refreshAlerts = async () => {
     try {
+      console.log('🔄 Starting alerts refresh...');
       setAlertsLoading(true);
       const response = await alertsAPI.getAllAlerts();
+
       if (response.success && response.data) {
+        console.log(`✅ Successfully loaded ${response.data.length} alerts`);
         setAlerts(response.data);
         saveToCache(response.data);
+      } else {
+        console.error('❌ Failed to fetch alerts:', response);
+        // Keep existing alerts if API call fails
       }
     } catch (error) {
-      console.error('Failed to refresh alerts:', error);
+      console.error('❌ Error refreshing alerts:', error);
+      // Keep existing alerts if API call fails
     } finally {
+      console.log('🏁 Alerts refresh completed, setting loading to false');
       setAlertsLoading(false);
     }
   };
