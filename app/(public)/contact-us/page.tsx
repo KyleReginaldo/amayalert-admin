@@ -147,6 +147,49 @@ export default function ContactUsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Barangay Information */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center mb-3">
+                  <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                  <h3 className="text-sm font-medium text-gray-800">Barangay Contact</h3>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-800">BARANGAY AMAYA V, TANZA CAVITE</p>
+                    <p className="text-gray-600">Population: 2,983</p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <p className="text-gray-600">0938-619-5287</p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    <p className="text-gray-600">amayavtanzacavite@gmail.com</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-600 font-medium">Contact Person:</p>
+                    <p className="text-gray-600">MARK CHRISTIANN A. GUMALE</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-600 font-medium">Facebook Page:</p>
+                    <a
+                      href="https://web.facebook.com/amaya.singko"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 underline"
+                    >
+                      Amaya Singko
+                    </a>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Contact Form */}
