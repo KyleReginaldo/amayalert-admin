@@ -102,11 +102,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.title !== undefined && (!body.title || !body.title.trim())) {
       return NextResponse.json({ success: false, error: 'Title cannot be empty' }, { status: 400 });
     }
-    if (body.number_of_people !== undefined) {
-      const n = Number(body.number_of_people);
+    if (body.female_count !== undefined) {
+      const n = Number(body.female_count);
       if (Number.isNaN(n) || n < 0) {
         return NextResponse.json(
-          { success: false, error: 'number_of_people must be a non-negative number' },
+          { success: false, error: 'female_count must be a non-negative number' },
+          { status: 400 },
+        );
+      }
+    }
+    if (body.male_count !== undefined) {
+      const n = Number(body.male_count);
+      if (Number.isNaN(n) || n < 0) {
+        return NextResponse.json(
+          { success: false, error: 'male_count must be a non-negative number' },
           { status: 400 },
         );
       }
@@ -135,8 +144,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.user !== undefined) updateData.user = body.user;
     // New schema fields
     if (body.emergency_type !== undefined) updateData.emergency_type = body.emergency_type;
-    if (body.number_of_people !== undefined)
-      updateData.number_of_people = Number(body.number_of_people);
+    if (body.female_count !== undefined) updateData.female_count = Number(body.female_count);
+    if (body.male_count !== undefined) updateData.male_count = Number(body.male_count);
+    if (body.attachments !== undefined) updateData.attachments = body.attachments;
     if (body.contact_phone !== undefined) updateData.contact_phone = body.contact_phone;
     if (body.important_information !== undefined)
       updateData.important_information = body.important_information;
@@ -174,8 +184,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           const defaultMessage = `Rescue update: "${data.title}" is now ${statusText}.`;
           const extra: string[] = [];
           if (data.emergency_type) extra.push(`Type: ${data.emergency_type}`);
-          if (typeof data.number_of_people === 'number')
-            extra.push(`People: ${data.number_of_people}`);
+          const totalPeople = (data.female_count || 0) + (data.male_count || 0);
+          if (totalPeople > 0)
+            extra.push(
+              `People: ${totalPeople} (${data.female_count || 0}F, ${data.male_count || 0}M)`,
+            );
           if (data.scheduled_for)
             extra.push(`Schedule: ${new Date(data.scheduled_for).toLocaleDateString()}`);
           if (extra.length) {
@@ -427,9 +440,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             <div style="height:10px"></div>
             <div class="label">People Affected</div>
             <div class="value">${
-              typeof data.number_of_people === 'number'
-                ? data.number_of_people
-                : data.number_of_people ?? '—'
+              (data.female_count || 0) + (data.male_count || 0) > 0
+                ? `${(data.female_count || 0) + (data.male_count || 0)} (${
+                    data.female_count || 0
+                  } Female, ${data.male_count || 0} Male)`
+                : '—'
             }</div>
           </div>
           <br>

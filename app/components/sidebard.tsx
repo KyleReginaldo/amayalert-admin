@@ -1,5 +1,7 @@
 'use client';
 
+import { useChat } from '@/app/providers/chat-provider';
+import { Badge } from '@/components/ui/badge';
 import {
   LayoutDashboard,
   LifeBuoy,
@@ -51,6 +53,7 @@ export const SidebarProvider = ({ children }: { children: React.ReactNode }) => 
 const Sidebar = () => {
   const pathname = usePathname();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useSidebar();
+  const { totalUnreadCount } = useChat();
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -147,6 +150,7 @@ const Sidebar = () => {
           <ul className="space-y-2">
             {navigationItems.map((item) => {
               const IconComponent = item.icon;
+              const isChat = item.href === '/chat';
               return (
                 <li key={item.href}>
                   <Link
@@ -160,10 +164,17 @@ const Sidebar = () => {
                       className={item.isActive ? 'text-white' : 'text-blue-100'}
                     />
                     <span
-                      className={`font-medium ${item.isActive ? 'text-white' : 'text-blue-100'}`}
+                      className={`font-medium flex-1 ${
+                        item.isActive ? 'text-white' : 'text-blue-100'
+                      }`}
                     >
                       {item.label}
                     </span>
+                    {isChat && totalUnreadCount > 0 && (
+                      <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">
+                        {totalUnreadCount}
+                      </Badge>
+                    )}
                   </Link>
                 </li>
               );

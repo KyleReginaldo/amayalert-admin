@@ -94,10 +94,13 @@ export async function POST(request: NextRequest) {
       user: body.user || null,
       // New fields from updated schema
       emergency_type: body.emergency_type || null,
-      number_of_people:
-        body.number_of_people !== undefined && body.number_of_people !== null
-          ? Number(body.number_of_people)
+      female_count:
+        body.female_count !== undefined && body.female_count !== null
+          ? Number(body.female_count)
           : null,
+      male_count:
+        body.male_count !== undefined && body.male_count !== null ? Number(body.male_count) : null,
+      attachments: body.attachments || null,
       contact_phone: body.contact_phone || null,
       important_information: body.important_information || null,
       email: body.email || null,

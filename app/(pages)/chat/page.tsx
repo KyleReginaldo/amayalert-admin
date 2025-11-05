@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import type { Database } from '@/database.types';
 import { Loader2, Paperclip, Search, Send, User as UserIcon, X } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type Message = Database['public']['Tables']['messages']['Row'];
 type User = Database['public']['Tables']['users']['Row'];
@@ -25,6 +25,7 @@ export default function ChatPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -38,6 +39,38 @@ export default function ChatPage() {
     };
     getCurrentUser();
   }, []);
+
+  // Function to fetch unread message counts for all users
+  const fetchUnreadCounts = useCallback(async () => {
+    if (!currentUserId) return;
+
+    const unreadCountsMap: Record<string, number> = {};
+
+    // Get all users except current admin
+    const usersToCheck = users.filter((u) => u.id !== currentUserId);
+
+    for (const user of usersToCheck) {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('sender', user.id)
+        .eq('receiver', currentUserId)
+        .is('seen_at', null);
+
+      if (!error && data) {
+        unreadCountsMap[user.id] = data.length;
+      }
+    }
+
+    setUnreadCounts(unreadCountsMap);
+  }, [currentUserId, users]);
+
+  // Fetch unread counts when current user is set or users change
+  useEffect(() => {
+    if (currentUserId && users.length > 0) {
+      fetchUnreadCounts();
+    }
+  }, [currentUserId, users, fetchUnreadCounts]);
 
   // Ensure users are loaded
   useEffect(() => {
@@ -80,6 +113,12 @@ export default function ChatPage() {
           .from('messages')
           .update({ seen_at: new Date().toISOString() })
           .or(`and(sender.eq.${selectedUser.id},receiver.eq.${currentUserId},seen_at.is.null)`);
+
+        // Update unread count for this user to 0
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [selectedUser.id]: 0,
+        }));
       }
       setLoadingMessages(false);
       scrollToBottom();
@@ -97,25 +136,55 @@ export default function ChatPage() {
         const row = (payload.new || payload.old) as Message;
         if (!row) return;
         const involvesAdmin = row.sender === currentUserId || row.receiver === currentUserId;
-        const involvesSelected = selectedUser
-          ? row.sender === selectedUser.id || row.receiver === selectedUser.id
-          : false;
-        if (!involvesAdmin || !involvesSelected) return;
 
         if (payload.eventType === 'INSERT') {
-          setMessages((prev) => [...prev, row]);
-          if (row.receiver === currentUserId) {
-            // mark seen
-            supabase
-              .from('messages')
-              .update({ seen_at: new Date().toISOString() })
-              .eq('id', row.id);
+          // If this is a new message to admin from a user
+          if (row.receiver === currentUserId && row.sender !== currentUserId) {
+            // Update unread count for this user
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [row.sender]: (prev[row.sender] || 0) + 1,
+            }));
           }
-          scrollToBottom();
+
+          // If message involves selected user, add to current conversation
+          const involvesSelected = selectedUser
+            ? row.sender === selectedUser.id || row.receiver === selectedUser.id
+            : false;
+
+          if (involvesAdmin && involvesSelected) {
+            setMessages((prev) => [...prev, row]);
+            if (row.receiver === currentUserId) {
+              // mark seen immediately since conversation is open
+              supabase
+                .from('messages')
+                .update({ seen_at: new Date().toISOString() })
+                .eq('id', row.id);
+
+              // Update unread count for this user to 0 since we're viewing the conversation
+              setUnreadCounts((prev) => ({
+                ...prev,
+                [row.sender]: 0,
+              }));
+            }
+            scrollToBottom();
+          }
         } else if (payload.eventType === 'UPDATE') {
-          setMessages((prev) => prev.map((m) => (m.id === row.id ? row : m)));
+          // Handle message updates (like seen status)
+          const involvesSelected = selectedUser
+            ? row.sender === selectedUser.id || row.receiver === selectedUser.id
+            : false;
+          if (involvesAdmin && involvesSelected) {
+            setMessages((prev) => prev.map((m) => (m.id === row.id ? row : m)));
+          }
         } else if (payload.eventType === 'DELETE') {
-          setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          // Handle message deletions
+          const involvesSelected = selectedUser
+            ? row.sender === selectedUser.id || row.receiver === selectedUser.id
+            : false;
+          if (involvesAdmin && involvesSelected) {
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          }
         }
       })
       .subscribe();
@@ -173,7 +242,7 @@ export default function ChatPage() {
 
     // Send push notification via server-side API (non-blocking, no CORS issues)
     try {
-      await fetch('/api/notifications/push', {
+      const pushResponse = await fetch('/api/notifications/push', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,6 +253,14 @@ export default function ChatPage() {
           attachment_url,
         }),
       });
+
+      if (!pushResponse.ok) {
+        const errorData = await pushResponse.json();
+        console.warn(
+          'Push notification failed (non-blocking):',
+          errorData.error || 'Unknown error',
+        );
+      }
     } catch (pushError) {
       console.warn('Push notification failed (non-blocking):', pushError);
       // Continue with chat functionality even if push fails
@@ -287,10 +364,15 @@ export default function ChatPage() {
                           <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
                             <UserIcon className="h-5 w-5 text-gray-600" />
                           </div>
-                          <div className="min-w-0">
+                          <div className="flex-1 min-w-0">
                             <div className="font-medium text-gray-900 truncate">{u.full_name}</div>
                             <div className="text-xs text-gray-500 truncate">{u.email}</div>
                           </div>
+                          {unreadCounts[u.id] > 0 && (
+                            <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">
+                              {unreadCounts[u.id]}
+                            </Badge>
+                          )}
                         </button>
                       </li>
                     ))}

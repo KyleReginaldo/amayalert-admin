@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
@@ -41,20 +42,29 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import {
   Calendar,
+  Car,
   CheckCircle,
   Clock,
+  Dog,
   Edit,
   Eye,
+  Flame,
+  HelpCircle,
   LifeBuoy,
   Loader2,
   MapPin,
+  Mars,
   Play,
   Save,
   Search,
   Shield,
+  Stethoscope,
   Trash2,
   UserCheck,
+  Venus,
+  Waves,
   X,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -184,8 +194,10 @@ export default function RescuePage() {
       status: 'pending' as RescueStatus,
       scheduled_for: '',
       notes: '', // Admin notes
+      priority: 3, // Default to medium priority
       emergency_type: '',
-      number_of_people: '' as string | number,
+      female_count: '' as string | number,
+      male_count: '' as string | number,
       contact_phone: '',
       email: '',
       important_information: '',
@@ -199,8 +211,10 @@ export default function RescuePage() {
           status: rescue.status,
           scheduled_for: rescue.scheduled_for ? rescue.scheduled_for.split('T')[0] : '',
           notes: (rescue.metadata as RescueMetadata)?.notes || '',
+          priority: rescue.priority || 3,
           emergency_type: rescue.emergency_type || '',
-          number_of_people: rescue.number_of_people ?? '',
+          female_count: rescue.female_count ?? '',
+          male_count: rescue.male_count ?? '',
           contact_phone: rescue.contact_phone || '',
           email: rescue.email || '',
           important_information: rescue.important_information || '',
@@ -213,11 +227,16 @@ export default function RescuePage() {
       const submitData = {
         status: formData.status,
         scheduled_for: formData.scheduled_for || null,
+        priority: formData.priority,
         emergency_type: formData.emergency_type || null,
-        number_of_people:
-          formData.number_of_people === '' || formData.number_of_people === null
+        female_count:
+          formData.female_count === '' || formData.female_count === null
             ? null
-            : Number(formData.number_of_people),
+            : Number(formData.female_count),
+        male_count:
+          formData.male_count === '' || formData.male_count === null
+            ? null
+            : Number(formData.male_count),
         contact_phone: formData.contact_phone || null,
         email: formData.email || null,
         important_information: formData.important_information || null,
@@ -247,35 +266,45 @@ export default function RescuePage() {
           </DialogHeader>
 
           {/* Read-only rescue details from user */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg text-gray-900">{rescue.title}</h3>
-                <div className="flex gap-2 mt-2">
-                  <Badge className={getPriorityBadge(rescue.priority).class}>
-                    {getPriorityBadge(rescue.priority).label}
-                  </Badge>
-                  <Badge className={getStatusBadge(rescue.status).class}>
-                    {getStatusBadge(rescue.status).label}
-                  </Badge>
+          <Card className="p-4 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base text-foreground truncate">{rescue.title}</h3>
+                <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="font-mono">#{rescue.id}</span>
+                  <span>•</span>
+                  <span>{new Date(rescue.created_at).toLocaleString()}</span>
                 </div>
               </div>
-              <div className="text-right text-sm text-gray-500">
-                <div>Reported: {new Date(rescue.created_at).toLocaleString()}</div>
-                <div>ID: #{rescue.id}</div>
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                <Badge
+                  className={`text-[11px] px-2.5 py-0.5 ${getStatusBadge(rescue.status).class}`}
+                >
+                  {getStatusBadge(rescue.status).label}
+                </Badge>
+                <Badge
+                  className={`text-[11px] px-2.5 py-0.5 ${getPriorityBadge(rescue.priority).class}`}
+                >
+                  {getPriorityBadge(rescue.priority).label}
+                </Badge>
               </div>
             </div>
 
             {rescue.description && (
               <div>
-                <strong className="text-gray-700">Description:</strong>
-                <p className="mt-1 text-gray-600">{rescue.description}</p>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Description
+                </div>
+                <p className="mt-1 text-sm text-foreground/90 leading-relaxed">
+                  {rescue.description}
+                </p>
               </div>
             )}
 
             {/* Emergency details (new schema fields) */}
             {(rescue.emergency_type ||
-              rescue.number_of_people ||
+              rescue.female_count ||
+              rescue.male_count ||
               rescue.contact_phone ||
               rescue.important_information) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -285,10 +314,14 @@ export default function RescuePage() {
                     <div className="mt-1 text-gray-600">{rescue.emergency_type}</div>
                   </div>
                 )}
-                {typeof rescue.number_of_people === 'number' && (
+                {((rescue.female_count && rescue.female_count > 0) ||
+                  (rescue.male_count && rescue.male_count > 0)) && (
                   <div>
                     <strong className="text-gray-700">People Involved:</strong>
-                    <div className="mt-1 text-gray-600">{rescue.number_of_people}</div>
+                    <div className="mt-1 text-gray-600">
+                      {(rescue.female_count || 0) + (rescue.male_count || 0)}(
+                      {rescue.female_count || 0} Female, {rescue.male_count || 0} Male)
+                    </div>
                   </div>
                 )}
                 {rescue.contact_phone && (
@@ -354,13 +387,17 @@ export default function RescuePage() {
                 </div>
               )}
             </div>
-          </div>
+          </Card>
+
+          <Separator className="my-4" />
 
           {/* Admin controls */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="status">Update Status *</Label>
+                <Label htmlFor="status">
+                  Update Status <span className="text-red-500">*</span>
+                </Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
@@ -372,10 +409,10 @@ export default function RescuePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
-                    <SelectItem value="pending">🟡 Pending</SelectItem>
-                    <SelectItem value="in_progress">🔵 In Progress</SelectItem>
-                    <SelectItem value="completed">🟢 Completed</SelectItem>
-                    <SelectItem value="cancelled">🔴 Cancelled</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -392,58 +429,115 @@ export default function RescuePage() {
                   disabled={loading}
                   className="mt-2"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Optional. Set a target date for field teams.
+                </p>
               </div>
             </div>
 
-            {/* New fields inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="emergency_type">Emergency Type</Label>
-                <Input
-                  id="emergency_type"
-                  placeholder="e.g., Medical, Fire, Flood"
-                  value={formData.emergency_type}
-                  onChange={(e) => setFormData((p) => ({ ...p, emergency_type: e.target.value }))}
-                  disabled={loading}
-                  className="mt-2"
-                />
+            {/* Emergency Type - Display Only */}
+            <div>
+              <Label>Emergency Type</Label>
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="flex items-center gap-2">
+                  {formData.emergency_type === 'Medical' && (
+                    <Stethoscope className="h-5 w-5 text-red-600" />
+                  )}
+                  {formData.emergency_type === 'Fire' && (
+                    <Flame className="h-5 w-5 text-orange-600" />
+                  )}
+                  {formData.emergency_type === 'Flood' && (
+                    <Waves className="h-5 w-5 text-blue-600" />
+                  )}
+                  {formData.emergency_type === 'Earthquake' && (
+                    <Zap className="h-5 w-5 text-yellow-600" />
+                  )}
+                  {formData.emergency_type === 'Accident' && (
+                    <Car className="h-5 w-5 text-purple-600" />
+                  )}
+                  {formData.emergency_type === 'Search' && (
+                    <Search className="h-5 w-5 text-green-600" />
+                  )}
+                  {formData.emergency_type === 'Animal' && (
+                    <Dog className="h-5 w-5 text-indigo-600" />
+                  )}
+                  {formData.emergency_type === 'Other' && (
+                    <HelpCircle className="h-5 w-5 text-gray-600" />
+                  )}
+                  <span className="font-medium">{formData.emergency_type || 'Not specified'}</span>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="number_of_people">People Involved</Label>
-                <Input
-                  id="number_of_people"
-                  type="number"
-                  min={0}
-                  value={formData.number_of_people}
-                  onChange={(e) => setFormData((p) => ({ ...p, number_of_people: e.target.value }))}
-                  disabled={loading}
-                  className="mt-2"
-                />
+            </div>
+
+            {/* Priority - Admin Editable */}
+            <div>
+              <Label htmlFor="priority">Priority Level</Label>
+              <Select
+                value={String(formData.priority)}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, priority: Number(value) }))
+                }
+                disabled={loading}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[10000]">
+                  <SelectItem value="1">Critical</SelectItem>
+                  <SelectItem value="2">High</SelectItem>
+                  <SelectItem value="3">Medium</SelectItem>
+                  <SelectItem value="4">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* People Count - Display Only */}
+            <div>
+              <Label>Number of People Involved</Label>
+              <div className="mt-2 grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Venus className="h-4 w-4 text-pink-600" />
+                    <span className="text-sm font-medium">Female:</span>
+                    <span className="font-semibold">{formData.female_count || 0}</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Mars className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium">Male:</span>
+                    <span className="font-semibold">{formData.male_count || 0}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="contact_phone">Contact Phone</Label>
-                <Input
-                  id="contact_phone"
-                  placeholder="Contact phone number"
-                  value={formData.contact_phone}
-                  onChange={(e) => setFormData((p) => ({ ...p, contact_phone: e.target.value }))}
-                  disabled={loading}
-                  className="mt-2"
-                />
+            </div>
+
+            {/* Contact Information - Display Only */}
+            <div>
+              <Label>Contact Information</Label>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">
+                      {formData.contact_phone || 'Not provided'}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{formData.email || 'Not provided'}</span>
+                  </div>
+                </div>
               </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="important_information">Important Information</Label>
-                <Textarea
-                  id="important_information"
-                  placeholder="Any critical info provided by the reporter"
-                  value={formData.important_information}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, important_information: e.target.value }))
-                  }
-                  disabled={loading}
-                  className="mt-2"
-                  rows={3}
-                />
+            </div>
+
+            {/* Additional Information - Display Only */}
+            <div>
+              <Label>User-provided details</Label>
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <p className="text-sm whitespace-pre-wrap">
+                  {formData.important_information || 'No additional details provided'}
+                </p>
               </div>
             </div>
 
@@ -459,7 +553,7 @@ export default function RescuePage() {
                   disabled={loading}
                 />
                 <div className="flex-1">
-                  <Label htmlFor="send_sms">Send SMS notification to contact</Label>
+                  <Label htmlFor="send_sms">Send sms notification to contact</Label>
                   <div className="text-xs text-gray-500 mt-1">
                     A short update text will be sent to the contact_phone. You can customize it
                     below. If left blank, a default message will be generated.
@@ -544,6 +638,7 @@ export default function RescuePage() {
     pending: rescues.filter((r) => r.status === 'pending').length,
     inProgress: rescues.filter((r) => r.status === 'in_progress').length,
     completed: rescues.filter((r) => r.status === 'completed').length,
+    cancelled: rescues.filter((r) => r.status === 'cancelled').length,
     critical: rescues.filter((r) => r.priority === 1).length,
   };
 
@@ -818,26 +913,26 @@ export default function RescuePage() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-              <div className="text-sm text-gray-600">Total Requests</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-              <div className="text-sm text-gray-600">Awaiting Response</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-              <div className="text-sm text-gray-600">Active Operations</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-              <div className="text-sm text-gray-600">Completed</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
-              <div className="text-sm text-gray-600">Critical Priority</div>
-            </div>
+            <Card className="p-4 bg-slate-50 border-0">
+              <div className="text-3xl font-bold text-slate-800">{stats.total}</div>
+              <div className="text-sm text-slate-600">Total Requests</div>
+            </Card>
+            <Card className="p-4 bg-yellow-50 border-0">
+              <div className="text-3xl font-bold text-yellow-700">{stats.pending}</div>
+              <div className="text-sm text-yellow-700/80">Awaiting Response</div>
+            </Card>
+            <Card className="p-4 bg-blue-50 border-0">
+              <div className="text-3xl font-bold text-blue-700">{stats.inProgress}</div>
+              <div className="text-sm text-blue-700/80">Active Operations</div>
+            </Card>
+            <Card className="p-4 bg-green-50 border-0">
+              <div className="text-3xl font-bold text-green-700">{stats.completed}</div>
+              <div className="text-sm text-green-700/80">Completed</div>
+            </Card>
+            <Card className="p-4 bg-red-50 border-0">
+              <div className="text-3xl font-bold text-red-700">{stats.critical}</div>
+              <div className="text-sm text-red-700/80">Critical Priority</div>
+            </Card>
           </div>
 
           {/* Filters */}
@@ -877,6 +972,34 @@ export default function RescuePage() {
             </Select>
           </div>
 
+          {/* Quick Tabs */}
+          <div className="flex items-center gap-6 mt-2 px-1">
+            {[
+              { key: 'all', label: 'All Requests', count: stats.total },
+              { key: 'pending', label: 'Pending', count: stats.pending },
+              { key: 'in_progress', label: 'In Progress', count: stats.inProgress },
+              { key: 'completed', label: 'Completed', count: stats.completed },
+              { key: 'cancelled', label: 'Cancelled', count: stats.cancelled },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setStatusFilter(tab.key)}
+                className={`relative pb-2 text-sm transition-colors ${
+                  statusFilter === tab.key ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span className="font-medium">{tab.label}</span>
+                <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                  {tab.count}
+                </span>
+                {statusFilter === tab.key && (
+                  <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-indigo-600 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+
           {/* Table View */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
@@ -906,9 +1029,21 @@ export default function RescuePage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusBadge(rescue.status).class}>
-                          {getStatusBadge(rescue.status).label}
-                        </Badge>
+                        {(() => {
+                          const dot = {
+                            pending: 'bg-yellow-500',
+                            in_progress: 'bg-blue-500',
+                            completed: 'bg-green-500',
+                            cancelled: 'bg-red-500',
+                          } as const;
+                          const label = getStatusBadge(rescue.status).label;
+                          return (
+                            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
+                              <span className={`h-2.5 w-2.5 rounded-full ${dot[rescue.status]}`} />
+                              <span className="capitalize">{label}</span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge className={getPriorityBadge(rescue.priority).class}>
@@ -1130,11 +1265,14 @@ export default function RescuePage() {
                       </div>
                     </div>
                   )}
-                  {typeof selectedRescue.number_of_people === 'number' && (
+                  {((selectedRescue.female_count && selectedRescue.female_count > 0) ||
+                    (selectedRescue.male_count && selectedRescue.male_count > 0)) && (
                     <div>
                       <div className="text-sm font-medium text-gray-700">People Involved</div>
                       <div className="mt-1 text-sm text-gray-600">
-                        {selectedRescue.number_of_people}
+                        {(selectedRescue.female_count || 0) + (selectedRescue.male_count || 0)}(
+                        {selectedRescue.female_count || 0} Female, {selectedRescue.male_count || 0}{' '}
+                        Male)
                       </div>
                     </div>
                   )}

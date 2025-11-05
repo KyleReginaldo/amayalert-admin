@@ -41,6 +41,45 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: number
+          post: number | null
+          user: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: number
+          post?: number | null
+          user?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: number
+          post?: number | null
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_fkey"
+            columns: ["post"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evacuation_centers: {
         Row: {
           address: string
@@ -148,12 +187,54 @@ export type Database = {
           },
         ]
       }
+      phone_verifications: {
+        Row: {
+          code: string
+          created_at: string | null
+          email: string | null
+          expires_at: string
+          id: number
+          phone: string
+          user_id: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          email?: string | null
+          expires_at: string
+          id?: number
+          phone: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: number
+          phone?: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_verifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content: string
           created_at: string
           id: number
           media_url: string | null
+          shared_post: number | null
           updated_at: string | null
           user: string
           visibility: string | null
@@ -163,6 +244,7 @@ export type Database = {
           created_at?: string
           id?: number
           media_url?: string | null
+          shared_post?: number | null
           updated_at?: string | null
           user: string
           visibility?: string | null
@@ -172,11 +254,19 @@ export type Database = {
           created_at?: string
           id?: number
           media_url?: string | null
+          shared_post?: number | null
           updated_at?: string | null
           user?: string
           visibility?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_shared_post_fkey"
+            columns: ["shared_post"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_user_fkey"
             columns: ["user"]
@@ -188,18 +278,20 @@ export type Database = {
       }
       rescues: {
         Row: {
+          attachments: string[] | null
           completed_at: string | null
           contact_phone: string | null
           created_at: string
           description: string | null
           email: string | null
           emergency_type: string | null
+          female_count: number | null
           id: string
           important_information: string | null
           lat: number | null
           lng: number | null
+          male_count: number | null
           metadata: Json | null
-          number_of_people: number | null
           priority: number
           reported_at: string
           scheduled_for: string | null
@@ -209,18 +301,20 @@ export type Database = {
           user: string | null
         }
         Insert: {
+          attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
           emergency_type?: string | null
+          female_count?: number | null
           id?: string
           important_information?: string | null
           lat?: number | null
           lng?: number | null
+          male_count?: number | null
           metadata?: Json | null
-          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null
@@ -230,18 +324,20 @@ export type Database = {
           user?: string | null
         }
         Update: {
+          attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
           emergency_type?: string | null
+          female_count?: number | null
           id?: string
           important_information?: string | null
           lat?: number | null
           lng?: number | null
+          male_count?: number | null
           metadata?: Json | null
-          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null

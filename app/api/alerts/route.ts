@@ -1,54 +1,12 @@
 import emailService from '@/app/lib/email-service';
+import smsService from '@/app/lib/sms-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE!;
 const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
-const getTwilioConfig = () => {
-  const accountSid = process.env.ACCOUNT_SID;
-  const authToken = process.env.AUTH_TOKEN;
-  const twilioNumber = process.env.TWILIO_NUMBER;
-
-  if (!accountSid || !authToken || !twilioNumber) {
-    throw new Error('Missing required Twilio configuration');
-  }
-
-  console.log('✅ Twilio config initialized');
-
-  return {
-    client: twilio(accountSid, authToken, { timeout: 30000 }),
-    twilioNumber,
-  };
-};
-
-async function sendSMS(to: string, message: string) {
-  try {
-    const config = getTwilioConfig();
-
-    const messageOptions = {
-      body: message,
-      to: to.startsWith('+') ? to : `+${to}`,
-      from: config.twilioNumber, // ✅ Use Twilio number, not messaging service
-    };
-
-    console.log('Sending SMS with options:', messageOptions);
-
-    const twilioMessage = await config.client.messages.create(messageOptions);
-
-    console.log(`✅ SMS sent to ${to}, SID: ${twilioMessage.sid}`);
-
-    return { success: true, sid: twilioMessage.sid };
-  } catch (error) {
-    console.error('❌ SMS sending error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
 
 // GET /api/alerts - Fetch all alerts with optional filtering
 export async function GET(request: NextRequest) {
@@ -116,6 +74,9 @@ export async function POST(request: NextRequest) {
       alert_level: body.alert_level || 'medium',
     };
 
+    // Get notification method from request (default to 'app_push' for backward compatibility)
+    const notificationMethod = body.notification_method || 'app_push';
+
     // Insert into database
     const { data: newAlert, error } = await supabase
       .from('alert')
@@ -131,36 +92,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send notifications to users (both SMS and Email)
+    // Send notifications to users based on selected method
     const { data: users } = await supabase
       .from('users')
-      .select('phone_number, email')
-      .eq('role', 'user')
-      .not('phone_number', 'is', null);
+      .select('id, phone_number, email, role')
+      .eq('role', 'user');
     console.log('users', users);
 
-    const smsCount = 0;
+    let smsCount = 0;
     let emailCount = 0;
+    let pushCount = 0;
     const smsErrors: string[] = [];
     const emailErrors: string[] = [];
+    const pushErrors: string[] = [];
 
     if (users && users.length > 0) {
-      console.log(`Sending notifications to ${users.length} users`);
+      console.log(`Sending notifications to ${users.length} users via ${notificationMethod}`);
 
-      // Collect SMS and Email recipients
-      const emailRecipients: string[] = [];
-
-      users.forEach((user) => {
-        if (user.email) {
-          emailRecipients.push(user.email);
-        }
-      });
-
-      // Send notifications (email preferred). For large recipient lists consider queuing.
+      // Send notifications based on selected method
       for (const user of users) {
         const email = user.email;
         const phone = user.phone_number;
-        if (!email && !phone) continue;
+        const userId = user.id;
+
+        if (!email && !phone && !userId) continue;
 
         const title = newAlert?.title ?? 'Emergency Alert';
         const content = newAlert?.content ?? '';
@@ -170,7 +125,55 @@ export async function POST(request: NextRequest) {
         const html = `<!doctype html><html><body><h2>${title}</h2><p>${content}</p><p><a href="${alertUrl}" style="display:inline-block;padding:10px 14px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none">View Alert</a></p><hr/><p style="color:#6b7280;font-size:13px">This is an official notification from AmayAlert.</p></body></html>`;
         const text = `${title}\n\n${content}\n\nView: ${alertUrl}`;
 
-        if (email) {
+        // Send push notification first (most reliable and free)
+        if (userId && (notificationMethod === 'app_push' || notificationMethod === 'both')) {
+          try {
+            const pushResponse = await fetch(
+              `${
+                process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+              }/api/notifications/push`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  message: `${title}\n\n${content}`,
+                  userId: userId,
+                }),
+              },
+            );
+
+            if (pushResponse.ok) {
+              pushCount++;
+              console.log(`✅ Push notification sent to user ${userId}`);
+            } else {
+              const errorData = await pushResponse.json();
+              const errorMessage = errorData.error || errorData.details || 'Unknown error';
+              console.error(`❌ Push notification failed for user ${userId}:`, errorMessage);
+
+              // For service unavailable errors, add more context
+              if (pushResponse.status === 503) {
+                pushErrors.push(`${userId}: Service temporarily unavailable (OneSignal outage)`);
+              } else {
+                pushErrors.push(`${userId}: ${errorMessage}`);
+              }
+            }
+          } catch (err) {
+            console.error('Error sending push notification to', userId, err);
+            pushErrors.push(
+              `${userId}: Network error - ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        }
+
+        // Send email if method includes app notifications
+        if (
+          (notificationMethod === 'app' ||
+            notificationMethod === 'app_push' ||
+            notificationMethod === 'both') &&
+          email
+        ) {
           try {
             await emailService.sendEmail({
               to: email,
@@ -181,44 +184,59 @@ export async function POST(request: NextRequest) {
               replyTo: 'amayalert.site@gmail.com',
             });
             emailCount++;
+            console.log(`✅ Email sent to ${email}`);
           } catch (err) {
             console.error('Error sending email to', email, err);
             emailErrors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
 
-        if (phone) {
+        // Send SMS if method includes SMS notifications (with better error handling)
+        if ((notificationMethod === 'sms' || notificationMethod === 'both') && phone) {
           try {
-            await sendSMS(phone, `Important alert from Amayalert\n\n${title}\n${content}`);
-          } catch {
-            console.error('Error sending SMS to', phone);
+            const smsResult = await smsService.sendSMS({
+              to: phone,
+              message: `🚨 AMAYALERT 🚨\n\n${title}\n\n${content}\n\nStay safe!`,
+            });
+
+            if (smsResult.success) {
+              smsCount++;
+              console.log(`✅ SMS sent to ${phone}`);
+            } else {
+              console.error(`❌ SMS failed for ${phone}:`, smsResult.error);
+              smsErrors.push(`${phone}: ${smsResult.error}`);
+            }
+          } catch (err) {
+            console.error('Error sending SMS to', phone, err);
+            smsErrors.push(`${phone}: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
-        // Note: SMS sending is intentionally disabled here for bulk alerts to avoid long request times.
-        // Enqueue SMS jobs (or use a worker) instead of sending synchronously for large user lists.
       }
     } else {
-      console.log('No users found for SMS notifications');
+      console.log('No users found for notifications');
     }
-
-    // Send Email notifications
 
     // Prepare response with notification summary
     let message = 'Alert created successfully';
     const notifications = {
       sms: { sent: smsCount, errors: smsErrors },
       email: { sent: emailCount, errors: emailErrors },
+      push: { sent: pushCount, errors: pushErrors },
     };
 
-    if (smsCount > 0 || emailCount > 0) {
+    if (smsCount > 0 || emailCount > 0 || pushCount > 0) {
       const notificationSummary = [];
+      if (pushCount > 0) notificationSummary.push(`${pushCount} push`);
       if (smsCount > 0) notificationSummary.push(`${smsCount} SMS`);
       if (emailCount > 0) notificationSummary.push(`${emailCount} email`);
-      message += ` and ${notificationSummary.join(' and ')} notifications sent`;
+      message += ` and ${notificationSummary.join(', ')} notifications sent`;
+
+      // Add notification method info to response
+      message += ` (Method: ${notificationMethod})`;
     }
 
-    if (smsErrors.length > 0 || emailErrors.length > 0) {
-      console.warn('Some notifications failed:', { smsErrors, emailErrors });
+    if (smsErrors.length > 0 || emailErrors.length > 0 || pushErrors.length > 0) {
+      console.warn('Some notifications failed:', { smsErrors, emailErrors, pushErrors });
     }
 
     return NextResponse.json(

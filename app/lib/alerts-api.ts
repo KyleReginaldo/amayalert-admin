@@ -6,6 +6,11 @@ export type Alert = Database['public']['Tables']['alert']['Row'];
 export type AlertInsert = Database['public']['Tables']['alert']['Insert'];
 export type AlertUpdate = Database['public']['Tables']['alert']['Update'];
 
+// Extended type for alert creation with notification preferences
+export interface AlertCreateRequest extends AlertInsert {
+  notification_method?: 'app_push' | 'app' | 'sms' | 'both';
+}
+
 export interface NotificationStatus {
   sent: number;
   errors: string[];
@@ -14,6 +19,7 @@ export interface NotificationStatus {
 export interface NotificationSummary {
   sms: NotificationStatus;
   email: NotificationStatus;
+  push: NotificationStatus;
 }
 
 export interface ApiResponse<T> {
@@ -89,7 +95,7 @@ class AlertsAPI {
   }
 
   // POST /api/alerts - Create a new alert
-  async createAlert(alertData: AlertInsert): Promise<ApiResponse<Alert>> {
+  async createAlert(alertData: AlertCreateRequest): Promise<ApiResponse<Alert>> {
     try {
       const response = await axios.post(
         API_BASE_URL,

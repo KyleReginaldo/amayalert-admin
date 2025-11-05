@@ -8,6 +8,7 @@ import { AlertProvider } from './components/alert-context';
 import Sidebar, { SidebarProvider, useSidebar } from './components/sidebard';
 import './globals.css';
 import { AlertsProvider } from './providers/alerts-provider';
+import { ChatProvider } from './providers/chat-provider';
 import { DataProvider } from './providers/data-provider';
 import { EvacuationProvider } from './providers/evacuation-provider';
 import { RescueProvider } from './providers/rescue-provider';
@@ -115,21 +116,23 @@ export default function RootLayout({
           <AlertsProvider>
             <EvacuationProvider>
               <RescueProvider>
-                <AlertProvider>
-                  <SidebarProvider>
-                    {!shouldHideAdminLayout && <Sidebar />}
-                    <main
-                      className={`${
-                        shouldHideAdminLayout
-                          ? 'min-h-screen w-full'
-                          : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
-                      }`}
-                    >
-                      {!shouldHideAdminLayout && <GlobalMobileHeader />}
-                      {children}
-                    </main>
-                  </SidebarProvider>
-                </AlertProvider>
+                <ChatProvider>
+                  <AlertProvider>
+                    <SidebarProvider>
+                      {!shouldHideAdminLayout && <Sidebar />}
+                      <main
+                        className={`${
+                          shouldHideAdminLayout
+                            ? 'min-h-screen w-full'
+                            : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
+                        }`}
+                      >
+                        {!shouldHideAdminLayout && <GlobalMobileHeader />}
+                        {children}
+                      </main>
+                    </SidebarProvider>
+                  </AlertProvider>
+                </ChatProvider>
               </RescueProvider>
             </EvacuationProvider>
           </AlertsProvider>
