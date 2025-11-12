@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -323,12 +324,7 @@ export default function ChatPage() {
       <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
         <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Chat</h1>
-              <p className="text-gray-600 text-sm">Chat with users in real-time</p>
-            </div>
-          </div>
+          <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
             {/* Left: Users list */}

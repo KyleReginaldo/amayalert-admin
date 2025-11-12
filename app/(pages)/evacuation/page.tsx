@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import SmartMapPicker from '@/app/components/SmartMapPicker';
 import evacuationAPI, {
   EvacuationCenter,
@@ -235,16 +236,16 @@ export default function EvacuationPage() {
         <div className="min-h-screen bg-background p-4 sm:p-6">
           <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Evacuation Centers</h1>
-                <p className="text-gray-600 text-sm">Monitor and manage evacuation facilities</p>
-              </div>
-              <Button onClick={openCreateModal} className="gap-2 w-full md:w-auto">
-                <Plus className="h-4 w-4" />
-                Add Center
-              </Button>
-            </div>
+            <PageHeader
+              title="Evacuation Centers"
+              subtitle="Monitor and manage evacuation facilities"
+              action={
+                <Button onClick={openCreateModal} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Center
+                </Button>
+              }
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">

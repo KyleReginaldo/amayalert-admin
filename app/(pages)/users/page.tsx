@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import UsersLiveMap from '@/app/components/UsersLiveMap';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
@@ -389,16 +390,16 @@ export default function UsersPage() {
       <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-              <p className="text-gray-600 text-sm">Manage user accounts, roles, and permissions</p>
-            </div>
-            <Button onClick={openCreateModal} className="gap-2 w-full md:w-auto">
-              <Plus className="h-4 w-4" />
-              Add User
-            </Button>
-          </div>
+          <PageHeader
+            title="User Management"
+            subtitle="Manage user accounts, roles, and permissions"
+            action={
+              <Button onClick={openCreateModal} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add User
+              </Button>
+            }
+          />
 
           {/* Minimal Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

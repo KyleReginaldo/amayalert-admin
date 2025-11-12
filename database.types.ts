@@ -276,8 +276,48 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          created_at: string
+          id: number
+          post: number
+          reason: string
+          reported_by: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          post: number
+          reason: string
+          reported_by: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          post?: number
+          reason?: string
+          reported_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_post_fkey"
+            columns: ["post"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rescues: {
         Row: {
+          address: string | null
           attachments: string[] | null
           completed_at: string | null
           contact_phone: string | null
@@ -301,6 +341,7 @@ export type Database = {
           user: string | null
         }
         Insert: {
+          address?: string | null
           attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null
@@ -324,6 +365,7 @@ export type Database = {
           user?: string | null
         }
         Update: {
+          address?: string | null
           attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null

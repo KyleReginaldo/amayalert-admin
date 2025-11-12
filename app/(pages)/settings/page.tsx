@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import TopRightDialog from '@/app/components/top-right-dialog';
 import usersAPI from '@/app/lib/users-api';
 import { Button } from '@/components/ui/button';
@@ -141,10 +142,7 @@ export default function SettingsPage() {
     <AuthWrapper>
       <div className="min-h-screen bg-background p-4 sm:p-6">
         <div className="mx-auto max-w-3xl space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-            <p className="text-sm text-gray-600 mt-1">Manage your account info and security.</p>
-          </div>
+          <PageHeader title="Settings" subtitle="Manage your account info and security" />
 
           {/* Alerts */}
           <TopRightDialog

@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/app/components/page-header';
 import { useAlerts } from '@/app/providers/alerts-provider';
 import { useData } from '@/app/providers/data-provider';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
@@ -248,27 +249,25 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 text-sm">
-              Overview of alerts, users, and evacuation centers
-            </p>
-          </div>
-          <Button
-            onClick={handleExport}
-            disabled={isExporting}
-            variant="outline"
-            className="w-full md:w-auto gap-2 border-gray-300"
-          >
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Export Report
-          </Button>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          subtitle="Overview of alerts, users, and evacuation centers"
+          action={
+            <Button
+              onClick={handleExport}
+              disabled={isExporting}
+              variant="outline"
+              className="gap-2 border-gray-300"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export Report
+            </Button>
+          }
+        />
 
         {/* Minimal Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

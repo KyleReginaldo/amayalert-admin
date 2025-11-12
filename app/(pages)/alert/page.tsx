@@ -3,6 +3,7 @@
 import type React from 'react';
 
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import alertsAPI, { Alert, AlertCreateRequest, AlertUpdate } from '@/app/lib/alerts-api';
 import { useAlerts } from '@/app/providers/alerts-provider';
 import { Badge } from '@/components/ui/badge';
@@ -44,9 +45,13 @@ import {
   AlertCircle,
   AlertTriangle,
   Bell,
+  Building,
   ChevronLeft,
   ChevronRight,
+  ChevronsDown,
+  ChevronsUp,
   Clock,
+  CloudAlert,
   Edit,
   Eye,
   Info,
@@ -58,6 +63,7 @@ import {
   Save,
   Search,
   Trash2,
+  UsersRound,
   Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -276,14 +282,7 @@ export default function AlertPage() {
     <AuthWrapper>
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
-          <div className="mb-8 space-y-1">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-              Alert Management
-            </h1>
-            <p className="text-base text-muted-foreground">
-              Monitor and manage emergency alerts with real-time insights
-            </p>
-          </div>
+          <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4 mb-8">
             {[
@@ -293,6 +292,7 @@ export default function AlertPage() {
                 value: stats.total,
                 color:
                   'from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-700 dark:text-slate-200',
+                icon: Building,
               },
               {
                 key: 'low',
@@ -300,6 +300,7 @@ export default function AlertPage() {
                 value: stats.low,
                 color:
                   'from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 text-blue-700 dark:text-blue-200',
+                icon: ChevronsDown,
               },
               {
                 key: 'medium',
@@ -307,6 +308,7 @@ export default function AlertPage() {
                 value: stats.medium,
                 color:
                   'from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 text-amber-700 dark:text-amber-200',
+                icon: UsersRound,
               },
               {
                 key: 'high',
@@ -314,6 +316,7 @@ export default function AlertPage() {
                 value: stats.high,
                 color:
                   'from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 text-orange-700 dark:text-orange-200',
+                icon: ChevronsUp,
               },
               {
                 key: 'critical',
@@ -321,13 +324,14 @@ export default function AlertPage() {
                 value: stats.critical,
                 color:
                   'from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 text-red-700 dark:text-red-200',
+                icon: CloudAlert,
               },
             ].map((stat) => (
               <div
                 key={stat.key}
                 className={`bg-gradient-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
               >
-                <div className="text-2xl md:text-3xl font-bold mb-1">{stat.value}</div>
+                <div className="text-xl md:text-2xl font-bold mb-1">{stat.value}</div>
                 <div className="text-xs md:text-sm font-medium opacity-80">{stat.label}</div>
               </div>
             ))}

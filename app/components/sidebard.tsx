@@ -3,6 +3,7 @@
 import { useChat } from '@/app/providers/chat-provider';
 import { Badge } from '@/components/ui/badge';
 import {
+  Flag,
   LayoutDashboard,
   LifeBuoy,
   MapPinHouse,
@@ -104,6 +105,12 @@ const Sidebar = () => {
       icon: Users,
       label: 'User Management',
       isActive: pathname === '/users',
+    },
+    {
+      href: '/reports',
+      icon: Flag,
+      label: 'Reports',
+      isActive: pathname === '/reports',
     },
     {
       href: '/chat',

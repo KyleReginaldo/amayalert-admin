@@ -1,6 +1,7 @@
 'use client';
 
 import AuthWrapper from '@/app/components/auth-wrapper';
+import { PageHeader } from '@/app/components/page-header';
 import rescueAPI, { Rescue, RescueStatus, RescueUpdate } from '@/app/lib/rescue-api';
 import { useRescue } from '@/app/providers/rescue-provider';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
@@ -41,31 +41,32 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
   Calendar,
-  Car,
   CheckCircle,
+  ClipboardList,
   Clock,
-  Dog,
   Edit,
   Eye,
-  Flame,
-  HelpCircle,
+  FileText,
+  Flag,
+  Info,
   LifeBuoy,
   Loader2,
   MapPin,
-  Mars,
+  Pencil,
+  Phone,
   Play,
-  Save,
   Search,
   Shield,
-  Stethoscope,
   Trash2,
-  UserCheck,
-  Venus,
-  Waves,
+  Users,
   X,
-  Zap,
 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 // Helper type for rescue metadata
@@ -202,8 +203,6 @@ export default function RescuePage() {
       email: '',
       important_information: '',
     });
-    const [sendSms, setSendSms] = useState(false);
-    const [smsMessage, setSmsMessage] = useState('');
 
     useEffect(() => {
       if (rescue) {
@@ -247,155 +246,139 @@ export default function RescuePage() {
           lastUpdatedAt: new Date().toISOString(),
         },
       };
-      onSave(
-        submitData,
-        sendSms ? { sendSMS: true, smsMessage: smsMessage || undefined } : undefined,
-      );
+      onSave(submitData);
     };
 
     if (!isOpen) return null;
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Rescue Operation Details</DialogTitle>
-            <DialogDescription>
-              Review and manage this rescue request from a citizen.
+        <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto rounded-2xl shadow-lg border border-gray-200 bg-white/90 backdrop-blur">
+          <DialogHeader className="pb-2 border-b border-gray-100">
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Rescue Operation Details
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Review and manage this emergency rescue request submitted by a citizen.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Read-only rescue details from user */}
-          <Card className="p-4 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-base text-foreground truncate">{rescue.title}</h3>
-                <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="font-mono">#{rescue.id}</span>
-                  <span>•</span>
-                  <span>{new Date(rescue.created_at).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 justify-end">
-                <Badge
-                  className={`text-[11px] px-2.5 py-0.5 ${getStatusBadge(rescue.status).class}`}
-                >
-                  {getStatusBadge(rescue.status).label}
-                </Badge>
-                <Badge
-                  className={`text-[11px] px-2.5 py-0.5 ${getPriorityBadge(rescue.priority).class}`}
-                >
-                  {getPriorityBadge(rescue.priority).label}
-                </Badge>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-base text-gray-900 truncate">{rescue.title}</h3>
+              <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                <span className="font-mono text-[11px] bg-gray-100 px-1.5 py-0.5 rounded">
+                  #{rescue.id}
+                </span>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <Badge
+                className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${
+                  getStatusBadge(rescue.status).class
+                }`}
+              >
+                {getStatusBadge(rescue.status).label}
+              </Badge>
+              <Badge
+                className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${
+                  getPriorityBadge(rescue.priority).class
+                }`}
+              >
+                {getPriorityBadge(rescue.priority).label}
+              </Badge>
+            </div>
+          </div>
 
-            {rescue.description && (
-              <div>
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Description
-                </div>
-                <p className="mt-1 text-sm text-foreground/90 leading-relaxed">
-                  {rescue.description}
-                </p>
+          {rescue.description && (
+            <div className="mt-3">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Description
               </div>
-            )}
+              <p className="mt-1 text-sm text-gray-700 leading-relaxed">{rescue.description}</p>
+            </div>
+          )}
 
-            {/* Emergency details (new schema fields) */}
-            {(rescue.emergency_type ||
-              rescue.female_count ||
-              rescue.male_count ||
-              rescue.contact_phone ||
-              rescue.important_information) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {rescue.emergency_type && (
-                  <div>
-                    <strong className="text-gray-700">Emergency Type:</strong>
-                    <div className="mt-1 text-gray-600">{rescue.emergency_type}</div>
-                  </div>
-                )}
-                {((rescue.female_count && rescue.female_count > 0) ||
-                  (rescue.male_count && rescue.male_count > 0)) && (
-                  <div>
-                    <strong className="text-gray-700">People Involved:</strong>
-                    <div className="mt-1 text-gray-600">
-                      {(rescue.female_count || 0) + (rescue.male_count || 0)}(
-                      {rescue.female_count || 0} Female, {rescue.male_count || 0} Male)
-                    </div>
-                  </div>
-                )}
-                {rescue.contact_phone && (
-                  <div>
-                    <strong className="text-gray-700">Contact Phone:</strong>
-                    <div className="mt-1 text-gray-600">{rescue.contact_phone}</div>
-                  </div>
-                )}
-                {rescue.email && (
-                  <div>
-                    <strong className="text-gray-700">Contact Email:</strong>
-                    <div className="mt-1 text-gray-600">{rescue.email}</div>
-                  </div>
-                )}
-                {rescue.important_information && (
-                  <div className="md:col-span-2">
-                    <strong className="text-gray-700">Important Information:</strong>
-                    <p className="mt-1 text-gray-600 whitespace-pre-wrap">
-                      {rescue.important_information}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {rescue.lat && rescue.lng && (
+          {/* Emergency details */}
+          {(rescue.emergency_type ||
+            rescue.female_count ||
+            rescue.male_count ||
+            rescue.contact_phone ||
+            rescue.important_information) && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {rescue.emergency_type && (
                 <div>
-                  <strong className="text-gray-700">Location:</strong>
-                  <div className="flex items-center gap-1 mt-1">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">
-                      {rescue.lat.toFixed(4)}, {rescue.lng.toFixed(4)}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        window.open(
-                          `https://maps.google.com/?q=${rescue.lat},${rescue.lng}`,
-                          '_blank',
-                        )
-                      }
-                      className="ml-2 h-6 text-xs"
-                    >
-                      View Map
-                    </Button>
+                  <div className="font-medium text-gray-700">Emergency Type</div>
+                  <div className="mt-1 text-gray-600">{rescue.emergency_type}</div>
+                </div>
+              )}
+              {(rescue.female_count || rescue.male_count) && (
+                <div>
+                  <div className="font-medium text-gray-700">People Involved</div>
+                  <div className="mt-1 text-gray-600">
+                    {(rescue.female_count || 0) + (rescue.male_count || 0)} total (
+                    {rescue.female_count || 0}F / {rescue.male_count || 0}M)
                   </div>
                 </div>
               )}
-
-              {rescue.user && (
+              {rescue.contact_phone && (
                 <div>
-                  <strong className="text-gray-700">Reported by:</strong>
-                  <div className="flex items-center gap-1 mt-1">
-                    <UserCheck className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">
-                      {typeof rescue.user === 'object'
-                        ? rescue.user.full_name || rescue.user.email || 'Unknown User'
-                        : rescue.user}
-                    </span>
-                  </div>
+                  <div className="font-medium text-gray-700">Contact Phone</div>
+                  <div className="mt-1 text-gray-600">{rescue.contact_phone}</div>
+                </div>
+              )}
+              {rescue.email && (
+                <div>
+                  <div className="font-medium text-gray-700">Contact Email</div>
+                  <div className="mt-1 text-gray-600">{rescue.email}</div>
+                </div>
+              )}
+              {rescue.important_information && (
+                <div className="md:col-span-2">
+                  <div className="font-medium text-gray-700">Important Info</div>
+
+                  <p> {rescue.important_information}</p>
                 </div>
               )}
             </div>
-          </Card>
+          )}
 
-          <Separator className="my-4" />
-
-          {/* Admin controls */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Location & reporter */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {rescue.lat && rescue.lng && (
               <div>
-                <Label htmlFor="status">
+                <div className="font-medium text-gray-700 flex flex-row items-center gap-1">
+                  Location{' '}
+                  <Link
+                    href={`https://maps.google.com/?q=${rescue.lat},${rescue.lng}`}
+                    target="_blank"
+                  >
+                    <ArrowUpRight className="h-4 w-4 hover:text-blue-600 cursor-pointer" />
+                  </Link>
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+                  {rescue.address}
+                </div>
+              </div>
+            )}
+            {rescue.user && (
+              <div>
+                <div className="font-medium text-gray-700">Reported by</div>
+                <div className="flex items-center gap-2 mt-1 text-gray-600">
+                  {typeof rescue.user === 'object'
+                    ? rescue.user.full_name || rescue.user.email || 'Unknown'
+                    : rescue.user}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ADMIN CONTROLS */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Status */}
+              <div>
+                <Label htmlFor="status" className="font-medium text-gray-700">
                   Update Status <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -405,10 +388,10 @@ export default function RescuePage() {
                   }
                   disabled={loading}
                 >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
+                  <SelectTrigger className="mt-2 rounded-md border-gray-300">
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent className="z-[10000]">
+                  <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
@@ -416,9 +399,34 @@ export default function RescuePage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
-                <Label htmlFor="scheduled_for">Schedule Operation</Label>
+                <Label htmlFor="priority" className="font-medium text-gray-700">
+                  Priority Level
+                </Label>
+                <Select
+                  value={String(formData.priority)}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, priority: Number(value) }))
+                  }
+                  disabled={loading}
+                >
+                  <SelectTrigger className="mt-2 border-gray-300">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Critical</SelectItem>
+                    <SelectItem value="2">High</SelectItem>
+                    <SelectItem value="3">Medium</SelectItem>
+                    <SelectItem value="4">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Schedule */}
+              <div>
+                <Label htmlFor="scheduled_for" className="font-medium text-gray-700">
+                  Schedule Operation
+                </Label>
                 <Input
                   id="scheduled_for"
                   type="date"
@@ -427,188 +435,45 @@ export default function RescuePage() {
                     setFormData((prev) => ({ ...prev, scheduled_for: e.target.value }))
                   }
                   disabled={loading}
-                  className="mt-2"
+                  className="mt-2 border-gray-300"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Optional. Set a target date for field teams.
+                  Optional — set a target date for field teams.
                 </p>
               </div>
             </div>
 
-            {/* Emergency Type - Display Only */}
-            <div>
-              <Label>Emergency Type</Label>
-              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <div className="flex items-center gap-2">
-                  {formData.emergency_type === 'Medical' && (
-                    <Stethoscope className="h-5 w-5 text-red-600" />
-                  )}
-                  {formData.emergency_type === 'Fire' && (
-                    <Flame className="h-5 w-5 text-orange-600" />
-                  )}
-                  {formData.emergency_type === 'Flood' && (
-                    <Waves className="h-5 w-5 text-blue-600" />
-                  )}
-                  {formData.emergency_type === 'Earthquake' && (
-                    <Zap className="h-5 w-5 text-yellow-600" />
-                  )}
-                  {formData.emergency_type === 'Accident' && (
-                    <Car className="h-5 w-5 text-purple-600" />
-                  )}
-                  {formData.emergency_type === 'Search' && (
-                    <Search className="h-5 w-5 text-green-600" />
-                  )}
-                  {formData.emergency_type === 'Animal' && (
-                    <Dog className="h-5 w-5 text-indigo-600" />
-                  )}
-                  {formData.emergency_type === 'Other' && (
-                    <HelpCircle className="h-5 w-5 text-gray-600" />
-                  )}
-                  <span className="font-medium">{formData.emergency_type || 'Not specified'}</span>
-                </div>
-              </div>
-            </div>
+            {/* Priority */}
 
-            {/* Priority - Admin Editable */}
+            {/* Notes */}
             <div>
-              <Label htmlFor="priority">Priority Level</Label>
-              <Select
-                value={String(formData.priority)}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, priority: Number(value) }))
-                }
-                disabled={loading}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[10000]">
-                  <SelectItem value="1">Critical</SelectItem>
-                  <SelectItem value="2">High</SelectItem>
-                  <SelectItem value="3">Medium</SelectItem>
-                  <SelectItem value="4">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* People Count - Display Only */}
-            <div>
-              <Label>Number of People Involved</Label>
-              <div className="mt-2 grid grid-cols-2 gap-4">
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <Venus className="h-4 w-4 text-pink-600" />
-                    <span className="text-sm font-medium">Female:</span>
-                    <span className="font-semibold">{formData.female_count || 0}</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <Mars className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Male:</span>
-                    <span className="font-semibold">{formData.male_count || 0}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information - Display Only */}
-            <div>
-              <Label>Contact Information</Label>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {formData.contact_phone || 'Not provided'}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{formData.email || 'Not provided'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Information - Display Only */}
-            <div>
-              <Label>User-provided details</Label>
-              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <p className="text-sm whitespace-pre-wrap">
-                  {formData.important_information || 'No additional details provided'}
-                </p>
-              </div>
-            </div>
-
-            {/* SMS notification toggle */}
-            <div className="rounded-md border p-3 space-y-2">
-              <div className="flex items-start gap-3">
-                <input
-                  id="send_sms"
-                  type="checkbox"
-                  className="mt-1"
-                  checked={sendSms}
-                  onChange={(e) => setSendSms(e.target.checked)}
-                  disabled={loading}
-                />
-                <div className="flex-1">
-                  <Label htmlFor="send_sms">Send sms notification to contact</Label>
-                  <div className="text-xs text-gray-500 mt-1">
-                    A short update text will be sent to the contact_phone. You can customize it
-                    below. If left blank, a default message will be generated.
-                  </div>
-                  {!formData.contact_phone && (
-                    <div className="text-xs text-orange-600 mt-1">
-                      Tip: Add a contact phone to send SMS.
-                    </div>
-                  )}
-                </div>
-              </div>
-              {sendSms && (
-                <div>
-                  <Label htmlFor="sms_message">SMS Message (optional)</Label>
-                  <Textarea
-                    id="sms_message"
-                    placeholder='e.g., Rescue update: "{title}" is now in progress.'
-                    value={smsMessage}
-                    onChange={(e) => setSmsMessage(e.target.value)}
-                    disabled={loading}
-                    className="mt-2"
-                    rows={2}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Admin Notes</Label>
+              <Label htmlFor="notes" className="font-medium text-gray-700">
+                Admin Notes
+              </Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
-                placeholder="Add internal notes about this rescue operation, team assignments, equipment needed, progress updates, etc..."
+                placeholder="Add internal notes or progress updates..."
                 onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                 disabled={loading}
-                className="mt-2"
+                className="mt-2 border-gray-300"
                 rows={4}
               />
             </div>
 
-            <DialogFooter>
+            {/* Actions */}
+            <DialogFooter className="pt-3 border-t border-gray-100">
               <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
                 Close
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Updating...
                   </>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Update Rescue
-                  </>
+                  <>Update</>
                 )}
               </Button>
             </DialogFooter>
@@ -899,17 +764,10 @@ export default function RescuePage() {
       {/* Desktop Layout */}
       <div className="hidden md:block min-h-screen bg-background p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Rescue Requests</h1>
-              <p className="text-gray-600 text-sm">
-                Monitor and manage emergency rescue requests from citizens
-              </p>
-            </div>
-            <Badge variant="outline" className="w-fit">
-              Admin Dashboard
-            </Badge>
-          </div>
+          <PageHeader
+            title="Rescue Requests"
+            subtitle="Monitor and manage emergency rescue requests from citizens"
+          />
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1030,7 +888,7 @@ export default function RescuePage() {
                       </TableCell>
                       <TableCell>
                         {(() => {
-                          const dot = {
+                          const colors = {
                             pending: 'bg-yellow-500',
                             in_progress: 'bg-blue-500',
                             completed: 'bg-green-500',
@@ -1038,9 +896,15 @@ export default function RescuePage() {
                           } as const;
                           const label = getStatusBadge(rescue.status).label;
                           return (
-                            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
-                              <span className={`h-2.5 w-2.5 rounded-full ${dot[rescue.status]}`} />
-                              <span className="capitalize">{label}</span>
+                            <div
+                              className={
+                                'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm' +
+                                ` ${colors[rescue.status]} bg-opacity-10 text-${
+                                  colors[rescue.status].split('-')[1]
+                                }-700`
+                              }
+                            >
+                              <span className={'capitalize text-white'}>{label}</span>
                             </div>
                           );
                         })()}
@@ -1071,10 +935,10 @@ export default function RescuePage() {
                                 '_blank',
                               )
                             }
-                            className="h-8 p-2 text-blue-600 hover:text-blue-800"
+                            className="h-8 p-2 text-gray-600 hover:text-gray-800"
                           >
-                            <MapPin className="h-3 w-3 mr-1" />
-                            View
+                            <Image src="/google-maps.png" alt="Google Map" width={16} height={16} />
+                            View Google Map
                           </Button>
                         ) : (
                           <span className="text-sm text-gray-400">No location</span>
@@ -1083,25 +947,25 @@ export default function RescuePage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button
-                            variant="ghost"
+                            variant="link"
                             size="sm"
                             onClick={() => openRescueModal(rescue)}
-                            className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                            className="h-8 w-8 text-gray-900 hover:text-blue-600"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="link"
                             size="sm"
                             onClick={() => openRescueSheet(rescue)}
-                            className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                            className="h-8 w-8 text-gray-900 hover:text-green-600"
                             aria-label="View details"
                             title="View details"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="link"
                             size="sm"
                             onClick={() => handleDelete(rescue.id)}
                             className="h-8 w-8 text-gray-600 hover:text-red-600"
@@ -1180,16 +1044,26 @@ export default function RescuePage() {
         <SheetContent className="sm:max-w-xl">
           {selectedRescue && (
             <div className="flex h-full flex-col">
+              {/* Header */}
               <SheetHeader>
-                <SheetTitle>Rescue Details</SheetTitle>
-                <SheetDescription>Quick read-only overview of the rescue request.</SheetDescription>
+                <SheetTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <LifeBuoy className="h-5 w-5 text-primary" />
+                  Rescue Details
+                </SheetTitle>
+                <SheetDescription className="text-gray-600">
+                  Quick read-only overview of the rescue request.
+                </SheetDescription>
               </SheetHeader>
 
-              <div className="flex-1 overflow-auto space-y-4">
+              {/* Body */}
+              <div className="flex-1 overflow-auto mt-5 space-y-5">
+                {/* Title, badges, ID */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{selectedRescue.title}</h3>
-                    <div className="mt-2 flex gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                      {selectedRescue.title}
+                    </h3>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <Badge className={getStatusBadge(selectedRescue.status).class}>
                         {getStatusBadge(selectedRescue.status).label}
                       </Badge>
@@ -1204,98 +1078,107 @@ export default function RescuePage() {
                   </div>
                 </div>
 
+                {/* Description */}
                 {selectedRescue.description && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">Description</div>
-                    <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <div className="flex items-center gap-2 mb-1 text-sm font-medium text-gray-800">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      Description
+                    </div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {selectedRescue.description}
                     </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedRescue.lat && selectedRescue.lng ? (
-                    <div>
-                      <div className="text-sm font-medium text-gray-700">Location</div>
+                {/* Info Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Location */}
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      Location
+                    </div>
+                    {selectedRescue.lat && selectedRescue.lng ? (
                       <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 text-gray-500" />
                         {selectedRescue.lat.toFixed(4)}, {selectedRescue.lng.toFixed(4)}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            window.open(
-                              `https://maps.google.com/?q=${selectedRescue.lat},${selectedRescue.lng}`,
-                              '_blank',
-                            )
-                          }
-                          className="ml-2 h-7 text-xs"
+                        <Link
+                          href={`https://maps.google.com/?q=${selectedRescue.lat},${selectedRescue.lng}`}
+                          className="text-blue-600 hover:underline"
                         >
                           View Map
-                        </Button>
+                        </Link>
                       </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="text-sm font-medium text-gray-700">Location</div>
+                    ) : (
                       <div className="mt-1 text-sm text-gray-500">No location available</div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <div>
-                    <div className="text-sm font-medium text-gray-700">Status</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                      <Activity className="h-4 w-4 text-gray-500" />
+                      Status
+                    </div>
                     <div className="mt-1 text-sm text-gray-600 capitalize">
                       {selectedRescue.status.replace('_', ' ')}
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-sm font-medium text-gray-700">Priority</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                      <Flag className="h-4 w-4 text-gray-500" />
+                      Priority
+                    </div>
                     <div className="mt-1 text-sm text-gray-600">
                       {getPriorityBadge(selectedRescue.priority).label}
                     </div>
                   </div>
 
-                  {/* New schema fields in details sheet */}
                   {selectedRescue.emergency_type && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700">Emergency Type</div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <AlertTriangle className="h-4 w-4 text-gray-500" />
+                        Emergency Type
+                      </div>
                       <div className="mt-1 text-sm text-gray-600">
                         {selectedRescue.emergency_type}
                       </div>
                     </div>
                   )}
+
                   {((selectedRescue.female_count && selectedRescue.female_count > 0) ||
                     (selectedRescue.male_count && selectedRescue.male_count > 0)) && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700">People Involved</div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <Users className="h-4 w-4 text-gray-500" />
+                        People Involved
+                      </div>
                       <div className="mt-1 text-sm text-gray-600">
-                        {(selectedRescue.female_count || 0) + (selectedRescue.male_count || 0)}(
+                        {(selectedRescue.female_count || 0) + (selectedRescue.male_count || 0)} (
                         {selectedRescue.female_count || 0} Female, {selectedRescue.male_count || 0}{' '}
                         Male)
                       </div>
                     </div>
                   )}
+
                   {selectedRescue.contact_phone && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700">Contact Phone</div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        Contact Phone
+                      </div>
                       <div className="mt-1 text-sm text-gray-600">
                         {selectedRescue.contact_phone}
-                      </div>
-                    </div>
-                  )}
-                  {selectedRescue.important_information && (
-                    <div className="sm:col-span-2">
-                      <div className="text-sm font-medium text-gray-700">Important Information</div>
-                      <div className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">
-                        {selectedRescue.important_information}
                       </div>
                     </div>
                   )}
 
                   {selectedRescue.scheduled_for && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700">Scheduled For</div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        Scheduled For
+                      </div>
                       <div className="mt-1 text-sm text-gray-600">
                         {new Date(selectedRescue.scheduled_for).toLocaleDateString()}
                       </div>
@@ -1303,10 +1186,26 @@ export default function RescuePage() {
                   )}
                 </div>
 
-                {/* Metadata - formatted */}
+                {/* Important Information */}
+                {selectedRescue.important_information && (
+                  <div className="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                    <div className="flex items-center gap-2 mb-1 text-sm font-medium text-amber-800">
+                      <Info className="h-4 w-4 text-amber-600" />
+                      Important Information
+                    </div>
+                    <div className="text-sm text-amber-700 whitespace-pre-wrap">
+                      {selectedRescue.important_information}
+                    </div>
+                  </div>
+                )}
+
+                {/* Metadata */}
                 {selectedRescue.metadata && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">Additional Info</div>
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <div className="flex items-center gap-2 mb-1 text-sm font-medium text-gray-800">
+                      <ClipboardList className="h-4 w-4 text-gray-500" />
+                      Additional Info
+                    </div>
                     {(() => {
                       const meta =
                         (selectedRescue.metadata as unknown as Partial<{
@@ -1326,58 +1225,59 @@ export default function RescuePage() {
                       const lastUpdatedAt = meta.lastUpdatedAt
                         ? new Date(meta.lastUpdatedAt).toLocaleString()
                         : undefined;
+
                       return (
-                        <div className="mt-2 space-y-2 text-sm text-gray-700">
+                        <div className="space-y-1 text-sm text-gray-700">
                           {meta.reportedVia && (
                             <div>
-                              <span className="font-medium">Reported via: </span>
+                              <span className="font-medium">Reported via:</span>{' '}
                               <span className="text-gray-600">{meta.reportedVia}</span>
                             </div>
                           )}
                           {meta.contactNumber && (
                             <div>
-                              <span className="font-medium">Contact number: </span>
+                              <span className="font-medium">Contact number:</span>{' '}
                               <span className="text-gray-600">{meta.contactNumber}</span>
                             </div>
                           )}
                           {meta.teamAssigned && (
                             <div>
-                              <span className="font-medium">Team assigned: </span>
+                              <span className="font-medium">Team assigned:</span>{' '}
                               <span className="text-gray-600">{meta.teamAssigned}</span>
                             </div>
                           )}
                           {equipment && (
                             <div>
-                              <span className="font-medium">Equipment: </span>
+                              <span className="font-medium">Equipment:</span>{' '}
                               <span className="text-gray-600">{equipment}</span>
                             </div>
                           )}
                           {meta.outcome && (
                             <div>
-                              <span className="font-medium">Outcome: </span>
+                              <span className="font-medium">Outcome:</span>{' '}
                               <span className="text-gray-600">{meta.outcome}</span>
                             </div>
                           )}
                           {meta.evacuatedTo && (
                             <div>
-                              <span className="font-medium">Evacuated to: </span>
+                              <span className="font-medium">Evacuated to:</span>{' '}
                               <span className="text-gray-600">{meta.evacuatedTo}</span>
                             </div>
                           )}
                           {(meta.lastUpdatedBy || lastUpdatedAt) && (
                             <div>
-                              <span className="font-medium">Last updated: </span>
+                              <span className="font-medium">Last updated:</span>{' '}
                               <span className="text-gray-600">
-                                {meta.lastUpdatedBy ? `${meta.lastUpdatedBy}` : ''}
+                                {meta.lastUpdatedBy}
                                 {meta.lastUpdatedBy && lastUpdatedAt ? ' • ' : ''}
-                                {lastUpdatedAt ? lastUpdatedAt : ''}
+                                {lastUpdatedAt}
                               </span>
                             </div>
                           )}
                           {meta.notes && (
-                            <div>
-                              <div className="font-medium">Notes</div>
-                              <div className="mt-1 whitespace-pre-wrap rounded border bg-gray-50 p-3 text-gray-700">
+                            <div className="mt-2">
+                              <div className="font-medium text-gray-800 mb-1">Notes</div>
+                              <div className="whitespace-pre-wrap rounded border border-gray-200 bg-white p-3 text-gray-700 shadow-sm">
                                 {meta.notes}
                               </div>
                             </div>
@@ -1389,9 +1289,10 @@ export default function RescuePage() {
                 )}
               </div>
 
-              <div className="mt-4 flex justify-end gap-2">
+              {/* Footer */}
+              <div className="mt-6 flex justify-end gap-2 border-t border-gray-100 pt-4">
                 <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
-                  Close
+                  <X className="h-4 w-4 mr-1" /> Close
                 </Button>
                 <Button
                   onClick={() => {
@@ -1399,7 +1300,7 @@ export default function RescuePage() {
                     if (selectedRescue) openRescueModal(selectedRescue);
                   }}
                 >
-                  Edit
+                  <Pencil className="h-4 w-4 mr-1" /> Edit
                 </Button>
               </div>
             </div>
