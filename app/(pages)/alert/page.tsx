@@ -42,7 +42,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Select as HeroSelect, SelectItem as HeroSelectItem } from '@heroui/react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -127,6 +126,15 @@ export default function AlertPage() {
     } catch {
       // ignore storage issues
     }
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll('.pac-container').forEach((el) => {
+        (el as HTMLElement).style.zIndex = '99999';
+      });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -982,23 +990,26 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             <Label htmlFor="alert_level" className="text-sm font-semibold">
               Alert Level
             </Label>
-            <HeroSelect
-              aria-label="Alert Level"
-              labelPlacement="outside"
-              className="max-w-xs mt-2"
-              selectedKeys={[formData.alert_level]}
-              isDisabled={loading}
-              onSelectionChange={(keys: Set<React.Key> | 'all') => {
-                if (keys === 'all') return; // not expected in single-select, but guard anyway
-                const value = Array.from(keys)[0] as 'low' | 'medium' | 'high' | 'critical';
-                setFormData((prev) => ({ ...prev, alert_level: value }));
-              }}
+            <Select
+              value={formData.alert_level}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  alert_level: value as 'low' | 'medium' | 'high' | 'critical',
+                }))
+              }
+              disabled={loading}
             >
-              <HeroSelectItem key="low">Low Priority</HeroSelectItem>
-              <HeroSelectItem key="medium">Medium Priority</HeroSelectItem>
-              <HeroSelectItem key="high">High Priority</HeroSelectItem>
-              <HeroSelectItem key="critical">Critical Priority</HeroSelectItem>
-            </HeroSelect>
+              <SelectTrigger className="mt-2 w-[180px] bg-background">
+                <SelectValue placeholder="Select level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low Priority</SelectItem>
+                <SelectItem value="medium">Medium Priority</SelectItem>
+                <SelectItem value="high">High Priority</SelectItem>
+                <SelectItem value="critical">Critical Priority</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

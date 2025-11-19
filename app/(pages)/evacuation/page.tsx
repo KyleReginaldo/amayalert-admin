@@ -642,7 +642,26 @@ function EvacuationModal({
     >
       <DialogContent
         className="w-[98vw] max-w-[1400px] mx-auto max-h-[90vh] overflow-y-auto"
-        onPointerDownOutside={(e) => loading && e.preventDefault()}
+        onPointerDownOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target && target.closest('.pac-container')) {
+            e.preventDefault();
+            return;
+          }
+          if (loading) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onFocusOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
         onEscapeKeyDown={(e) => loading && e.preventDefault()}
       >
         <DialogHeader>
@@ -827,7 +846,8 @@ function EvacuationModal({
 
           <div>
             <Label>Location *</Label>
-            <div className="mt-2 overflow-hidden">
+            {/* Removed overflow-hidden so Google autocomplete suggestions are clickable */}
+            <div className="mt-2">
               <SmartMapPicker
                 onLocationSelect={handleLocationSelect}
                 initialLocation={

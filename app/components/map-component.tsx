@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 //Map component Component from library
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Autocomplete, GoogleMap, Marker } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 import { MapPin, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -56,9 +56,11 @@ const MapComponent = ({
     initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : defaultMapCenter,
   );
   const [searchValue, setSearchValue] = useState(initialLocation?.address || '');
+  const [geoError, setGeoError] = useState<string | null>(null);
   // Removed hasUserSelected (unused)
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
 
@@ -72,6 +74,7 @@ const MapComponent = ({
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        setGeoError(null);
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
 
@@ -119,7 +122,7 @@ const MapComponent = ({
       },
       (error) => {
         console.error('Error getting current location:', error);
-        // Optionally show a user-friendly message here
+        setGeoError('Failed to get current location. Please allow location access or try again.');
       },
       {
         enableHighAccuracy: true,
@@ -136,52 +139,70 @@ const MapComponent = ({
   }, []);
 
   // Handle place selection from autocomplete
-  const onPlaceSelected = useCallback(() => {
-    try {
-      if (!autocompleteRef.current) {
-        console.warn('Autocomplete reference not available');
-        return;
-      }
-
-      const place = autocompleteRef.current.getPlace();
-
-      // Ensure we have a valid place object
-      if (!place) {
-        console.warn('No place data received from autocomplete');
-        return;
-      }
-
-      // Ensure we have geometry data
-      if (!place.geometry?.location) {
-        console.warn('No geometry found for selected place:', place);
-        return;
-      }
-
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
-      const address = place.formatted_address || place.name || '';
-
-      const newLocation = { lat, lng };
-      setSelectedLocation(newLocation);
-      setMapCenter(newLocation);
-      setSearchValue(address);
-
-      // Zoom the map to the selected place
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.panTo(newLocation);
-        mapInstanceRef.current.setZoom(16);
-      }
-
-      if (onLocationSelect) {
-        onLocationSelect({ lat, lng, address });
-      }
-
-      // Log successful selection for debugging
-      console.log('Place selected successfully:', { lat, lng, address });
-    } catch (error) {
-      console.error('Error in onPlaceSelected:', error);
+  const selectPlace = useCallback(() => {
+    if (!autocompleteRef.current) return;
+    const place = autocompleteRef.current.getPlace();
+    if (!place || !place.geometry?.location) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    const address = place.formatted_address || place.name || '';
+    const newLocation = { lat, lng };
+    setSelectedLocation(newLocation);
+    setMapCenter(newLocation);
+    setSearchValue(address);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.panTo(newLocation);
+      mapInstanceRef.current.setZoom(16);
     }
-  }, [onLocationSelect]); // Handle map click to select location
+    if (onLocationSelect) onLocationSelect({ lat, lng, address });
+    console.log('Place selected successfully (manual listener):', { lat, lng, address });
+  }, [onLocationSelect]);
+
+  // Initialize native Google Autocomplete manually to avoid Radix Dialog interference
+  useEffect(() => {
+    if (!inputRef.current) return;
+    if (autocompleteRef.current) return; // already initialized
+    if (!(window as any).google?.maps?.places) return; // script not ready yet
+    const ac = new google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: ['ph'] },
+      types: ['establishment', 'geocode'],
+      fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+    });
+    autocompleteRef.current = ac;
+    ac.addListener('place_changed', () => {
+      // defer to allow internal state settle
+      setTimeout(selectPlace, 0);
+    });
+    console.log('Google Autocomplete initialized manually');
+  }, [selectPlace]);
+
+  // Fallback handler: sometimes inside modals the native place_changed doesn't fire on click.
+  // We listen for clicks on .pac-item and manually invoke the selection logic after a short delay.
+  // Extra fallback: intercept mousedown on suggestions if place_changed doesn't fire
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && el.closest('.pac-item')) {
+        setTimeout(selectPlace, 120);
+      }
+    };
+    document.addEventListener('mousedown', handler, true);
+    return () => document.removeEventListener('mousedown', handler, true);
+  }, [selectPlace]);
+
+  // Prevent form submission or dialog close on Enter while selecting suggestions.
+  useEffect(() => {
+    const inputEl = document.getElementById('location-search');
+    if (!inputEl) return;
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        // Let autocomplete handle selection without submitting parent form
+        e.preventDefault();
+      }
+    };
+    inputEl.addEventListener('keydown', keyHandler);
+    return () => inputEl.removeEventListener('keydown', keyHandler);
+  }, []);
   const onMapClick = useCallback(
     async (event: google.maps.MapMouseEvent) => {
       if (event.latLng) {
@@ -230,6 +251,7 @@ const MapComponent = ({
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          setGeoError(null);
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
@@ -270,6 +292,7 @@ const MapComponent = ({
         },
         (error) => {
           console.error('Error getting current location:', error);
+          setGeoError('Failed to get current location. Please check permissions.');
         },
       );
     }
@@ -292,53 +315,47 @@ const MapComponent = ({
             onClick={getCurrentLocation}
             className="shrink-0"
           >
-            <MapPin className="h-2 w-2 mr-1" />
+            <MapPin className="w-2 h-2 mr-1" />
             <p className="text-[12px]">Use Current</p>
           </Button>
         </div>
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-20 pointer-events-none" />
-            <Autocomplete
-              onLoad={(autocomplete) => {
-                autocompleteRef.current = autocomplete;
-                // Ensure autocomplete dropdown is properly styled and clickable
-                autocomplete.setOptions({
-                  componentRestrictions: { country: ['ph'] }, // Restrict to Philippines
-                  types: ['establishment', 'geocode'],
-                  fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-                });
+        {geoError && (
+          <div className="mt-1 text-xs text-red-600">
+            {geoError}
+            <button
+              type="button"
+              onClick={() => {
+                setGeoError(null);
+                getCurrentLocation();
               }}
-              onPlaceChanged={onPlaceSelected}
-              options={{
-                componentRestrictions: { country: ['ph'] }, // Restrict to Philippines
-                types: ['establishment', 'geocode'],
-                fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-              }}
+              className="ml-2 text-red-700 underline"
             >
-              <Input
-                id="location-search"
-                placeholder="Search for a place..."
-                value={searchValue}
-                onChange={(e) => {
-                  setSearchValue(e.target.value);
-                  // typing counts as user interaction (no-op)
-                }}
-                autoComplete="off"
-                className="pl-10 relative z-10 pac-target-input"
-                style={{ position: 'relative', zIndex: 10 }}
-              />
-            </Autocomplete>
+              Retry
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute w-4 h-4 -translate-y-1/2 pointer-events-none left-3 top-1/2 text-muted-foreground" />
+
+            <Input
+              ref={inputRef}
+              id="location-search"
+              placeholder="Search for a place..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              autoComplete="true"
+              className="pl-10 pac-target-input" // removed z-index!
+            />
 
             {searchValue && (
               <button
                 type="button"
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20"
+                className="absolute z-0 -translate-y-1/2 right-2 top-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setSearchValue('');
                   setSelectedLocation(null);
-                  // keep user-interacted state (no-op)
                 }}
               >
                 ×
@@ -346,12 +363,13 @@ const MapComponent = ({
             )}
           </div>
         </div>
+
         <p className="text-sm text-muted-foreground">
           Search for a location above, click on dropdown suggestions, or click on the map to select
           a point
         </p>
       </div>{' '}
-      <div className="border rounded-lg overflow-hidden map-container">
+      <div className="overflow-hidden border rounded-lg map-container">
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={mapCenter}
