@@ -327,6 +327,10 @@ export default function UsersPage() {
     admins: filteredUsersForStats.filter((u) => u.role === 'admin').length,
     regular: filteredUsersForStats.filter((u) => u.role === 'user').length,
   };
+  const genderStats = {
+    male: users.filter((u) => (u.gender || '').toLowerCase() === 'male').length,
+    female: users.filter((u) => (u.gender || '').toLowerCase() === 'female').length,
+  };
 
   if (usersLoading && users.length === 0) {
     return (
@@ -402,7 +406,7 @@ export default function UsersPage() {
           />
 
           {/* Minimal Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
               <div className="text-sm text-gray-600">Total Users</div>
@@ -418,6 +422,14 @@ export default function UsersPage() {
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
               <div className="text-sm text-gray-600">Users</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-indigo-600">{genderStats.male}</div>
+              <div className="text-sm text-gray-600">Male Users</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="text-2xl font-bold text-pink-600">{genderStats.female}</div>
+              <div className="text-sm text-gray-600">Female Users</div>
             </div>
           </div>
 

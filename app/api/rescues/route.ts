@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const emergencyType = searchParams.get('emergencyType');
 
     let query = supabase
       .from('rescues')
@@ -38,6 +39,11 @@ export async function GET(request: NextRequest) {
     // Apply priority filter
     if (priority && !isNaN(parseInt(priority))) {
       query = query.eq('priority', parseInt(priority));
+    }
+
+    // Apply emergency type filter
+    if (emergencyType && emergencyType !== 'all') {
+      query = query.eq('emergency_type', emergencyType);
     }
 
     // Apply date range filters

@@ -91,6 +91,16 @@ export default function RescuePage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage] = useState(10);
+  const [emergencyTypeFilter, setEmergencyTypeFilter] = useState<string>('all');
+  const EMERGENCY_TYPES: { value: string; label: string }[] = [
+    { value: 'medical', label: 'Medical' },
+    { value: 'fire', label: 'Fire' },
+    { value: 'flood', label: 'Flood' },
+    { value: 'accident', label: 'Accident' },
+    { value: 'violence', label: 'Violence' },
+    { value: 'naturalDisaster', label: 'Natural Disaster' },
+    { value: 'other', label: 'Other' },
+  ];
 
   // Modal state for viewing/editing rescue details
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -491,7 +501,9 @@ export default function RescuePage() {
     const matchesStatus = statusFilter === 'all' || rescue.status === statusFilter;
     const matchesPriority =
       priorityFilter === 'all' || rescue.priority.toString() === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesEmergencyType =
+      emergencyTypeFilter === 'all' || rescue.emergency_type === emergencyTypeFilter;
+    return matchesSearch && matchesStatus && matchesPriority && matchesEmergencyType;
   });
 
   const totalPages = Math.ceil(filteredRescues.length / entriesPerPage);
@@ -634,6 +646,20 @@ export default function RescuePage() {
                   <SelectItem value="4">Low</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={emergencyTypeFilter} onValueChange={setEmergencyTypeFilter}>
+                <SelectTrigger className="w-[140px] h-8 rounded-full bg-gray-100 border-0">
+                  <SelectValue placeholder="Emergency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {EMERGENCY_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -665,6 +691,22 @@ export default function RescuePage() {
                           {rescue.description}
                         </p>
                       )}
+                      {rescue.emergency_type && (
+                        <div className="text-xs text-indigo-600 font-medium mb-2">
+                          {EMERGENCY_TYPES.find((t) => t.value === rescue.emergency_type)?.label ||
+                            rescue.emergency_type}
+                        </div>
+                      )}
+                      {(() => {
+                        const female = rescue.female_count || 0;
+                        const male = rescue.male_count || 0;
+                        const total = female + male;
+                        return total > 0 ? (
+                          <div className="text-xs text-gray-600 mb-2">
+                            <span className="font-medium">People:</span> {total} ({female}F/{male}M)
+                          </div>
+                        ) : null;
+                      })()}
 
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
@@ -828,6 +870,19 @@ export default function RescuePage() {
                 <SelectItem value="4">Low</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={emergencyTypeFilter} onValueChange={setEmergencyTypeFilter}>
+              <SelectTrigger className="w-full sm:w-[160px] border-gray-300">
+                <SelectValue placeholder="Emergency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {EMERGENCY_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Quick Tabs */}
@@ -867,6 +922,8 @@ export default function RescuePage() {
                     <TableHead className="font-medium text-gray-900">Request Details</TableHead>
                     <TableHead className="font-medium text-gray-900">Status</TableHead>
                     <TableHead className="font-medium text-gray-900">Priority</TableHead>
+                    <TableHead className="font-medium text-gray-900">Emergency Type</TableHead>
+                    <TableHead className="font-medium text-gray-900">People</TableHead>
                     <TableHead className="font-medium text-gray-900">Reported</TableHead>
                     <TableHead className="font-medium text-gray-900">Location</TableHead>
                     <TableHead className="font-medium text-gray-900">Actions</TableHead>
@@ -913,6 +970,37 @@ export default function RescuePage() {
                         <Badge className={getPriorityBadge(rescue.priority).class}>
                           {getPriorityBadge(rescue.priority).label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const type = EMERGENCY_TYPES.find(
+                            (t) => t.value === rescue.emergency_type,
+                          );
+                          return type ? (
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                              {type.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const female = rescue.female_count || 0;
+                          const male = rescue.male_count || 0;
+                          const total = female + male;
+                          return total > 0 ? (
+                            <div className="text-sm text-gray-700 font-medium">
+                              {total}{' '}
+                              <span className="text-xs text-gray-500">
+                                ({female}F/{male}M)
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">

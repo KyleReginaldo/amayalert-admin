@@ -26,6 +26,7 @@ export interface RescueFilters {
   priority?: number;
   startDate?: string;
   endDate?: string;
+  emergencyType?: string; // emergency_type column filter
 }
 
 export interface RescueLocation {
@@ -45,6 +46,8 @@ class RescueAPI {
       if (filters?.priority) searchParams.append('priority', filters.priority.toString());
       if (filters?.startDate) searchParams.append('startDate', filters.startDate);
       if (filters?.endDate) searchParams.append('endDate', filters.endDate);
+      if (filters?.emergencyType && filters.emergencyType !== 'all')
+        searchParams.append('emergencyType', filters.emergencyType);
       const url = `${API_BASE_URL}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
       const response = await fetch(url, {
         method: 'GET',
