@@ -54,11 +54,7 @@ class SMSService {
   constructor() {
     const relative = '/api/sms';
     if (typeof window === 'undefined') {
-      const raw =
-        process.env.NEXT_PUBLIC_BASE_URL ||
-        process.env.VERCEL_URL ||
-        process.env.BASE_URL ||
-        process.env.URL;
+      const raw = process.env.BASE_URL || process.env.URL;
 
       let origin = raw || '';
       if (origin && !/^https?:\/\//i.test(origin)) {
