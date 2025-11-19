@@ -313,9 +313,9 @@ export default function AlertPage() {
 
   if (alertsLoading && alerts.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+          <div className="w-8 h-8 border-2 rounded-full animate-spin border-primary border-t-transparent"></div>
           <span className="text-muted-foreground">Loading alerts...</span>
         </div>
       </div>
@@ -325,10 +325,10 @@ export default function AlertPage() {
   return (
     <AuthWrapper>
       <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
+        <div className="px-4 py-8 mx-auto max-w-7xl md:px-6 md:py-12">
           <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5 md:gap-4">
             {[
               {
                 key: 'total',
@@ -375,8 +375,8 @@ export default function AlertPage() {
                 key={stat.key}
                 className={`bg-linear-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
               >
-                <div className="text-xl md:text-2xl font-bold mb-1">{stat.value}</div>
-                <div className="text-xs md:text-sm font-medium opacity-80">{stat.label}</div>
+                <div className="mb-1 text-xl font-bold md:text-2xl">{stat.value}</div>
+                <div className="text-xs font-medium md:text-sm opacity-80">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -385,17 +385,17 @@ export default function AlertPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               {/* Search Bar */}
               <div className="relative flex-1 md:max-w-sm">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute w-4 h-4 -translate-y-1/2 left-4 top-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search alerts by title or content..."
-                  className="pl-10 bg-card border border-input rounded-lg h-10"
+                  className="h-10 pl-10 border rounded-lg bg-card border-input"
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
 
               {/* Filter and Create Button */}
-              <div className="flex gap-3 items-center">
+              <div className="flex items-center gap-3">
                 <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
                   <SelectTrigger className="w-[140px] md:w-40 bg-card border border-input rounded-lg h-10">
                     <SelectValue placeholder="Filter" />
@@ -410,7 +410,7 @@ export default function AlertPage() {
                 </Select>
 
                 <Button onClick={openCreateModal} className="gap-2 rounded-lg" size="default">
-                  <Plus className="h-4 w-4" />
+                  <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Create Alert</span>
                   <span className="sm:hidden">New</span>
                 </Button>
@@ -424,23 +424,23 @@ export default function AlertPage() {
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+          <div className="overflow-hidden border rounded-lg shadow-sm bg-card border-border">
             {/* Mobile View */}
-            <div className="block md:hidden divide-y divide-border">
+            <div className="block divide-y md:hidden divide-border">
               {paginatedAlerts.length === 0 ? (
-                <div className="text-center py-12 px-4">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-foreground font-medium mb-1">
+                <div className="px-4 py-12 text-center">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="mb-1 font-medium text-foreground">
                     {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
                   </p>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="mb-4 text-sm text-muted-foreground">
                     {alerts.length === 0
                       ? 'Create your first alert to get started'
                       : 'Try adjusting your search or filter'}
                   </p>
                   {alerts.length === 0 && (
                     <Button onClick={openCreateModal} className="gap-2">
-                      <Plus className="h-4 w-4" />
+                      <Plus className="w-4 h-4" />
                       Create Alert
                     </Button>
                   )}
@@ -453,17 +453,17 @@ export default function AlertPage() {
                   return (
                     <div
                       key={alert.id}
-                      className="p-4 hover:bg-muted/50 transition-colors duration-200"
+                      className="p-4 transition-colors duration-200 hover:bg-muted/50"
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <div
                           className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${config?.dotColor}`}
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground truncate mb-1">
+                          <h3 className="mb-1 font-semibold truncate text-foreground">
                             {alert.title || 'Untitled Alert'}
                           </h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          <p className="mb-2 text-sm text-muted-foreground line-clamp-2">
                             {alert.content || 'No content'}
                           </p>
                           <div className="flex items-center gap-2 mb-3">
@@ -471,7 +471,7 @@ export default function AlertPage() {
                               variant="secondary"
                               className={alertLevelColor(alert.alert_level)}
                             >
-                              <LevelIcon className="h-3 w-3 mr-1" />
+                              <LevelIcon className="w-3 h-3 mr-1" />
                               {config?.label}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
@@ -484,25 +484,25 @@ export default function AlertPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditModal(alert)}
-                            className="h-8 w-8 rounded-md hover:bg-muted"
+                            className="w-8 h-8 rounded-md hover:bg-muted"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openAlertSheet(alert)}
-                            className="h-8 w-8 rounded-md hover:bg-muted"
+                            className="w-8 h-8 rounded-md hover:bg-muted"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(alert.id)}
-                            className="h-8 w-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                            className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -515,27 +515,27 @@ export default function AlertPage() {
             {/* Desktop View */}
             <div className="hidden md:block">
               {paginatedAlerts.length === 0 ? (
-                <div className="text-center py-12">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-foreground font-medium mb-1">
+                <div className="py-12 text-center">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="mb-1 font-medium text-foreground">
                     {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
                   </p>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="mb-4 text-sm text-muted-foreground">
                     {alerts.length === 0
                       ? 'Create your first alert to get started'
                       : 'Try adjusting your search or filter'}
                   </p>
                   {alerts.length === 0 && (
                     <Button onClick={openCreateModal} className="gap-2">
-                      <Plus className="h-4 w-4" />
+                      <Plus className="w-4 h-4" />
                       Create Alert
                     </Button>
                   )}
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-2 px-2">
-                    <div className="flex gap-2 items-center">
+                  <div className="flex items-center justify-between px-2 mb-2">
+                    <div className="flex items-center gap-2">
                       {selectedIds.size > 0 && (
                         <Button
                           variant="outline"
@@ -557,7 +557,7 @@ export default function AlertPage() {
                         >
                           {bulkDeleting ? (
                             <span className="flex items-center gap-2">
-                              <div className="h-3 w-3 border-2 border-t-transparent border-current rounded-full animate-spin" />
+                              <div className="w-3 h-3 border-2 border-current rounded-full border-t-transparent animate-spin" />
                               Deleting...
                             </span>
                           ) : (
@@ -589,7 +589,7 @@ export default function AlertPage() {
                         <TableHead className="font-semibold text-foreground">Level</TableHead>
                         <TableHead className="font-semibold text-foreground">Created</TableHead>
                         <TableHead className="font-semibold text-foreground">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right">
+                        <TableHead className="font-semibold text-right text-foreground">
                           Actions
                         </TableHead>
                       </TableRow>
@@ -602,7 +602,7 @@ export default function AlertPage() {
                         return (
                           <TableRow
                             key={alert.id}
-                            className="border-border hover:bg-muted/50 transition-colors duration-200"
+                            className="transition-colors duration-200 border-border hover:bg-muted/50"
                           >
                             <TableCell className="w-8">
                               <button
@@ -637,11 +637,11 @@ export default function AlertPage() {
                                 variant="secondary"
                                 className={alertLevelColor(alert.alert_level)}
                               >
-                                <LevelIcon className="h-3 w-3 mr-1" />
+                                <LevelIcon className="w-3 h-3 mr-1" />
                                 {config?.label}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
+                            <TableCell className="text-sm text-muted-foreground">
                               {new Date(alert.created_at).toLocaleDateString()} ·{' '}
                               {new Date(alert.created_at).toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -657,30 +657,30 @@ export default function AlertPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex gap-1 justify-end">
+                              <div className="flex justify-end gap-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => openEditModal(alert)}
-                                  className="h-8 w-8 rounded-md hover:bg-muted"
+                                  className="w-8 h-8 rounded-md hover:bg-muted"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => openAlertSheet(alert)}
-                                  className="h-8 w-8 rounded-md hover:bg-muted"
+                                  className="w-8 h-8 rounded-md hover:bg-muted"
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleDelete(alert.id)}
-                                  className="h-8 w-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                                  className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -695,7 +695,7 @@ export default function AlertPage() {
           </div>
 
           {filteredAlerts.length > 0 && totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 mt-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -704,7 +704,7 @@ export default function AlertPage() {
                   disabled={currentPage === 1}
                   className="gap-1 rounded-md"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="w-4 h-4" />
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
 
@@ -743,7 +743,7 @@ export default function AlertPage() {
                   className="gap-1 rounded-md"
                 >
                   <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
 
@@ -783,24 +783,24 @@ export default function AlertPage() {
         >
           <SheetContent className="sm:max-w-2xl">
             {selectedAlert && (
-              <div className="flex h-full flex-col">
+              <div className="flex flex-col h-full">
                 <SheetHeader>
                   <SheetTitle>Alert Details</SheetTitle>
                   <SheetDescription>Complete information about this alert</SheetDescription>
                 </SheetHeader>
 
-                <div className="flex-1 overflow-auto space-y-6 py-6">
+                <div className="flex-1 py-6 space-y-6 overflow-auto">
                   <div>
                     <Label className="text-xs font-semibold uppercase text-muted-foreground">
                       ID
                     </Label>
-                    <div className="font-mono text-sm break-all mt-2">{selectedAlert.id}</div>
+                    <div className="mt-2 font-mono text-sm break-all">{selectedAlert.id}</div>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold uppercase text-muted-foreground">
                       Title
                     </Label>
-                    <div className="font-medium text-foreground mt-2">
+                    <div className="mt-2 font-medium text-foreground">
                       {selectedAlert.title || 'Untitled Alert'}
                     </div>
                   </div>
@@ -808,7 +808,7 @@ export default function AlertPage() {
                     <Label className="text-xs font-semibold uppercase text-muted-foreground">
                       Content
                     </Label>
-                    <div className="whitespace-pre-wrap text-sm text-foreground mt-2">
+                    <div className="mt-2 text-sm whitespace-pre-wrap text-foreground">
                       {selectedAlert.content || 'No content'}
                     </div>
                   </div>
@@ -840,14 +840,14 @@ export default function AlertPage() {
                     <Label className="text-xs font-semibold uppercase text-muted-foreground">
                       Created
                     </Label>
-                    <div className="text-sm text-foreground mt-2">
+                    <div className="mt-2 text-sm text-foreground">
                       {new Date(selectedAlert.created_at).toLocaleDateString()} at{' '}
                       {new Date(selectedAlert.created_at).toLocaleTimeString()}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <div className="flex justify-end gap-2 pt-4 border-t border-border">
                   <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
                     Close
                   </Button>
@@ -974,7 +974,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
               required
               rows={5}
               disabled={loading}
-              className="mt-2 bg-background resize-none"
+              className="mt-2 resize-none bg-background"
             />
           </div>
 
@@ -985,7 +985,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             <HeroSelect
               aria-label="Alert Level"
               labelPlacement="outside"
-              className="mt-2 max-w-xs"
+              className="max-w-xs mt-2"
               selectedKeys={[formData.alert_level]}
               isDisabled={loading}
               onSelectionChange={(keys: Set<React.Key> | 'all') => {
@@ -1005,7 +1005,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             <Label htmlFor="notification_method" className="text-sm font-semibold">
               Notification Method
             </Label>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mt-3">
               {[
                 { value: 'app_push', label: 'Push + Email', icon: Rocket },
                 { value: 'app', label: 'Email', icon: Mail },
@@ -1037,7 +1037,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
                 );
               })}
             </div>
-            <div className="mt-3 rounded-md bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
+            <div className="p-3 mt-3 text-xs leading-relaxed rounded-md bg-muted/40 text-muted-foreground">
               {formData.notification_method === 'app_push' && (
                 <span>Push + email: fast delivery with inbox backup.</span>
               )}
@@ -1056,25 +1056,25 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             </p>
           </div>
 
-          <DialogFooter className="gap-3 sm:gap-2 pt-4">
+          <DialogFooter className="gap-3 pt-4 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="rounded-md bg-transparent"
+              className="bg-transparent rounded-md"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="rounded-md gap-2">
+            <Button type="submit" disabled={loading} className="gap-2 rounded-md">
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                  <div className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></div>
                   {alert ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4" />
+                  <Save className="w-4 h-4" />
                   {alert ? 'Update Alert' : 'Create Alert'}
                 </>
               )}
