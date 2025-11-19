@@ -50,16 +50,8 @@ export async function POST(request: NextRequest) {
     }
 
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/gateway/devices/${deviceId}/send-sms`;
-    const appOrigin =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      process.env.BASE_URL ||
-      (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-      '';
-    const infoLink = appOrigin ? `${appOrigin.replace(/\/$/, '')}/alert` : '';
-    const comprehensiveMessage = /amayalert/i.test(message)
-      ? message
-      : `Amayalert - Official Notification: ${message}${infoLink ? ` More info: ${infoLink}` : ''}`;
-    const payload = { recipients, message: comprehensiveMessage };
+
+    const payload = { recipients, message: `Amayalert - Official Notification\n\n ${message}` };
 
     const resp = await fetch(url, {
       method: 'POST',
