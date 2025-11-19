@@ -162,7 +162,7 @@ const MapComponent = ({
   useEffect(() => {
     if (!inputRef.current) return;
     if (autocompleteRef.current) return; // already initialized
-    if (!(window as any).google?.maps?.places) return; // script not ready yet
+    if (!window.google?.maps?.places) return; // script not ready yet
     const ac = new google.maps.places.Autocomplete(inputRef.current, {
       componentRestrictions: { country: ['ph'] },
       types: ['establishment', 'geocode'],
