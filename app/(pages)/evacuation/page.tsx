@@ -641,7 +641,7 @@ function EvacuationModal({
       }}
     >
       <DialogContent
-        className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto"
+        className="w-[98vw] max-w-[1400px] mx-auto max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => loading && e.preventDefault()}
         onEscapeKeyDown={(e) => loading && e.preventDefault()}
       >

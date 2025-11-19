@@ -4,8 +4,8 @@ we need to make this component client rendered as well else error occurs
 */
 'use client';
 
-//Map component Component from library
 import { Button } from '@/components/ui/button';
+//Map component Component from library
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Autocomplete, GoogleMap, Marker } from '@react-google-maps/api';
@@ -283,7 +283,19 @@ const MapComponent = ({
   return (
     <div className={`w-full space-y-4 ${className}`}>
       <div className="space-y-2">
-        <Label htmlFor="location-search">Search Location</Label>
+        <div className="flex gap-4">
+          <Label htmlFor="location-search">Search Location</Label>{' '}
+          <Button
+            size={'sm'}
+            type="button"
+            variant="default"
+            onClick={getCurrentLocation}
+            className="shrink-0"
+          >
+            <MapPin className="h-2 w-2 mr-1" />
+            <p className="text-[12px]">Use Current</p>
+          </Button>
+        </div>
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-20 pointer-events-none" />
@@ -317,6 +329,7 @@ const MapComponent = ({
                 style={{ position: 'relative', zIndex: 10 }}
               />
             </Autocomplete>
+
             {searchValue && (
               <button
                 type="button"
@@ -332,10 +345,6 @@ const MapComponent = ({
               </button>
             )}
           </div>
-          <Button type="button" variant="outline" onClick={getCurrentLocation} className="shrink-0">
-            <MapPin className="h-4 w-4 mr-2" />
-            Use Current
-          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
           Search for a location above, click on dropdown suggestions, or click on the map to select

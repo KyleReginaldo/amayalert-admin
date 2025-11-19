@@ -121,6 +121,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    // Fetch existing rescue for change detection (status, counts, phone)
+    const { data: existingRescue } = await supabase
+      .from('rescues')
+      .select('id,status,title,emergency_type,female_count,male_count,contact_phone,scheduled_for')
+      .eq('id', id)
+      .single();
+
     // Prepare update data
     const updateData: RescueUpdate = {
       updated_at: new Date().toISOString(),
@@ -172,45 +179,32 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           : 'Failed to update rescue';
       return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
     }
-    // Optionally send SMS when requested
-    // Admin can include { send_sms: true, sms_message?: string } in the payload
-    // Fallback message will be generated if sms_message is not provided
-    if (body.send_sms === true) {
-      try {
-        const phone = data.contact_phone || body.contact_phone;
-        if (phone) {
-          // Build a concise SMS message
-          const statusText = data.status?.replace('_', ' ') || 'updated';
-          const defaultMessage = `Rescue update: "${data.title}" is now ${statusText}.`;
-          const extra: string[] = [];
-          if (data.emergency_type) extra.push(`Type: ${data.emergency_type}`);
-          const totalPeople = (data.female_count || 0) + (data.male_count || 0);
-          if (totalPeople > 0)
-            extra.push(
-              `People: ${totalPeople} (${data.female_count || 0}F, ${data.male_count || 0}M)`,
-            );
-          if (data.scheduled_for)
-            extra.push(`Schedule: ${new Date(data.scheduled_for).toLocaleDateString()}`);
-          if (extra.length) {
-            // Keep SMS short=-
-            const tail = extra.join(' | ');
-            // Only append if it doesn't make it too long
-            const candidate = `${defaultMessage} ${tail}`;
-            // Allow up to ~150 chars to avoid splitting segments too much
-            if (candidate.length <= 150) {
-              body.sms_message = candidate;
-            }
-          }
-
-          const message = (body.sms_message as string) || defaultMessage;
-
-          // Send directly via Twilio (no internal API)
-          await sendSMS(phone, message);
+    // Auto-send SMS when status changes OR when explicitly requested via send_sms
+    try {
+      const phone = data.contact_phone || body.contact_phone || existingRescue?.contact_phone;
+      const statusChanged = existingRescue && data.status && existingRescue.status !== data.status;
+      if (phone && (statusChanged || body.send_sms === true)) {
+        const statusText = data.status?.replace('_', ' ') || 'updated';
+        const defaultMessage = `Rescue update: "${data.title}" is now ${statusText}.`;
+        const extra: string[] = [];
+        if (data.emergency_type) extra.push(`Type: ${data.emergency_type}`);
+        const totalPeople = (data.female_count || 0) + (data.male_count || 0);
+        if (totalPeople > 0)
+          extra.push(
+            `People: ${totalPeople} (${data.female_count || 0}F, ${data.male_count || 0}M)`,
+          );
+        if (data.scheduled_for)
+          extra.push(`Schedule: ${new Date(data.scheduled_for).toLocaleDateString()}`);
+        if (extra.length) {
+          const tail = extra.join(' | ');
+          const candidate = `${defaultMessage} ${tail}`;
+          if (candidate.length <= 150) body.sms_message = candidate;
         }
-      } catch (smsErr) {
-        console.warn('Rescue update SMS failed:', smsErr);
-        // Do not fail the API if SMS fails; return success for the update
+        const message = (body.sms_message as string) || defaultMessage;
+        await sendSMS(phone, message);
       }
+    } catch (smsErr) {
+      console.warn('Rescue update SMS failed:', smsErr);
     }
 
     // Optionally send email to all users when requested

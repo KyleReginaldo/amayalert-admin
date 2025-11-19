@@ -48,7 +48,6 @@ import {
   CheckCircle,
   ClipboardList,
   Clock,
-  Edit,
   Eye,
   FileText,
   Flag,
@@ -56,6 +55,7 @@ import {
   LifeBuoy,
   Loader2,
   MapPin,
+  MoreVertical,
   Pencil,
   Phone,
   Play,
@@ -67,7 +67,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // Helper type for rescue metadata
 interface RescueMetadata {
@@ -106,6 +107,7 @@ export default function RescuePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRescue, setSelectedRescue] = useState<Rescue | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
   // Right-side sheet state (read-only details)
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -137,24 +139,30 @@ export default function RescuePage() {
       confirm('Are you sure you want to delete this rescue request? This action cannot be undone.')
     ) {
       try {
+        setRowLoading((prev) => ({ ...prev, [id]: true }));
         const response = await rescueAPI.deleteRescue(id);
         if (response.success) {
           removeRescue(id);
         }
       } catch (error) {
         console.error('Failed to delete rescue:', error);
+      } finally {
+        setRowLoading((prev) => ({ ...prev, [id]: false }));
       }
     }
   };
 
   const handleStatusUpdate = async (id: string, status: RescueStatus) => {
     try {
+      setRowLoading((prev) => ({ ...prev, [id]: true }));
       const response = await rescueAPI.updateRescueStatus(id, status);
       if (response.success && response.data) {
         updateRescue(id, response.data);
       }
     } catch (error) {
       console.error('Failed to update rescue status:', error);
+    } finally {
+      setRowLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -493,6 +501,144 @@ export default function RescuePage() {
     );
   }
 
+  // Kebab menu component for actions
+  function KebabActions({ rescue }: { rescue: Rescue }) {
+    const [open, setOpen] = useState(false);
+    const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    useEffect(() => {
+      function onDocClick(e: MouseEvent) {
+        const target = e.target as HTMLElement;
+        if (!target.closest(`#kebab-${rescue.id}`)) setOpen(false);
+      }
+      if (open) document.addEventListener('click', onDocClick);
+      return () => document.removeEventListener('click', onDocClick);
+    }, [open, rescue.id]);
+
+    // Positioning logic using portal to avoid table clipping/overlap
+    useEffect(() => {
+      function compute() {
+        if (triggerRef.current && open) {
+          const rect = triggerRef.current.getBoundingClientRect();
+          const menuWidth = 176; // w-44
+          const gap = 6;
+          let left = rect.right - menuWidth;
+          if (left < 8) left = 8; // keep inside viewport
+          let top = rect.bottom + gap;
+          const viewportHeight = window.innerHeight;
+          const estimatedHeight = 260; // rough menu height
+          if (top + estimatedHeight > viewportHeight - 16) {
+            top = rect.top - estimatedHeight - gap;
+            if (top < 8) top = 8;
+          }
+          setCoords({ top, left });
+        } else if (!open) {
+          setCoords(null);
+        }
+      }
+      compute();
+      window.addEventListener('resize', compute);
+      window.addEventListener('scroll', compute, true);
+      return () => {
+        window.removeEventListener('resize', compute);
+        window.removeEventListener('scroll', compute, true);
+      };
+    }, [open]);
+
+    const status = rescue.status;
+    const loading = rowLoading[rescue.id];
+    return (
+      <div className="relative" id={`kebab-${rescue.id}`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          ref={triggerRef}
+          onClick={() => !loading && setOpen((o) => !o)}
+          className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+          aria-label="Actions"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+          ) : (
+            <MoreVertical className="h-4 w-4 text-gray-600" />
+          )}
+        </Button>
+        {open &&
+          !loading &&
+          coords &&
+          createPortal(
+            <div
+              style={{ top: coords.top, left: coords.left, position: 'fixed' }}
+              className="z-50 w-44 rounded-md border border-gray-200 bg-white shadow-lg py-1 text-sm animate-fadeIn"
+            >
+              <button
+                onClick={() => {
+                  openRescueSheet(rescue);
+                  setOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Eye className="h-3.5 w-3.5" /> View Details
+              </button>
+              <button
+                onClick={() => {
+                  openRescueModal(rescue);
+                  setOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </button>
+              {status === 'pending' && (
+                <button
+                  onClick={() => {
+                    handleStatusUpdate(rescue.id, 'in_progress');
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Play className="h-3.5 w-3.5" /> Dispatch
+                </button>
+              )}
+              {status === 'in_progress' && (
+                <button
+                  onClick={() => {
+                    handleStatusUpdate(rescue.id, 'completed');
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <CheckCircle className="h-3.5 w-3.5" /> Complete
+                </button>
+              )}
+              {status !== 'completed' && status !== 'cancelled' && (
+                <button
+                  onClick={() => {
+                    handleStatusUpdate(rescue.id, 'cancelled');
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                >
+                  <X className="h-3.5 w-3.5" /> Cancel
+                </button>
+              )}
+              <div className="border-t my-1" />
+              <button
+                onClick={() => {
+                  handleDelete(rescue.id);
+                  setOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-red-50 flex items-center gap-2 text-red-600"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>,
+            document.body,
+          )}
+      </div>
+    );
+  }
+
   // Filter and paginate rescues
   const filteredRescues = rescues.filter((rescue) => {
     const matchesSearch =
@@ -722,33 +868,8 @@ export default function RescuePage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-1 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openRescueModal(rescue)}
-                        className="h-8 w-8 rounded-full"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openRescueSheet(rescue)}
-                        className="h-8 w-8 rounded-full"
-                        aria-label="View details"
-                        title="View details"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(rescue.id)}
-                        className="h-8 w-8 rounded-full text-red-500"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                    <div className="flex ml-2">
+                      <KebabActions rescue={rescue} />
                     </div>
                   </div>
 
@@ -761,9 +882,14 @@ export default function RescuePage() {
                           variant="outline"
                           onClick={() => handleStatusUpdate(rescue.id, 'in_progress')}
                           className="text-xs"
+                          disabled={rowLoading[rescue.id]}
                         >
-                          <Play className="h-3 w-3 mr-1" />
-                          Start
+                          {rowLoading[rescue.id] ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Play className="h-3 w-3 mr-1" />
+                          )}
+                          Dispatch
                         </Button>
                       )}
                       {rescue.status === 'in_progress' && (
@@ -1033,34 +1159,7 @@ export default function RescuePage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => openRescueModal(rescue)}
-                            className="h-8 w-8 text-gray-900 hover:text-blue-600"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => openRescueSheet(rescue)}
-                            className="h-8 w-8 text-gray-900 hover:text-green-600"
-                            aria-label="View details"
-                            title="View details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => handleDelete(rescue.id)}
-                            className="h-8 w-8 text-gray-600 hover:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <KebabActions rescue={rescue} />
                       </TableCell>
                     </TableRow>
                   ))}

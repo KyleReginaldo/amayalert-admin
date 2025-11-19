@@ -52,7 +52,18 @@ class SMSService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = '/api/sms';
+    // Use absolute URL when executing on the server to avoid fetch ERR_INVALID_URL
+    const relative = '/api/sms';
+    if (typeof window === 'undefined') {
+      const origin =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        process.env.BASE_URL ||
+        (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+        'http://localhost:3000';
+      this.baseUrl = origin.replace(/\/$/, '') + relative; // ensure no double slash
+    } else {
+      this.baseUrl = relative; // browser can use relative path
+    }
   }
 
   /**

@@ -1,8 +1,8 @@
 import emailService from '@/app/lib/email-service';
-import smsService from '@/app/lib/sms-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import twilio from 'twilio';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE!;
@@ -51,6 +51,43 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching alerts:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch alerts' }, { status: 500 });
+  }
+}
+
+// Twilio configuration (reuse pattern from rescue route)
+const getTwilioConfig = () => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN || process.env.AUTH_TOKEN;
+  const twilioNumber = process.env.TWILIO_FROM || process.env.TWILIO_NUMBER;
+  const messagingService = process.env.MESSAGING_SERVICE_SID || process.env.MESSAGING_SERVICE;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Missing required Twilio credentials');
+  }
+
+  return {
+    client: twilio(accountSid, authToken),
+    twilioNumber,
+    messagingService,
+  };
+};
+
+async function sendSMS(
+  to: string,
+  message: string,
+): Promise<{ success: boolean; sid?: string; error?: string }> {
+  try {
+    const config = getTwilioConfig();
+    type MsgWithFrom = { from: string; to: string; body: string };
+    type MsgWithService = { messagingServiceSid: string; to: string; body: string };
+    const toIntl = to.startsWith('+') ? to : `+${to}`;
+    const messageOptions: MsgWithFrom | MsgWithService = config.messagingService
+      ? { messagingServiceSid: config.messagingService, to: toIntl, body: message }
+      : { from: (config.twilioNumber as string) || '', to: toIntl, body: message };
+    const twilioMessage = await config.client.messages.create(messageOptions);
+    return { success: true, sid: twilioMessage.sid };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -191,14 +228,28 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Send SMS if method includes SMS notifications (with better error handling)
+        // Send SMS if method includes SMS notifications (reuse Twilio direct logic for reliability)
         if ((notificationMethod === 'sms' || notificationMethod === 'both') && phone) {
           try {
-            const smsResult = await smsService.sendSMS({
-              to: phone,
-              message: `🚨 AMAYALERT 🚨\n\n${title}\n\n${content}\n\nStay safe!`,
-            });
-
+            const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
+            const extras: string[] = [];
+            if (content) {
+              const trimmed = content.replace(/\s+/g, ' ').trim();
+              if (trimmed) {
+                const short = trimmed.length > 90 ? trimmed.slice(0, 87) + '…' : trimmed;
+                extras.push(short);
+              }
+            }
+            if (process.env.NEXT_PUBLIC_BASE_URL) {
+              extras.push(`View: ${process.env.NEXT_PUBLIC_BASE_URL}/alert`);
+            }
+            let finalMessage = baseDefault;
+            if (extras.length) {
+              const tail = extras.join(' | ');
+              const candidate = `${baseDefault} ${tail}`;
+              finalMessage = candidate.length <= 150 ? candidate : baseDefault;
+            }
+            const smsResult = await sendSMS(phone, finalMessage);
             if (smsResult.success) {
               smsCount++;
               console.log(`✅ SMS sent to ${phone}`);
@@ -251,5 +302,42 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating alert:', error);
     return NextResponse.json({ success: false, error: 'Failed to create alert' }, { status: 500 });
+  }
+}
+
+// DELETE /api/alerts - Bulk soft delete alerts
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const rawIds: unknown[] = Array.isArray(body.ids) ? body.ids : [];
+    const ids: number[] = rawIds
+      .map((x: unknown) => Number(x))
+      .filter((n: number) => Number.isFinite(n));
+    if (ids.length === 0) {
+      return NextResponse.json({ success: false, error: 'ids array required' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('alert')
+      .update({ deleted_at: now })
+      .in('id', ids)
+      .select();
+
+    if (error) {
+      console.error('Bulk delete error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete alerts' },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, data, deleted: ids.length });
+  } catch (err) {
+    console.error('Bulk delete exception:', err);
+    return NextResponse.json(
+      { success: false, error: 'Unexpected error deleting alerts' },
+      { status: 500 },
+    );
   }
 }

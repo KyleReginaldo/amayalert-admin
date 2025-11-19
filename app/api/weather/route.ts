@@ -131,9 +131,6 @@ function buildEmailHtml(data: GoogleForecastResponse, lat: number, lng: number):
           <strong style="display:block;margin-bottom:6px">Reminder</strong>
           Thunderstorm probabilities and precipitation amounts are estimates; conditions can change rapidly. Always follow official advisories.
         </div>
-        <a href="${
-          process.env.NEXT_PUBLIC_BASE_URL || 'https://amayalert.site'
-        }" style="display:inline-block;margin-top:28px;background:#0ea5e9;color:#fff;text-decoration:none;font-weight:600;padding:14px 24px;border-radius:10px;font-size:14px;">Open Amayalert →</a>
       </div>
       <div style="background:#f1f5f9;padding:14px 20px;text-align:center;font-size:11px;color:#64748b">© ${new Date().getFullYear()} Amayalert • Automated Weather Digest</div>
     </div>

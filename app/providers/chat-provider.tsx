@@ -51,35 +51,82 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentUserId) return;
 
-    const channel = supabase
-      .channel('admin-chat-unread')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-        const row = payload.new as { receiver?: string; sender?: string; seen_at?: string | null };
+    // Clean up any existing channel for safety (Supabase handles duplicates, but explicit remove helps during hot reloads)
+    const channel = supabase.channel('admin-chat-unread');
 
-        // Refresh count when messages are inserted, updated, or deleted
-        if (payload.eventType === 'INSERT') {
-          // If new message to current admin
-          if (row?.receiver === currentUserId) {
-            setTotalUnreadCount((prev) => prev + 1);
-          }
-        } else if (payload.eventType === 'UPDATE') {
-          // If message was marked as seen
-          const oldRow = payload.old as { receiver?: string; seen_at?: string | null };
-          if (
-            row?.receiver === currentUserId &&
-            oldRow?.seen_at === null &&
-            row?.seen_at !== null
-          ) {
-            setTotalUnreadCount((prev) => Math.max(0, prev - 1));
-          }
+    // INSERT: New incoming message for current user increments if unseen
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver=eq.${currentUserId}`,
+      },
+      (payload) => {
+        const newRow = payload.new as { seen_at?: string | null };
+        if (!newRow?.seen_at) {
+          setTotalUnreadCount((prev) => prev + 1);
+        } else {
+          refreshUnreadCount();
         }
-      })
-      .subscribe();
+      },
+    );
+
+    // UPDATE: Message marked seen (transition to seen_at set) should decrement
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver=eq.${currentUserId}`,
+      },
+      (payload) => {
+        const newRow = payload.new as { seen_at?: string | null };
+        const oldRow = payload.old as { seen_at?: string | null };
+        if (oldRow && oldRow.seen_at === null && newRow?.seen_at) {
+          setTotalUnreadCount((prev) => Math.max(0, prev - 1));
+        } else {
+          refreshUnreadCount();
+        }
+      },
+    );
+
+    // DELETE: If an unread message was deleted, decrement; else fallback refresh
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver=eq.${currentUserId}`,
+      },
+      (payload) => {
+        const oldRow = payload.old as { seen_at?: string | null };
+        if (oldRow && oldRow.seen_at === null) {
+          setTotalUnreadCount((prev) => Math.max(0, prev - 1));
+        } else {
+          refreshUnreadCount();
+        }
+      },
+    );
+
+    channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [currentUserId, refreshUnreadCount]);
+
+  // Periodic fallback refresh (guards against missed realtime events / network hiccups)
+  useEffect(() => {
+    if (!currentUserId) return;
+    const id = setInterval(() => {
+      refreshUnreadCount();
+    }, 30000); // 30s interval
+    return () => clearInterval(id);
+  }, [currentUserId, refreshUnreadCount]);
 
   return (
     <ChatContext.Provider value={{ totalUnreadCount, refreshUnreadCount }}>

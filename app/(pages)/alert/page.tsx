@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+// HeroUI Select for modal alert level selector
 import {
   Sheet,
   SheetContent,
@@ -41,6 +42,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { Select as HeroSelect, SelectItem as HeroSelectItem } from '@heroui/react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -103,6 +105,8 @@ export default function AlertPage() {
   const { alerts, alertsLoading, refreshAlerts, addAlert, updateAlert, removeAlert } = useAlerts();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [alertLevelFilter, setAlertLevelFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // You can make this configurable if needed
@@ -231,6 +235,46 @@ export default function AlertPage() {
     setIsSheetOpen(true);
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedAlerts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedAlerts.map((a) => a.id)));
+    }
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || bulkDeleting) return;
+    if (!confirm(`Delete ${selectedIds.size} alert(s)? This marks them deleted.`)) return;
+    try {
+      setBulkDeleting(true);
+      const res = await fetch('/api/alerts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        console.error('Bulk delete failed:', json.error);
+      } else {
+        refreshAlerts();
+        clearSelection();
+      }
+    } catch (err) {
+      console.error('Bulk delete exception:', err);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const filteredAlerts = alerts.filter((alert) => {
     const matchesSearch =
       alert.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -329,7 +373,7 @@ export default function AlertPage() {
             ].map((stat) => (
               <div
                 key={stat.key}
-                className={`bg-gradient-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
+                className={`bg-linear-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
               >
                 <div className="text-xl md:text-2xl font-bold mb-1">{stat.value}</div>
                 <div className="text-xs md:text-sm font-medium opacity-80">{stat.label}</div>
@@ -353,7 +397,7 @@ export default function AlertPage() {
               {/* Filter and Create Button */}
               <div className="flex gap-3 items-center">
                 <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="w-[140px] md:w-[160px] bg-card border border-input rounded-lg h-10">
+                  <SelectTrigger className="w-[140px] md:w-40 bg-card border border-input rounded-lg h-10">
                     <SelectValue placeholder="Filter" />
                   </SelectTrigger>
                   <SelectContent>
@@ -413,7 +457,7 @@ export default function AlertPage() {
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <div
-                          className={`h-3 w-3 rounded-full mt-1.5 flex-shrink-0 ${config?.dotColor}`}
+                          className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${config?.dotColor}`}
                         />
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-foreground truncate mb-1">
@@ -435,7 +479,7 @@ export default function AlertPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex gap-1 flex-shrink-0">
+                        <div className="flex gap-1 shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -489,99 +533,163 @@ export default function AlertPage() {
                   )}
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="font-semibold text-foreground">Title</TableHead>
-                      <TableHead className="font-semibold text-foreground">Content</TableHead>
-                      <TableHead className="font-semibold text-foreground">Level</TableHead>
-                      <TableHead className="font-semibold text-foreground">Created</TableHead>
-                      <TableHead className="font-semibold text-foreground">Status</TableHead>
-                      <TableHead className="font-semibold text-foreground text-right">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedAlerts.map((alert) => {
-                      const config =
-                        alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
-                      const LevelIcon = config?.icon || Bell;
-                      return (
-                        <TableRow
-                          key={alert.id}
-                          className="border-border hover:bg-muted/50 transition-colors duration-200"
+                <>
+                  <div className="flex items-center justify-between mb-2 px-2">
+                    <div className="flex gap-2 items-center">
+                      {selectedIds.size > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearSelection}
+                          disabled={bulkDeleting}
+                          className="h-8"
                         >
-                          <TableCell className="font-medium text-foreground">
-                            <div className="flex items-center gap-2">
-                              <div className={`h-2.5 w-2.5 rounded-full ${config?.dotColor}`} />
-                              <span className="max-w-[200px] truncate">
-                                {alert.title || 'Untitled Alert'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            <div className="max-w-[300px] truncate">
-                              {alert.content || 'No content'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={alertLevelColor(alert.alert_level)}
-                            >
-                              <LevelIcon className="h-3 w-3 mr-1" />
-                              {config?.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {new Date(alert.created_at).toLocaleDateString()} ·{' '}
-                            {new Date(alert.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={alert.deleted_at ? 'destructive' : 'default'}
-                              className="text-xs"
-                            >
-                              {alert.deleted_at ? 'Deleted' : 'Active'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditModal(alert)}
-                                className="h-8 w-8 rounded-md hover:bg-muted"
+                          Clear
+                        </Button>
+                      )}
+                      {selectedIds.size > 0 && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDelete}
+                          disabled={selectedIds.size === 0 || bulkDeleting}
+                          className="h-8 m-2"
+                        >
+                          {bulkDeleting ? (
+                            <span className="flex items-center gap-2">
+                              <div className="h-3 w-3 border-2 border-t-transparent border-current rounded-full animate-spin" />
+                              Deleting...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                            </span>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-8">
+                          <button
+                            onClick={toggleSelectAll}
+                            className="h-4 w-4 rounded border border-border flex items-center justify-center text-[10px] bg-background hover:bg-muted"
+                            aria-label="Select all"
+                          >
+                            {selectedIds.size === paginatedAlerts.length &&
+                            paginatedAlerts.length > 0
+                              ? '✓'
+                              : ''}
+                          </button>
+                        </TableHead>
+                        <TableHead className="font-semibold text-foreground">Title</TableHead>
+                        <TableHead className="font-semibold text-foreground">Content</TableHead>
+                        <TableHead className="font-semibold text-foreground">Level</TableHead>
+                        <TableHead className="font-semibold text-foreground">Created</TableHead>
+                        <TableHead className="font-semibold text-foreground">Status</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedAlerts.map((alert) => {
+                        const config =
+                          alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
+                        const LevelIcon = config?.icon || Bell;
+                        return (
+                          <TableRow
+                            key={alert.id}
+                            className="border-border hover:bg-muted/50 transition-colors duration-200"
+                          >
+                            <TableCell className="w-8">
+                              <button
+                                onClick={() => toggleSelect(alert.id)}
+                                className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${
+                                  selectedIds.has(alert.id)
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'border-border bg-background hover:bg-muted'
+                                }`}
+                                aria-label={
+                                  selectedIds.has(alert.id) ? 'Unselect alert' : 'Select alert'
+                                }
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openAlertSheet(alert)}
-                                className="h-8 w-8 rounded-md hover:bg-muted"
+                                {selectedIds.has(alert.id) ? '✓' : ''}
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-medium text-foreground">
+                              <div className="flex items-center gap-2">
+                                <div className={`h-2.5 w-2.5 rounded-full ${config?.dotColor}`} />
+                                <span className="max-w-[200px] truncate">
+                                  {alert.title || 'Untitled Alert'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              <div className="max-w-[300px] truncate">
+                                {alert.content || 'No content'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="secondary"
+                                className={alertLevelColor(alert.alert_level)}
                               >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(alert.id)}
-                                className="h-8 w-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                                <LevelIcon className="h-3 w-3 mr-1" />
+                                {config?.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {new Date(alert.created_at).toLocaleDateString()} ·{' '}
+                              {new Date(alert.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={alert.deleted_at ? 'destructive' : 'default'}
+                                className="text-xs"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                                {alert.deleted_at ? 'Deleted' : 'Active'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditModal(alert)}
+                                  className="h-8 w-8 rounded-md hover:bg-muted"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openAlertSheet(alert)}
+                                  className="h-8 w-8 rounded-md hover:bg-muted"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(alert.id)}
+                                  className="h-8 w-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </>
               )}
             </div>
           </div>
@@ -874,117 +982,77 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             <Label htmlFor="alert_level" className="text-sm font-semibold">
               Alert Level
             </Label>
-            <Select
-              value={formData.alert_level}
-              onValueChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  alert_level: value as 'low' | 'medium' | 'high' | 'critical',
-                }))
-              }
-              disabled={loading}
+            <HeroSelect
+              aria-label="Alert Level"
+              labelPlacement="outside"
+              className="mt-2 max-w-xs"
+              selectedKeys={[formData.alert_level]}
+              isDisabled={loading}
+              onSelectionChange={(keys: Set<React.Key> | 'all') => {
+                if (keys === 'all') return; // not expected in single-select, but guard anyway
+                const value = Array.from(keys)[0] as 'low' | 'medium' | 'high' | 'critical';
+                setFormData((prev) => ({ ...prev, alert_level: value }));
+              }}
             >
-              <SelectTrigger className="mt-2 bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[10000]">
-                <SelectItem value="low">Low Priority</SelectItem>
-                <SelectItem value="medium">Medium Priority</SelectItem>
-                <SelectItem value="high">High Priority</SelectItem>
-                <SelectItem value="critical">Critical Priority</SelectItem>
-              </SelectContent>
-            </Select>
+              <HeroSelectItem key="low">Low Priority</HeroSelectItem>
+              <HeroSelectItem key="medium">Medium Priority</HeroSelectItem>
+              <HeroSelectItem key="high">High Priority</HeroSelectItem>
+              <HeroSelectItem key="critical">Critical Priority</HeroSelectItem>
+            </HeroSelect>
           </div>
 
           <div>
             <Label htmlFor="notification_method" className="text-sm font-semibold">
               Notification Method
             </Label>
-            <div className="mt-2 space-y-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               {[
-                {
-                  value: 'app_push',
-                  title: 'Push + Email',
-                  description: 'Instant notifications + email backup',
-                  icon: Rocket,
-                  badge: 'Recommended',
-                  color: 'border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800',
-                  selectedColor: 'border-blue-400 bg-blue-100 dark:bg-blue-900',
-                },
-                {
-                  value: 'app',
-                  title: 'Email Only',
-                  description: 'Traditional email notifications',
-                  icon: Mail,
-                  badge: null,
-                  color: 'border-gray-200 bg-gray-50 dark:bg-gray-950 dark:border-gray-800',
-                  selectedColor: 'border-gray-400 bg-gray-100 dark:bg-gray-900',
-                },
-                {
-                  value: 'sms',
-                  title: 'SMS Only',
-                  description: 'For offline users (charges apply)',
-                  icon: Phone,
-                  badge: 'Offline Users',
-                  color: 'border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800',
-                  selectedColor: 'border-orange-400 bg-orange-100 dark:bg-orange-900',
-                },
-                {
-                  value: 'both',
-                  title: 'All Methods',
-                  description: 'Push + Email + SMS (maximum reach)',
-                  icon: Megaphone,
-                  badge: 'Maximum Reach',
-                  color: 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800',
-                  selectedColor: 'border-green-400 bg-green-100 dark:bg-green-900',
-                },
-              ].map((method) => (
-                <div
-                  key={method.value}
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      notification_method: method.value as 'app_push' | 'app' | 'sms' | 'both',
-                    }))
-                  }
-                  className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-[1.02] ${
-                    formData.notification_method === method.value
-                      ? method.selectedColor
-                      : method.color
-                  } ${loading ? 'pointer-events-none opacity-50' : ''}`}
-                >
-                  <div className="flex items-start gap-3">
-                    {
-                      <method.icon className="h-[20px] w-[20px] text-foreground/70 mt-1 flex-shrink-0" />
+                { value: 'app_push', label: 'Push + Email', icon: Rocket },
+                { value: 'app', label: 'Email', icon: Mail },
+                { value: 'sms', label: 'SMS', icon: Phone },
+                { value: 'both', label: 'All', icon: Megaphone },
+              ].map((m) => {
+                const active = formData.notification_method === m.value;
+                const Icon = m.icon;
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        notification_method: m.value as 'app_push' | 'app' | 'sms' | 'both',
+                      }))
                     }
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-foreground">{method.title}</h4>
-                        {method.badge && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                            {method.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{method.description}</p>
-                    </div>
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        formData.notification_method === method.value
-                          ? 'border-primary bg-primary'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      {formData.notification_method === method.value && (
-                        <div className="w-2 h-2 rounded-full bg-white"></div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                    className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 ${
+                      active
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-muted text-foreground/70 border-border hover:bg-primary/10'
+                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Icon className={`h-3.5 w-3.5 ${active ? 'text-white' : 'text-primary'}`} />
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              note: Push notifications are instant and free. Use SMS for critical emergencies only.
+            <div className="mt-3 rounded-md bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
+              {formData.notification_method === 'app_push' && (
+                <span>Push + email: fast delivery with inbox backup.</span>
+              )}
+              {formData.notification_method === 'app' && (
+                <span>Email only: slower but reaches inbox; good for summaries.</span>
+              )}
+              {formData.notification_method === 'sms' && (
+                <span>SMS only: use for urgent offline scenarios (may incur cost).</span>
+              )}
+              {formData.notification_method === 'both' && (
+                <span>All methods: maximum reach (push, email, SMS) for critical events.</span>
+              )}
+            </div>
+            <p className="text-[10px] mt-2 text-muted-foreground italic">
+              Tip: Prefer Push + Email for most alerts. Reserve SMS for urgent or life-safety cases.
             </p>
           </div>
 
