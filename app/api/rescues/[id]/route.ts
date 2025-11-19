@@ -2,47 +2,28 @@ import { supabase } from '@/app/client/supabase';
 import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
-
-// Twilio configuration
-const getTwilioConfig = () => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN || process.env.AUTH_TOKEN;
-  const twilioNumber = process.env.TWILIO_FROM || process.env.TWILIO_NUMBER;
-  const messagingService = process.env.MESSAGING_SERVICE_SID || process.env.MESSAGING_SERVICE;
-
-  if (!accountSid || !authToken) {
-    throw new Error('Missing required Twilio credentials');
-  }
-
-  return {
-    client: twilio(accountSid, authToken),
-    twilioNumber,
-    messagingService,
-  };
-};
-
-// Function to send SMS
-async function sendSMS(
-  to: string,
-  message: string,
-): Promise<{ success: boolean; sid?: string; error?: string }> {
+// Internal SMS forwarding using TextBee via /api/sms
+async function sendStatusSMSInternal(to: string, message: string) {
   try {
-    const config = getTwilioConfig();
-
-    type MsgWithFrom = { from: string; to: string; body: string };
-    type MsgWithService = { messagingServiceSid: string; to: string; body: string };
-    const toIntl = to.startsWith('+') ? to : `+${to}`;
-    const messageOptions: MsgWithFrom | MsgWithService = config.messagingService
-      ? { messagingServiceSid: config.messagingService, to: toIntl, body: message }
-      : { from: (config.twilioNumber as string) || '', to: toIntl, body: message };
-    console.log('message options:', messageOptions);
-    const twilioMessage = await config.client.messages.create(messageOptions);
-    console.log(`twilio message: ${JSON.stringify(twilioMessage)}`);
-    return { success: true, sid: twilioMessage.sid };
-  } catch (error) {
-    console.error('SMS sending error:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    if (!to) return { success: false, error: 'No recipient phone provided' };
+    // Ensure E.164 format (+countrycode...) Basic normalization: prepend '+' if missing
+    const phone = to.startsWith('+') ? to : `+${to.replace(/[^0-9]/g, '')}`;
+    const originHost =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      process.env.BASE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const res = await fetch(`${originHost}/api/sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipients: [phone], message }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || `HTTP ${res.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 type RescueUpdate = Database['public']['Tables']['rescues']['Update'];
@@ -179,32 +160,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           : 'Failed to update rescue';
       return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
     }
-    // Auto-send SMS when status changes OR when explicitly requested via send_sms
+    // Auto-send SMS when status changes OR when explicitly requested via send_sms using internal SMS API
     try {
       const phone = data.contact_phone || body.contact_phone || existingRescue?.contact_phone;
       const statusChanged = existingRescue && data.status && existingRescue.status !== data.status;
       if (phone && (statusChanged || body.send_sms === true)) {
         const statusText = data.status?.replace('_', ' ') || 'updated';
-        const defaultMessage = `Rescue update: "${data.title}" is now ${statusText}.`;
-        const extra: string[] = [];
-        if (data.emergency_type) extra.push(`Type: ${data.emergency_type}`);
+        const baseMessage = `Amayalert Update: Rescue "${data.title}" is now ${statusText}.`;
+        const parts: string[] = [];
+        if (data.emergency_type) parts.push(`Type: ${data.emergency_type}`);
         const totalPeople = (data.female_count || 0) + (data.male_count || 0);
         if (totalPeople > 0)
-          extra.push(
-            `People: ${totalPeople} (${data.female_count || 0}F, ${data.male_count || 0}M)`,
+          parts.push(
+            `People: ${totalPeople} (${data.female_count || 0}F/${data.male_count || 0}M)`,
           );
         if (data.scheduled_for)
-          extra.push(`Schedule: ${new Date(data.scheduled_for).toLocaleDateString()}`);
-        if (extra.length) {
-          const tail = extra.join(' | ');
-          const candidate = `${defaultMessage} ${tail}`;
-          if (candidate.length <= 150) body.sms_message = candidate;
+          parts.push(`Schedule: ${new Date(data.scheduled_for).toLocaleDateString()}`);
+        const composed = parts.length ? `${baseMessage} ${parts.join(' | ')}` : baseMessage;
+        const finalMessage = (body.sms_message as string) || composed;
+        const smsResult = await sendStatusSMSInternal(phone, finalMessage);
+        if (!smsResult.success) {
+          console.warn('Rescue status SMS failed:', smsResult.error);
         }
-        const message = (body.sms_message as string) || defaultMessage;
-        await sendSMS(phone, message);
       }
     } catch (smsErr) {
-      console.warn('Rescue update SMS failed:', smsErr);
+      console.warn('Rescue update SMS forwarding failed:', smsErr);
     }
 
     // Optionally send email to all users when requested
