@@ -56,7 +56,6 @@ class SMSService {
     const relative = '/api/sms';
     if (typeof window === 'undefined') {
       const origin =
-        process.env.NEXT_PUBLIC_BASE_URL ||
         process.env.BASE_URL ||
         (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
         'http://localhost:3000';
