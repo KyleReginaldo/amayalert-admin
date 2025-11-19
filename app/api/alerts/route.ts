@@ -2,7 +2,6 @@ import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE!;
@@ -54,40 +53,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Twilio configuration (reuse pattern from rescue route)
-const getTwilioConfig = () => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN || process.env.AUTH_TOKEN;
-  const twilioNumber = process.env.TWILIO_FROM || process.env.TWILIO_NUMBER;
-  const messagingService = process.env.MESSAGING_SERVICE_SID || process.env.MESSAGING_SERVICE;
-
-  if (!accountSid || !authToken) {
-    throw new Error('Missing required Twilio credentials');
-  }
-
-  return {
-    client: twilio(accountSid, authToken),
-    twilioNumber,
-    messagingService,
-  };
-};
-
-async function sendSMS(
+// Helper to call internal SMS API (TextBee-backed)
+async function sendViaInternalSMSAPI(
   to: string,
   message: string,
-): Promise<{ success: boolean; sid?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const origin =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.BASE_URL ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+    'http://localhost:3000';
+  const url = `${origin.replace(/\/$/, '')}/api/sms`;
   try {
-    const config = getTwilioConfig();
-    type MsgWithFrom = { from: string; to: string; body: string };
-    type MsgWithService = { messagingServiceSid: string; to: string; body: string };
-    const toIntl = to.startsWith('+') ? to : `+${to}`;
-    const messageOptions: MsgWithFrom | MsgWithService = config.messagingService
-      ? { messagingServiceSid: config.messagingService, to: toIntl, body: message }
-      : { from: (config.twilioNumber as string) || '', to: toIntl, body: message };
-    const twilioMessage = await config.client.messages.create(messageOptions);
-    return { success: true, sid: twilioMessage.sid };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipients: [to], message }),
+    });
+    if (!resp.ok) {
+      type SMSAPIError = { error?: string; details?: string };
+      const data: SMSAPIError = await resp.json().catch(() => ({} as SMSAPIError));
+      return { success: false, error: data.error || data.details || `HTTP ${resp.status}` };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Network error' };
   }
 }
 
@@ -228,7 +221,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Send SMS if method includes SMS notifications (reuse Twilio direct logic for reliability)
+        // Send SMS if method includes SMS notifications (use internal TextBee-backed API)
         if ((notificationMethod === 'sms' || notificationMethod === 'both') && phone) {
           try {
             const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
@@ -249,7 +242,7 @@ export async function POST(request: NextRequest) {
               const candidate = `${baseDefault} ${tail}`;
               finalMessage = candidate.length <= 150 ? candidate : baseDefault;
             }
-            const smsResult = await sendSMS(phone, finalMessage);
+            const smsResult = await sendViaInternalSMSAPI(phone, finalMessage);
             if (smsResult.success) {
               smsCount++;
               console.log(`✅ SMS sent to ${phone}`);

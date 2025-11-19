@@ -1,87 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { to, message } = body;
+    const body = await request.json().catch(() => ({}));
+    const message: string | undefined = body.message;
 
-    // Validation
-    if (!to || !message) {
+    let recipients: string[] = [];
+    if (Array.isArray(body.recipients)) recipients = body.recipients as string[];
+    else if (typeof body.to === 'string') recipients = [body.to as string];
+
+    if (!message || recipients.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing required fields: to and message are required',
+          error: 'Missing required fields: recipients (or to) and message are required',
         },
         { status: 400 },
       );
     }
 
-    // Validate phone number format (basic validation)
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(to.replace(/\s+/g, ''))) {
+    // Basic E.164 validation for each recipient
+    const phoneRegex = /^\+[1-9]\d{7,14}$/;
+    const invalid = recipients.filter((n) => !phoneRegex.test(String(n).replace(/\s+/g, '')));
+    if (invalid.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid phone number format. Use international format (e.g., +1234567890)',
+          error: 'Invalid phone number(s). Use international format (e.g., +15551234567)',
+          details: `Invalid: ${invalid.join(', ')}`,
         },
         { status: 400 },
       );
     }
 
-    console.log('from twilio:', process.env.TWILIO_FROM);
-    const twilioIns = twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN);
-    const twilioMessage = await twilioIns.messages.create({
-      messagingServiceSid: process.env.MESSAGING_SERVICE_SID,
-      // from: process.env.TWILIO_FROM,
-      to: to,
-      body: message,
+    const apiKey = process.env.TEXTBEE_API_KEY;
+    const deviceId = process.env.TEXTBEE_DEVICE_ID;
+    const baseUrl = process.env.TEXTBEE_BASE_URL || 'https://api.textbee.dev';
+
+    if (!apiKey || !deviceId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing TextBee configuration',
+          details:
+            'Set TEXTBEE_API_KEY and TEXTBEE_DEVICE_ID in your environment (Vercel/locally).',
+        },
+        { status: 500 },
+      );
+    }
+
+    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/gateway/devices/${deviceId}/send-sms`;
+    const payload = { recipients, message };
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: JSON.stringify(payload),
     });
-    console.log('Twilio response:', twilioMessage);
+
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'TextBee API error',
+          details: typeof data === 'object' && data ? JSON.stringify(data) : 'Unknown error',
+        },
+        { status: resp.status || 502 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      data: twilioMessage.body,
-      message: 'SMS sent successfully',
+      data,
+      message: 'SMS sent successfully via TextBee',
     });
   } catch (error) {
-    console.error('SMS sending error:', error);
-
-    // Handle specific Twilio errors
-    if (error instanceof Error) {
-      let errorMessage = 'Failed to send SMS';
-      let statusCode = 500;
-
-      // Check for common Twilio error codes
-      if (error.message.includes('21211')) {
-        errorMessage = 'Invalid phone number';
-        statusCode = 400;
-      } else if (error.message.includes('21408')) {
-        errorMessage = 'Permission denied or invalid credentials';
-        statusCode = 401;
-      } else if (error.message.includes('21610')) {
-        errorMessage = 'Message cannot be sent to this number';
-        statusCode = 400;
-      } else if (error.message.includes('Missing required Twilio configuration')) {
-        errorMessage = 'SMS service not properly configured';
-        statusCode = 500;
-      }
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: errorMessage,
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        },
-        { status: statusCode },
-      );
-    }
-
+    console.error('SMS sending error (TextBee):', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'An unexpected error occurred',
+        error: 'Failed to send SMS',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ success: true, message: 'SMS API ready' });
 }
