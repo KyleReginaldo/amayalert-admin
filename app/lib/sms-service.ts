@@ -52,16 +52,24 @@ class SMSService {
   private baseUrl: string;
 
   constructor() {
-    // Use absolute URL when executing on the server to avoid fetch ERR_INVALID_URL
     const relative = '/api/sms';
     if (typeof window === 'undefined') {
-      const origin =
+      const raw =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        process.env.VERCEL_URL ||
         process.env.BASE_URL ||
-        (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-        'http://localhost:3000';
-      this.baseUrl = origin.replace(/\/$/, '') + relative; // ensure no double slash
+        process.env.URL;
+
+      let origin = raw || '';
+      if (origin && !/^https?:\/\//i.test(origin)) {
+        origin = `https://${origin}`;
+      }
+      if (!origin) {
+        origin = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000';
+      }
+      this.baseUrl = `${origin.replace(/\/$/, '')}${relative}`;
     } else {
-      this.baseUrl = relative; // browser can use relative path
+      this.baseUrl = relative;
     }
   }
 
