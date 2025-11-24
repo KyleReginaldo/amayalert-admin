@@ -266,41 +266,75 @@ const Dashboard = () => {
     }
   }, [alerts, evacuationCenters, users, refreshAll]);
 
-  const stats = useMemo(
-    () => ({
-      totalUsers: userStats.totalUsers,
-      activeAlerts: alerts.filter((alert) => !alert.deleted_at).length,
+  const stats = useMemo(() => {
+    const [yearStr, monthStr] = selectedMonth.split('-');
+    const selYear = parseInt(yearStr, 10);
+    const selMonth = parseInt(monthStr, 10) - 1; // zero-based
+
+    // Filter alerts/users for selected month
+    const monthAlerts = alerts.filter((a) => {
+      if (!a.created_at) return false;
+      const d = new Date(a.created_at);
+      return d.getFullYear() === selYear && d.getMonth() === selMonth;
+    });
+
+    const monthUsers = users.filter((u) => {
+      if (!u.created_at) return false;
+      const d = new Date(u.created_at);
+      return d.getFullYear() === selYear && d.getMonth() === selMonth;
+    });
+
+    return {
+      totalUsers: monthUsers.length, // show new users in selected month
+      activeAlerts: monthAlerts.filter((a) => !a.deleted_at).length,
       evacuationCenters: evacuationCenters.length,
-      criticalAlerts: alerts.filter((alert) => alert.alert_level === 'critical').length,
-      userGrowth: userStats.userGrowth,
-      alertsToday: alerts.filter(
-        (alert) =>
-          alert.created_at &&
-          new Date(alert.created_at).toDateString() === new Date().toDateString(),
-      ).length,
+      criticalAlerts: monthAlerts.filter((a) => a.alert_level === 'critical').length,
+      userGrowth: monthUsers.length, // for selected month
+      alertsToday: monthAlerts.filter((a) => {
+        if (!a.created_at) return false;
+        const ad = new Date(a.created_at).toDateString();
+        return ad === new Date().toDateString();
+      }).length,
       availableCenters: evacuationCenters.filter((center) => center.status === 'open').length,
       responseTime: '4.2 min',
-    }),
-    [alerts, evacuationCenters, userStats],
+      monthAlerts,
+      monthUsers,
+    };
+  }, [alerts, evacuationCenters, users, selectedMonth]);
+
+  const recentAlerts = useMemo(
+    () =>
+      stats.monthAlerts
+        .slice()
+        .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
+        .slice(0, 20)
+        .map((alert) => ({
+          id: alert.id,
+          title: alert.title || 'Untitled Alert',
+          severity: alert.alert_level || 'medium',
+          time: new Date(alert.created_at).toLocaleTimeString(),
+          date: new Date(alert.created_at).toLocaleDateString(),
+          status: alert.deleted_at ? 'deleted' : 'active',
+        })),
+    [stats.monthAlerts],
   );
 
-  const recentAlerts = alerts.slice(0, 20).map((alert) => ({
-    id: alert.id,
-    title: alert.title || 'Untitled Alert',
-    severity: alert.alert_level || 'medium',
-    time: new Date(alert.created_at).toLocaleTimeString(),
-    date: new Date(alert.created_at).toLocaleDateString(),
-    status: alert.deleted_at ? 'deleted' : 'active',
-  }));
-
-  const recentUsers = users.slice(0, 20).map((user) => ({
-    id: user.id,
-    name: user.full_name || 'Unknown User',
-    email: user.email,
-    role: user.role || 'user',
-    joinDate: user.created_at,
-    status: 'active',
-  }));
+  const recentUsers = useMemo(
+    () =>
+      stats.monthUsers
+        .slice()
+        .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
+        .slice(0, 20)
+        .map((user) => ({
+          id: user.id,
+          name: user.full_name || 'Unknown User',
+          email: user.email,
+          role: user.role || 'user',
+          joinDate: user.created_at,
+          status: 'active',
+        })),
+    [stats.monthUsers],
+  );
 
   if (loading) {
     return (
@@ -402,8 +436,10 @@ const Dashboard = () => {
           <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">Alert Severity Distribution</h2>
-                <span className="text-sm text-gray-500">{recentAlerts.length} total</span>
+                <h2 className="text-lg font-medium text-gray-900">
+                  Alert Severity ({selectedMonth})
+                </h2>
+                <span className="text-sm text-gray-500">{recentAlerts.length} in month</span>
               </div>
             </div>
             <div className="p-6">
@@ -549,8 +585,10 @@ const Dashboard = () => {
           <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">User Growth Trend</h2>
-                <span className="text-sm text-gray-500">{recentUsers.length} total</span>
+                <h2 className="text-lg font-medium text-gray-900">
+                  User Growth (ending {selectedMonth})
+                </h2>
+                <span className="text-sm text-gray-500">{recentUsers.length} new users</span>
               </div>
             </div>
             <div className="p-6">
@@ -560,14 +598,20 @@ const Dashboard = () => {
                   <div className="h-48">
                     {(() => {
                       // Group users by month for the last 6 months
-                      const now = new Date();
+                      // Base end month on selectedMonth instead of current real-time month
+                      const [yearStr, monthStr] = selectedMonth.split('-');
+                      const endDate = new Date(
+                        parseInt(yearStr, 10),
+                        parseInt(monthStr, 10) - 1,
+                        1,
+                      );
                       const months = [];
                       for (let i = 5; i >= 0; i--) {
-                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const date = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
                         months.push({
                           name: date.toLocaleDateString('en-US', { month: 'short' }),
-                          users: recentUsers.filter((user) => {
-                            const userDate = new Date(user.joinDate);
+                          users: users.filter((user) => {
+                            const userDate = new Date(user.created_at);
                             return (
                               userDate.getMonth() === date.getMonth() &&
                               userDate.getFullYear() === date.getFullYear()
@@ -733,6 +777,63 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* User Sign-Up History */}
+        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900">History ({selectedMonth})</h2>
+              <span className="text-sm text-gray-500">{stats.monthUsers.length} total</span>
+            </div>
+          </div>
+          <div className="p-6">
+            {stats.monthUsers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b">
+                      <th className="py-2 pr-4 font-medium text-gray-700">Name</th>
+                      <th className="py-2 pr-4 font-medium text-gray-700">Email</th>
+                      <th className="py-2 pr-4 font-medium text-gray-700">Role</th>
+                      <th className="py-2 pr-4 font-medium text-gray-700">Signed Up</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.monthUsers
+                      .slice()
+                      .sort(
+                        (a, b) =>
+                          new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime(),
+                      )
+                      .map((user) => (
+                        <tr key={user.id} className="border-b last:border-b-0">
+                          <td className="py-2 pr-4 whitespace-nowrap max-w-[200px] truncate">
+                            {user.full_name || 'Unknown User'}
+                          </td>
+                          <td className="py-2 pr-4 whitespace-nowrap max-w-[220px] truncate">
+                            {user.email || '—'}
+                          </td>
+                          <td className="py-2 pr-4 capitalize">{user.role || 'user'}</td>
+                          <td className="py-2 pr-4 text-gray-600">
+                            {new Date(user.created_at!).toLocaleDateString()}{' '}
+                            {new Date(user.created_at!).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-3" />
+                <p>No users signed up in this month</p>
+              </div>
+            )}
           </div>
         </div>
 
