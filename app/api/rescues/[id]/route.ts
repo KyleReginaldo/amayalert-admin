@@ -1,4 +1,5 @@
 import { supabase } from '@/app/client/supabase';
+import { logRescueAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -78,6 +79,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (process.env.NODE_ENV === 'development') {
       console.log('PUT /api/rescues/[id] payload:', JSON.stringify(body));
     }
+
+    // Extract userId from request body (don't include in updateData)
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
 
     // Validate required fields if provided
     if (body.title !== undefined && (!body.title || !body.title.trim())) {
@@ -498,6 +503,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    // Log the activity
+    await logRescueAction(
+      'update',
+      parseInt(id),
+      `Status: ${data.status}, Priority: ${data.priority}`,
+      userId,
+    );
+
     return NextResponse.json({
       success: true,
       data: data,
@@ -521,6 +534,11 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Invalid rescue ID' }, { status: 400 });
     }
 
+    // Extract userId from request body
+    const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
+
     const { data, error } = await supabase.from('rescues').delete().eq('id', id).select().single();
 
     if (error) {
@@ -533,6 +551,9 @@ export async function DELETE(
         { status: 500 },
       );
     }
+
+    // Log the activity
+    await logRescueAction('delete', parseInt(id), undefined, userId);
 
     return NextResponse.json({
       success: true,

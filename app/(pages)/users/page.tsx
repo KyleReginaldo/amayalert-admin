@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
 import UsersLiveMap from '@/app/components/UsersLiveMap';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
@@ -89,9 +90,9 @@ const PaginationControls = ({
           size="sm"
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           disabled={currentPage === 1}
-          className="gap-1 h-8 border-gray-300"
+          className="h-8 gap-1 border-gray-300"
         >
-          <ChevronLeft className="h-3 w-3" />
+          <ChevronLeft className="w-3 h-3" />
           <span className="hidden sm:inline">Prev</span>
         </Button>
 
@@ -127,10 +128,10 @@ const PaginationControls = ({
           size="sm"
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           disabled={currentPage === totalPages}
-          className="gap-1 h-8 border-gray-300"
+          className="h-8 gap-1 border-gray-300"
         >
           <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="w-3 h-3" />
         </Button>
       </div>
     </div>
@@ -216,12 +217,21 @@ export default function UsersPage() {
   const handleCreate = async (userData: UserInsert) => {
     try {
       setModalLoading(true);
+
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const response = await usersAPI.createUser({
         email: userData.email,
         full_name: userData.full_name,
         phone_number: userData.phone_number || '',
         role: userData.role as 'admin' | 'user',
+        gender: userData.gender || null,
         id: userData.id || crypto.randomUUID(),
+        userId,
       });
 
       if (response.success && response.data) {
@@ -240,11 +250,20 @@ export default function UsersPage() {
   const handleUpdate = async (id: string, userData: UserUpdate) => {
     try {
       setModalLoading(true);
+
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const response = await usersAPI.updateUser(id, {
         email: userData.email,
         full_name: userData.full_name,
         phone_number: userData.phone_number,
         role: userData.role as 'admin' | 'user',
+        gender: userData.gender || null,
+        userId,
       });
 
       if (response.success && response.data) {
@@ -270,7 +289,13 @@ export default function UsersPage() {
 
     if (confirm('Are you sure you want to delete this user?')) {
       try {
-        const response = await usersAPI.deleteUser(id);
+        // Get current user ID from Supabase
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const userId = user?.id;
+
+        const response = await usersAPI.deleteUser(id, userId);
         if (response.success) {
           removeUser(id);
         } else {
@@ -334,9 +359,9 @@ export default function UsersPage() {
 
   if (usersLoading && users.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="w-6 h-6 animate-spin" />
           <span>Loading users...</span>
         </div>
       </div>
@@ -349,20 +374,20 @@ export default function UsersPage() {
       <>
         <div className="min-h-screen bg-gray-50 md:bg-background">
           <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="text-center max-w-md mx-auto">
+            <div className="max-w-md mx-auto text-center">
               <div className="mb-6">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mx-auto mb-4">
-                  <UsersIcon className="h-10 w-10 text-gray-400" />
+                <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full">
+                  <UsersIcon className="w-10 h-10 text-gray-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">No Users Found</h2>
-                <p className="text-gray-600 mb-6">
+                <h2 className="mb-2 text-2xl font-bold text-gray-900">No Users Found</h2>
+                <p className="mb-6 text-gray-600">
                   Get started by adding your first user to the system.
                 </p>
               </div>
 
               <div className="space-y-4">
-                <Button onClick={openCreateModal} className="w-full md:w-auto gap-2">
-                  <Plus className="h-4 w-4" />
+                <Button onClick={openCreateModal} className="w-full gap-2 md:w-auto">
+                  <Plus className="w-4 h-4" />
                   Add First User
                 </Button>
               </div>
@@ -391,388 +416,445 @@ export default function UsersPage() {
 
   return (
     <AuthWrapper>
-      <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
-          {/* Header */}
-          <PageHeader
-            title="User Management"
-            subtitle="Manage user accounts, roles, and permissions"
-            action={
-              <Button onClick={openCreateModal} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add User
-              </Button>
-            }
-          />
+      <ModuleGuard requiredModule="user">
+        <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+          <div className="mx-auto space-y-6 max-w-7xl">
+            {/* Header */}
+            <PageHeader
+              title="User Management"
+              subtitle="Manage user accounts, roles, and permissions"
+              action={
+                <Button onClick={openCreateModal} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add User
+                </Button>
+              }
+            />
 
-          {/* Minimal Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-              <div className="text-sm text-gray-600">Total Users</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-              <div className="text-sm text-gray-600">With Phone</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
-              <div className="text-sm text-gray-600">Admins</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
-              <div className="text-sm text-gray-600">Users</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-indigo-600">{genderStats.male}</div>
-              <div className="text-sm text-gray-600">Male Users</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-pink-600">{genderStats.female}</div>
-              <div className="text-sm text-gray-600">Female Users</div>
-            </div>
-          </div>
-
-          {/* Minimal Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Search users..."
-                className="pl-10 border-gray-300 focus:border-gray-400 w-full md:w-md"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
-            </div>
-            <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center justify-end">
-            <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1.5 text-sm ${
-                  viewMode === 'table' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
-                }`}
-              >
-                Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('map')}
-                className={`px-3 py-1.5 text-sm border-l border-gray-200 ${
-                  viewMode === 'map' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
-                }`}
-              >
-                Map
-              </button>
-            </div>
-          </div>
-
-          {/* Users Table or Map */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {viewMode === 'map' ? (
-              <div className="p-4">
-                <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
-                {usersWithLocation.length === 0 && (
-                  <div className="text-center text-sm text-gray-500 mt-3">
-                    No users with location data to display.
-                  </div>
-                )}
+            {/* Minimal Stats */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                <div className="text-sm text-gray-600">Total Users</div>
               </div>
-            ) : (
-              <>
-                {/* Mobile View - Stack Cards */}
-                <div className="block md:hidden">
-                  <div className="divide-y divide-gray-200">
-                    {paginatedUsers.length > 0 ? (
-                      paginatedUsers.map((user) => {
-                        const RoleIcon = getRoleIcon(user.role);
-                        return (
-                          <div key={user.id} className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-medium text-sm text-gray-900">
-                                    {user.full_name || 'No Name'}
-                                  </p>
-                                  <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                                    <RoleIcon className="h-3 w-3 mr-1" />
-                                    {user.role}
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-gray-500 mb-1">{user.email}</p>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-500">
-                                    Phone: {user.phone_number || 'Not provided'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-xs text-gray-500">
-                                    Joined {new Date(user.created_at).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex gap-1 ml-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditModal(user)}
-                                  disabled={currentUserId === user.id}
-                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={
-                                    currentUserId === user.id
-                                      ? 'Cannot edit your own account'
-                                      : 'Edit user'
-                                  }
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openUserSheet(user)}
-                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-gray-900"
-                                  title={'View details'}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(user.id)}
-                                  disabled={currentUserId === user.id}
-                                  className="h-8 w-8 rounded-full text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={
-                                    currentUserId === user.id
-                                      ? 'Cannot delete your own account'
-                                      : 'Delete user'
-                                  }
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <UsersIcon className="h-8 w-8 mx-auto mb-2" />
-                        <p>No users found</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                <div className="text-sm text-gray-600">With Phone</div>
+              </div>
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
+                <div className="text-sm text-gray-600">Admins</div>
+              </div>
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
+                <div className="text-sm text-gray-600">Users</div>
+              </div>
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-indigo-600">{genderStats.male}</div>
+                <div className="text-sm text-gray-600">Male Users</div>
+              </div>
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="text-2xl font-bold text-pink-600">{genderStats.female}</div>
+                <div className="text-sm text-gray-600">Female Users</div>
+              </div>
+            </div>
 
-                {/* Desktop View - Table */}
-                <div className="hidden md:block">
-                  {paginatedUsers.length > 0 ? (
-                    <Table className="table-fixed w-full">
-                      <TableHeader>
-                        <TableRow className="border-gray-200">
-                          <TableHead className="w-[32%] font-medium text-gray-900">User</TableHead>
-                          <TableHead className="w-[14%] font-medium text-gray-900">Role</TableHead>
-                          <TableHead className="w-[18%] font-medium text-gray-900">Phone</TableHead>
-                          <TableHead className="w-[18%] font-medium text-gray-900">
-                            Joined
-                          </TableHead>
-                          <TableHead className="w-[18%] font-medium text-gray-900 text-right">
-                            Actions
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedUsers.map((user) => {
+            {/* Minimal Filters */}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                <Input
+                  placeholder="Search users..."
+                  className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex items-center justify-end">
+              <div className="inline-flex overflow-hidden border border-gray-200 rounded-md">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 text-sm ${
+                    viewMode === 'table' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                  }`}
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('map')}
+                  className={`px-3 py-1.5 text-sm border-l border-gray-200 ${
+                    viewMode === 'map' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                  }`}
+                >
+                  Map
+                </button>
+              </div>
+            </div>
+
+            {/* Users Table or Map */}
+            <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+              {viewMode === 'map' ? (
+                <div className="p-4">
+                  <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
+                  {usersWithLocation.length === 0 && (
+                    <div className="mt-3 text-sm text-center text-gray-500">
+                      No users with location data to display.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Mobile View - Stack Cards */}
+                  <div className="block md:hidden">
+                    <div className="divide-y divide-gray-200">
+                      {paginatedUsers.length > 0 ? (
+                        paginatedUsers.map((user) => {
                           const RoleIcon = getRoleIcon(user.role);
                           return (
-                            <TableRow key={user.id} className="hover:bg-gray-50 border-gray-200">
-                              <TableCell className="w-[32%]">
-                                <div>
-                                  <div className="font-medium text-gray-900">
-                                    {user.full_name || 'No Name'}
+                            <div key={user.id} className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {user.full_name || 'No Name'}
+                                    </p>
+                                    <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                      <RoleIcon className="w-3 h-3 mr-1" />
+                                      {user.role}
+                                    </Badge>
+                                    {user.gender && (
+                                      <Badge
+                                        className={`text-xs ${
+                                          user.gender.toLowerCase() === 'male'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                            : 'bg-pink-50 text-pink-700 border-pink-200'
+                                        }`}
+                                      >
+                                        {user.gender}
+                                      </Badge>
+                                    )}
                                   </div>
-                                  <div className="text-sm text-gray-500">{user.email}</div>
+                                  <p className="mb-1 text-xs text-gray-500">{user.email}</p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">
+                                      Phone: {user.phone_number || 'Not provided'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-500">
+                                      Joined {new Date(user.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
                                 </div>
-                              </TableCell>
-                              <TableCell className="w-[14%]">
-                                <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                                  <RoleIcon className="h-3 w-3 mr-1" />
-                                  {user.role || 'user'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="w-[18%] text-gray-600">
-                                <div className="text-sm">{user.phone_number || 'Not provided'}</div>
-                              </TableCell>
-                              <TableCell className="w-[18%] text-gray-600">
-                                <div className="text-sm">
-                                  {new Date(user.created_at).toLocaleDateString()}
-                                </div>
-                              </TableCell>
-                              <TableCell className="w-[18%] text-right">
-                                <div className="ml-auto flex items-center gap-1 justify-end">
+                                <div className="flex gap-1 ml-2">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => openEditModal(user)}
                                     disabled={currentUserId === user.id}
-                                    className="h-8 w-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title={
                                       currentUserId === user.id
                                         ? 'Cannot edit your own account'
                                         : 'Edit user'
                                     }
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Edit className="w-3 h-3" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => openUserSheet(user)}
-                                    className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
                                     title={'View details'}
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="w-3 h-3" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(user.id)}
                                     disabled={currentUserId === user.id}
-                                    className="h-8 w-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title={
                                       currentUserId === user.id
                                         ? 'Cannot delete your own account'
                                         : 'Delete user'
                                     }
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="w-3 h-3" />
                                   </Button>
                                 </div>
-                              </TableCell>
-                            </TableRow>
+                              </div>
+                            </div>
                           );
-                        })}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <UsersIcon className="h-8 w-8 mx-auto mb-2" />
-                      <p>No users found</p>
+                        })
+                      ) : (
+                        <div className="py-8 text-center text-gray-500">
+                          <UsersIcon className="w-8 h-8 mx-auto mb-2" />
+                          <p>No users found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desktop View - Table */}
+                  <div className="hidden md:block">
+                    {paginatedUsers.length > 0 ? (
+                      <Table className="w-full table-fixed">
+                        <TableHeader>
+                          <TableRow className="border-gray-200">
+                            <TableHead className="w-[28%] font-medium text-gray-900">
+                              User
+                            </TableHead>
+                            <TableHead className="w-[12%] font-medium text-gray-900">
+                              Role
+                            </TableHead>
+                            <TableHead className="w-[10%] font-medium text-gray-900">
+                              Gender
+                            </TableHead>
+                            <TableHead className="w-[16%] font-medium text-gray-900">
+                              Phone
+                            </TableHead>
+                            <TableHead className="w-[16%] font-medium text-gray-900">
+                              Joined
+                            </TableHead>
+                            <TableHead className="w-[18%] font-medium text-gray-900 text-right">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedUsers.map((user) => {
+                            const RoleIcon = getRoleIcon(user.role);
+                            return (
+                              <TableRow key={user.id} className="border-gray-200 hover:bg-gray-50">
+                                <TableCell className="w-[28%]">
+                                  <div>
+                                    <div className="font-medium text-gray-900">
+                                      {user.full_name || 'No Name'}
+                                    </div>
+                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="w-[12%]">
+                                  <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                    <RoleIcon className="w-3 h-3 mr-1" />
+                                    {user.role || 'user'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="w-[10%]">
+                                  {user.gender ? (
+                                    <Badge
+                                      className={`text-xs ${
+                                        user.gender.toLowerCase() === 'male'
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                          : 'bg-pink-50 text-pink-700 border-pink-200'
+                                      }`}
+                                    >
+                                      {user.gender}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-sm text-gray-400">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="w-[16%] text-gray-600">
+                                  <div className="text-sm">
+                                    {user.phone_number || 'Not provided'}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="w-[16%] text-gray-600">
+                                  <div className="text-sm">
+                                    {new Date(user.created_at).toLocaleDateString()}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="w-[18%] text-right">
+                                  <div className="flex items-center justify-end gap-1 ml-auto">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditModal(user)}
+                                      disabled={currentUserId === user.id}
+                                      className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title={
+                                        currentUserId === user.id
+                                          ? 'Cannot edit your own account'
+                                          : 'Edit user'
+                                      }
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openUserSheet(user)}
+                                      className="w-8 h-8 text-gray-600 hover:text-gray-900"
+                                      title={'View details'}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDelete(user.id)}
+                                      disabled={currentUserId === user.id}
+                                      className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title={
+                                        currentUserId === user.id
+                                          ? 'Cannot delete your own account'
+                                          : 'Delete user'
+                                      }
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="py-8 text-center text-gray-500">
+                        <UsersIcon className="w-8 h-8 mx-auto mb-2" />
+                        <p>No users found</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination */}
+                  {filteredUsers.length > itemsPerPage && (
+                    <div className="p-4 border-t border-gray-200">
+                      <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={filteredUsers.length}
+                        itemsPerPage={itemsPerPage}
+                      />
                     </div>
                   )}
-                </div>
-
-                {/* Pagination */}
-                {filteredUsers.length > itemsPerPage && (
-                  <div className="p-4 border-t border-gray-200">
-                    <PaginationControls
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={setCurrentPage}
-                      totalItems={filteredUsers.length}
-                      itemsPerPage={itemsPerPage}
-                    />
-                  </div>
-                )}
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Create/Edit Modal */}
-        <UserModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingUser(null);
-          }}
-          user={editingUser}
-          onSave={
-            editingUser
-              ? (data) => handleUpdate(editingUser.id, data as UserUpdate)
-              : (data) => handleCreate(data as UserInsert)
-          }
-          loading={modalLoading}
-        />
+          {/* Create/Edit Modal */}
+          <UserModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingUser(null);
+            }}
+            user={editingUser}
+            onSave={
+              editingUser
+                ? (data) => handleUpdate(editingUser.id, data as UserUpdate)
+                : (data) => handleCreate(data as UserInsert)
+            }
+            loading={modalLoading}
+          />
 
-        {/* Right-side User Details Sheet */}
-        <Sheet
-          open={isSheetOpen}
-          onOpenChange={(open) => {
-            setIsSheetOpen(open);
-            if (!open) setSelectedUser(null);
-          }}
-        >
-          <SheetContent className="sm:max-w-xl">
-            {selectedUser && (
-              <div className="flex h-full flex-col">
-                <SheetHeader>
-                  <SheetTitle>User Details</SheetTitle>
-                  <SheetDescription>Read-only profile snapshot.</SheetDescription>
-                </SheetHeader>
-                <div className="flex-1 overflow-auto space-y-3 text-sm text-gray-700">
-                  <div>
-                    <div className="text-xs text-gray-500">Full name</div>
-                    <div>{selectedUser.full_name || 'No Name'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Email</div>
-                    <div>{selectedUser.email}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Role</div>
-                    <div className="inline-flex items-center gap-2">
-                      <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
-                        {selectedUser.role || 'user'}
-                      </Badge>
+          {/* Right-side User Details Sheet */}
+          <Sheet
+            open={isSheetOpen}
+            onOpenChange={(open) => {
+              setIsSheetOpen(open);
+              if (!open) setSelectedUser(null);
+            }}
+          >
+            <SheetContent className="sm:max-w-xl">
+              {selectedUser && (
+                <div className="flex flex-col h-full">
+                  <SheetHeader>
+                    <SheetTitle>User Details</SheetTitle>
+                    <SheetDescription>Read-only profile snapshot.</SheetDescription>
+                  </SheetHeader>
+                  <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
+                    <div>
+                      <div className="text-xs text-gray-500">Full name</div>
+                      <div>{selectedUser.full_name || 'No Name'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Email</div>
+                      <div>{selectedUser.email}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Role</div>
+                      <div className="inline-flex items-center gap-2">
+                        <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
+                          {selectedUser.role || 'user'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Phone</div>
+                      <div>{selectedUser.phone_number || 'Not provided'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Gender</div>
+                      <div>
+                        {selectedUser.gender ? (
+                          <Badge
+                            className={`text-xs ${
+                              selectedUser.gender.toLowerCase() === 'male'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-pink-50 text-pink-700 border-pink-200'
+                            }`}
+                          >
+                            {selectedUser.gender}
+                          </Badge>
+                        ) : (
+                          'Not provided'
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Joined</div>
+                      <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Phone</div>
-                    <div>{selectedUser.phone_number || 'Not provided'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Joined</div>
-                    <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
-                  </div>
-                </div>
 
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
-                    Close
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIsSheetOpen(false);
-                      openEditModal(selectedUser);
-                    }}
-                    disabled={currentUserId === selectedUser.id}
-                    title={
-                      currentUserId === selectedUser.id
-                        ? 'Cannot edit your own account'
-                        : 'Edit user'
-                    }
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                      Close
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        openEditModal(selectedUser);
+                      }}
+                      disabled={currentUserId === selectedUser.id}
+                      title={
+                        currentUserId === selectedUser.id
+                          ? 'Cannot edit your own account'
+                          : 'Edit user'
+                      }
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </SheetContent>
-        </Sheet>
-      </div>
+              )}
+            </SheetContent>
+          </Sheet>
+        </div>
+      </ModuleGuard>
     </AuthWrapper>
   );
 }
@@ -791,7 +873,8 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
     full_name: '',
     email: '',
     phone_number: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'user' as 'admin' | 'user' | 'sub_admin',
+    gender: '',
   });
 
   useEffect(() => {
@@ -801,6 +884,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
         email: user.email || '',
         phone_number: user.phone_number || '',
         role: user.role || 'user',
+        gender: user.gender || '',
       });
     } else {
       setFormData({
@@ -808,6 +892,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
         email: '',
         phone_number: '',
         role: 'user',
+        gender: '',
       });
     }
   }, [user]);
@@ -894,6 +979,28 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
             </Select>
           </div>
 
+          <div>
+            <Label htmlFor="gender">Gender</Label>
+            <Select
+              value={formData.gender}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  gender: value,
+                }))
+              }
+              disabled={loading}
+            >
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent className="z-[10000]">
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
@@ -901,12 +1008,12 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   {user ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="w-4 h-4 mr-2" />
                   {user ? 'Update User' : 'Create User'}
                 </>
               )}

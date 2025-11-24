@@ -2,7 +2,9 @@
 
 import type React from 'react';
 
+import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
 import alertsAPI, { Alert, AlertCreateRequest, AlertUpdate } from '@/app/lib/alerts-api';
 import { useAlerts } from '@/app/providers/alerts-provider';
@@ -151,7 +153,15 @@ export default function AlertPage() {
   const handleCreate = async (alertData: AlertCreateRequest) => {
     try {
       setModalLoading(true);
-      const response = await alertsAPI.createAlert(alertData);
+
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      // Pass userId in the request
+      const response = await alertsAPI.createAlert({ ...alertData, userId });
       if (response.success && response.data) {
         addAlert(response.data);
 
@@ -188,7 +198,14 @@ export default function AlertPage() {
   const handleUpdate = async (id: number, alertData: AlertUpdate) => {
     try {
       setModalLoading(true);
-      const response = await alertsAPI.updateAlert(id, alertData);
+
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const response = await alertsAPI.updateAlert(id, { ...alertData, userId });
       if (response.success && response.data) {
         updateAlert(id, response.data);
         setIsModalOpen(false);
@@ -204,7 +221,13 @@ export default function AlertPage() {
   const handleDelete = async (id: number) => {
     if (confirm('Are you sure you want to delete this alert?')) {
       try {
-        const response = await alertsAPI.deleteAlert(id);
+        // Get current user ID from Supabase
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const userId = user?.id;
+
+        const response = await alertsAPI.deleteAlert(id, userId);
         if (response.success) {
           removeAlert(id);
         }
@@ -332,315 +355,150 @@ export default function AlertPage() {
 
   return (
     <AuthWrapper>
-      <div className="min-h-screen bg-background">
-        <div className="px-4 py-8 mx-auto max-w-7xl md:px-6 md:py-12">
-          <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
+      <ModuleGuard requiredModule="alert">
+        <div className="min-h-screen bg-background">
+          <div className="px-4 py-8 mx-auto max-w-7xl md:px-6 md:py-12">
+            <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
 
-          <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5 md:gap-4">
-            {[
-              {
-                key: 'total',
-                label: 'Total',
-                value: stats.total,
-                color:
-                  'from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-700 dark:text-slate-200',
-                icon: Building,
-              },
-              {
-                key: 'low',
-                label: 'Low',
-                value: stats.low,
-                color:
-                  'from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 text-blue-700 dark:text-blue-200',
-                icon: ChevronsDown,
-              },
-              {
-                key: 'medium',
-                label: 'Medium',
-                value: stats.medium,
-                color:
-                  'from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 text-amber-700 dark:text-amber-200',
-                icon: UsersRound,
-              },
-              {
-                key: 'high',
-                label: 'High',
-                value: stats.high,
-                color:
-                  'from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 text-orange-700 dark:text-orange-200',
-                icon: ChevronsUp,
-              },
-              {
-                key: 'critical',
-                label: 'Critical',
-                value: stats.critical,
-                color:
-                  'from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 text-red-700 dark:text-red-200',
-                icon: CloudAlert,
-              },
-            ].map((stat) => (
-              <div
-                key={stat.key}
-                className={`bg-linear-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
-              >
-                <div className="mb-1 text-xl font-bold md:text-2xl">{stat.value}</div>
-                <div className="text-xs font-medium md:text-sm opacity-80">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              {/* Search Bar */}
-              <div className="relative flex-1 md:max-w-sm">
-                <Search className="absolute w-4 h-4 -translate-y-1/2 left-4 top-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search alerts by title or content..."
-                  className="h-10 pl-10 border rounded-lg bg-card border-input"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
-
-              {/* Filter and Create Button */}
-              <div className="flex items-center gap-3">
-                <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="w-[140px] md:w-40 bg-card border border-input rounded-lg h-10">
-                    <SelectValue placeholder="Filter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button onClick={openCreateModal} className="gap-2 rounded-lg" size="default">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Create Alert</span>
-                  <span className="sm:hidden">New</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Results Info */}
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredAlerts.length)} of{' '}
-              {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'}
-            </div>
-          </div>
-
-          <div className="overflow-hidden border rounded-lg shadow-sm bg-card border-border">
-            {/* Mobile View */}
-            <div className="block divide-y md:hidden divide-border">
-              {paginatedAlerts.length === 0 ? (
-                <div className="px-4 py-12 text-center">
-                  <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="mb-1 font-medium text-foreground">
-                    {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
-                  </p>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    {alerts.length === 0
-                      ? 'Create your first alert to get started'
-                      : 'Try adjusting your search or filter'}
-                  </p>
-                  {alerts.length === 0 && (
-                    <Button onClick={openCreateModal} className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Create Alert
-                    </Button>
-                  )}
+            <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5 md:gap-4">
+              {[
+                {
+                  key: 'total',
+                  label: 'Total',
+                  value: stats.total,
+                  color:
+                    'from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-700 dark:text-slate-200',
+                  icon: Building,
+                },
+                {
+                  key: 'low',
+                  label: 'Low',
+                  value: stats.low,
+                  color:
+                    'from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 text-blue-700 dark:text-blue-200',
+                  icon: ChevronsDown,
+                },
+                {
+                  key: 'medium',
+                  label: 'Medium',
+                  value: stats.medium,
+                  color:
+                    'from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 text-amber-700 dark:text-amber-200',
+                  icon: UsersRound,
+                },
+                {
+                  key: 'high',
+                  label: 'High',
+                  value: stats.high,
+                  color:
+                    'from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 text-orange-700 dark:text-orange-200',
+                  icon: ChevronsUp,
+                },
+                {
+                  key: 'critical',
+                  label: 'Critical',
+                  value: stats.critical,
+                  color:
+                    'from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 text-red-700 dark:text-red-200',
+                  icon: CloudAlert,
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.key}
+                  className={`bg-linear-to-br ${stat.color} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
+                >
+                  <div className="mb-1 text-xl font-bold md:text-2xl">{stat.value}</div>
+                  <div className="text-xs font-medium md:text-sm opacity-80">{stat.label}</div>
                 </div>
-              ) : (
-                paginatedAlerts.map((alert) => {
-                  const config =
-                    alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
-                  const LevelIcon = config?.icon || Bell;
-                  return (
-                    <div
-                      key={alert.id}
-                      className="p-4 transition-colors duration-200 hover:bg-muted/50"
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div
-                          className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${config?.dotColor}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="mb-1 font-semibold truncate text-foreground">
-                            {alert.title || 'Untitled Alert'}
-                          </h3>
-                          <p className="mb-2 text-sm text-muted-foreground line-clamp-2">
-                            {alert.content || 'No content'}
-                          </p>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Badge
-                              variant="secondary"
-                              className={alertLevelColor(alert.alert_level)}
-                            >
-                              <LevelIcon className="w-3 h-3 mr-1" />
-                              {config?.label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(alert.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditModal(alert)}
-                            className="w-8 h-8 rounded-md hover:bg-muted"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openAlertSheet(alert)}
-                            className="w-8 h-8 rounded-md hover:bg-muted"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(alert.id)}
-                            className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+              ))}
             </div>
 
-            {/* Desktop View */}
-            <div className="hidden md:block">
-              {paginatedAlerts.length === 0 ? (
-                <div className="py-12 text-center">
-                  <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="mb-1 font-medium text-foreground">
-                    {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
-                  </p>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    {alerts.length === 0
-                      ? 'Create your first alert to get started'
-                      : 'Try adjusting your search or filter'}
-                  </p>
-                  {alerts.length === 0 && (
-                    <Button onClick={openCreateModal} className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Create Alert
-                    </Button>
-                  )}
+            <div className="mb-6 space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                {/* Search Bar */}
+                <div className="relative flex-1 md:max-w-sm">
+                  <Search className="absolute w-4 h-4 -translate-y-1/2 left-4 top-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search alerts by title or content..."
+                    className="h-10 pl-10 border rounded-lg bg-card border-input"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between px-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      {selectedIds.size > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={clearSelection}
-                          disabled={bulkDeleting}
-                          className="h-8"
-                        >
-                          Clear
-                        </Button>
-                      )}
-                      {selectedIds.size > 0 && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleBulkDelete}
-                          disabled={selectedIds.size === 0 || bulkDeleting}
-                          className="h-8 m-2"
-                        >
-                          {bulkDeleting ? (
-                            <span className="flex items-center gap-2">
-                              <div className="w-3 h-3 border-2 border-current rounded-full border-t-transparent animate-spin" />
-                              Deleting...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Trash2 className="h-3.5 w-3.5" /> Delete Selected
-                            </span>
-                          )}
-                        </Button>
-                      )}
-                    </div>
+
+                {/* Filter and Create Button */}
+                <div className="flex items-center gap-3">
+                  <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
+                    <SelectTrigger className="w-[140px] md:w-40 bg-card border border-input rounded-lg h-10">
+                      <SelectValue placeholder="Filter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button onClick={openCreateModal} className="gap-2 rounded-lg" size="default">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Create Alert</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Results Info */}
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredAlerts.length)} of{' '}
+                {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'}
+              </div>
+            </div>
+
+            <div className="overflow-hidden border rounded-lg shadow-sm bg-card border-border">
+              {/* Mobile View */}
+              <div className="block divide-y md:hidden divide-border">
+                {paginatedAlerts.length === 0 ? (
+                  <div className="px-4 py-12 text-center">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="mb-1 font-medium text-foreground">
+                      {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
+                    </p>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      {alerts.length === 0
+                        ? 'Create your first alert to get started'
+                        : 'Try adjusting your search or filter'}
+                    </p>
+                    {alerts.length === 0 && (
+                      <Button onClick={openCreateModal} className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Create Alert
+                      </Button>
+                    )}
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="w-8">
-                          <button
-                            onClick={toggleSelectAll}
-                            className="h-4 w-4 rounded border border-border flex items-center justify-center text-[10px] bg-background hover:bg-muted"
-                            aria-label="Select all"
-                          >
-                            {selectedIds.size === paginatedAlerts.length &&
-                            paginatedAlerts.length > 0
-                              ? '✓'
-                              : ''}
-                          </button>
-                        </TableHead>
-                        <TableHead className="font-semibold text-foreground">Title</TableHead>
-                        <TableHead className="font-semibold text-foreground">Content</TableHead>
-                        <TableHead className="font-semibold text-foreground">Level</TableHead>
-                        <TableHead className="font-semibold text-foreground">Created</TableHead>
-                        <TableHead className="font-semibold text-foreground">Status</TableHead>
-                        <TableHead className="font-semibold text-right text-foreground">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedAlerts.map((alert) => {
-                        const config =
-                          alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
-                        const LevelIcon = config?.icon || Bell;
-                        return (
-                          <TableRow
-                            key={alert.id}
-                            className="transition-colors duration-200 border-border hover:bg-muted/50"
-                          >
-                            <TableCell className="w-8">
-                              <button
-                                onClick={() => toggleSelect(alert.id)}
-                                className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${
-                                  selectedIds.has(alert.id)
-                                    ? 'bg-primary text-white border-primary'
-                                    : 'border-border bg-background hover:bg-muted'
-                                }`}
-                                aria-label={
-                                  selectedIds.has(alert.id) ? 'Unselect alert' : 'Select alert'
-                                }
-                              >
-                                {selectedIds.has(alert.id) ? '✓' : ''}
-                              </button>
-                            </TableCell>
-                            <TableCell className="font-medium text-foreground">
-                              <div className="flex items-center gap-2">
-                                <div className={`h-2.5 w-2.5 rounded-full ${config?.dotColor}`} />
-                                <span className="max-w-[200px] truncate">
-                                  {alert.title || 'Untitled Alert'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              <div className="max-w-[300px] truncate">
-                                {alert.content || 'No content'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
+                ) : (
+                  paginatedAlerts.map((alert) => {
+                    const config =
+                      alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
+                    const LevelIcon = config?.icon || Bell;
+                    return (
+                      <div
+                        key={alert.id}
+                        className="p-4 transition-colors duration-200 hover:bg-muted/50"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div
+                            className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${config?.dotColor}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="mb-1 font-semibold truncate text-foreground">
+                              {alert.title || 'Untitled Alert'}
+                            </h3>
+                            <p className="mb-2 text-sm text-muted-foreground line-clamp-2">
+                              {alert.content || 'No content'}
+                            </p>
+                            <div className="flex items-center gap-2 mb-3">
                               <Badge
                                 variant="secondary"
                                 className={alertLevelColor(alert.alert_level)}
@@ -648,231 +506,402 @@ export default function AlertPage() {
                                 <LevelIcon className="w-3 h-3 mr-1" />
                                 {config?.label}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(alert.created_at).toLocaleDateString()} ·{' '}
-                              {new Date(alert.created_at).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={alert.deleted_at ? 'destructive' : 'default'}
-                                className="text-xs"
-                              >
-                                {alert.deleted_at ? 'Deleted' : 'Active'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditModal(alert)}
-                                  className="w-8 h-8 rounded-md hover:bg-muted"
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(alert.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(alert)}
+                              className="w-8 h-8 rounded-md hover:bg-muted"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openAlertSheet(alert)}
+                              className="w-8 h-8 rounded-md hover:bg-muted"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(alert.id)}
+                              className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                {paginatedAlerts.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="mb-1 font-medium text-foreground">
+                      {alerts.length === 0 ? 'No alerts yet' : 'No alerts found'}
+                    </p>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      {alerts.length === 0
+                        ? 'Create your first alert to get started'
+                        : 'Try adjusting your search or filter'}
+                    </p>
+                    {alerts.length === 0 && (
+                      <Button onClick={openCreateModal} className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Create Alert
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between px-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        {selectedIds.size > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearSelection}
+                            disabled={bulkDeleting}
+                            className="h-8"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                        {selectedIds.size > 0 && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            disabled={selectedIds.size === 0 || bulkDeleting}
+                            className="h-8 m-2"
+                          >
+                            {bulkDeleting ? (
+                              <span className="flex items-center gap-2">
+                                <div className="w-3 h-3 border-2 border-current rounded-full border-t-transparent animate-spin" />
+                                Deleting...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                              </span>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="w-8">
+                            <button
+                              onClick={toggleSelectAll}
+                              className="h-4 w-4 rounded border border-border flex items-center justify-center text-[10px] bg-background hover:bg-muted"
+                              aria-label="Select all"
+                            >
+                              {selectedIds.size === paginatedAlerts.length &&
+                              paginatedAlerts.length > 0
+                                ? '✓'
+                                : ''}
+                            </button>
+                          </TableHead>
+                          <TableHead className="font-semibold text-foreground">Title</TableHead>
+                          <TableHead className="font-semibold text-foreground">Content</TableHead>
+                          <TableHead className="font-semibold text-foreground">Level</TableHead>
+                          <TableHead className="font-semibold text-foreground">Created</TableHead>
+                          <TableHead className="font-semibold text-foreground">Status</TableHead>
+                          <TableHead className="font-semibold text-right text-foreground">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedAlerts.map((alert) => {
+                          const config =
+                            alertLevelConfig[alert.alert_level as keyof typeof alertLevelConfig];
+                          const LevelIcon = config?.icon || Bell;
+                          return (
+                            <TableRow
+                              key={alert.id}
+                              className="transition-colors duration-200 border-border hover:bg-muted/50"
+                            >
+                              <TableCell className="w-8">
+                                <button
+                                  onClick={() => toggleSelect(alert.id)}
+                                  className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${
+                                    selectedIds.has(alert.id)
+                                      ? 'bg-primary text-white border-primary'
+                                      : 'border-border bg-background hover:bg-muted'
+                                  }`}
+                                  aria-label={
+                                    selectedIds.has(alert.id) ? 'Unselect alert' : 'Select alert'
+                                  }
                                 >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openAlertSheet(alert)}
-                                  className="w-8 h-8 rounded-md hover:bg-muted"
+                                  {selectedIds.has(alert.id) ? '✓' : ''}
+                                </button>
+                              </TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2.5 w-2.5 rounded-full ${config?.dotColor}`} />
+                                  <span className="max-w-[200px] truncate">
+                                    {alert.title || 'Untitled Alert'}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                <div className="max-w-[300px] truncate">
+                                  {alert.content || 'No content'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="secondary"
+                                  className={alertLevelColor(alert.alert_level)}
                                 >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(alert.id)}
-                                  className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                                  <LevelIcon className="w-3 h-3 mr-1" />
+                                  {config?.label}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(alert.created_at).toLocaleDateString()} ·{' '}
+                                {new Date(alert.created_at).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={alert.deleted_at ? 'destructive' : 'default'}
+                                  className="text-xs"
                                 >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                                  {alert.deleted_at ? 'Deleted' : 'Active'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditModal(alert)}
+                                    className="w-8 h-8 rounded-md hover:bg-muted"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openAlertSheet(alert)}
+                                    className="w-8 h-8 rounded-md hover:bg-muted"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(alert.id)}
+                                    className="w-8 h-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {filteredAlerts.length > 0 && totalPages > 1 && (
+              <div className="flex flex-col gap-4 mt-6 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="gap-1 rounded-md"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        );
+                      })
+                      .map((page, index, array) => {
+                        const showEllipsis = index > 0 && array[index - 1] < page - 1;
+                        return (
+                          <div key={page} className="flex items-center">
+                            {showEllipsis && (
+                              <span className="px-2 text-muted-foreground">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === page ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-8 h-8 p-0 rounded-md"
+                            >
+                              {page}
+                            </Button>
+                          </div>
                         );
                       })}
-                    </TableBody>
-                  </Table>
-                </>
-              )}
-            </div>
-          </div>
-
-          {filteredAlerts.length > 0 && totalPages > 1 && (
-            <div className="flex flex-col gap-4 mt-6 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="gap-1 rounded-md"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      return (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
-                      );
-                    })
-                    .map((page, index, array) => {
-                      const showEllipsis = index > 0 && array[index - 1] < page - 1;
-                      return (
-                        <div key={page} className="flex items-center">
-                          {showEllipsis && <span className="px-2 text-muted-foreground">...</span>}
-                          <Button
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
-                            className="w-8 h-8 p-0 rounded-md"
-                          >
-                            {page}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="gap-1 rounded-md"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Modal and Sheet */}
-        <AlertModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingAlert(null);
-            try {
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('alertModal.isOpen');
-                localStorage.removeItem('alertModal.formData');
-              }
-            } catch {}
-          }}
-          alert={editingAlert}
-          onSave={
-            editingAlert ? (data: AlertUpdate) => handleUpdate(editingAlert.id, data) : handleCreate
-          }
-          loading={modalLoading}
-        />
-
-        <Sheet
-          open={isSheetOpen}
-          onOpenChange={(open) => {
-            setIsSheetOpen(open);
-            if (!open) setSelectedAlert(null);
-          }}
-        >
-          <SheetContent className="sm:max-w-2xl">
-            {selectedAlert && (
-              <div className="flex flex-col h-full">
-                <SheetHeader>
-                  <SheetTitle>Alert Details</SheetTitle>
-                  <SheetDescription>Complete information about this alert</SheetDescription>
-                </SheetHeader>
-
-                <div className="flex-1 py-6 space-y-6 overflow-auto">
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      ID
-                    </Label>
-                    <div className="mt-2 font-mono text-sm break-all">{selectedAlert.id}</div>
                   </div>
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Title
-                    </Label>
-                    <div className="mt-2 font-medium text-foreground">
-                      {selectedAlert.title || 'Untitled Alert'}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Content
-                    </Label>
-                    <div className="mt-2 text-sm whitespace-pre-wrap text-foreground">
-                      {selectedAlert.content || 'No content'}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Level
-                    </Label>
-                    <div className="mt-2">
-                      <Badge className={alertLevelColor(selectedAlert.alert_level)}>
-                        {
-                          alertLevelConfig[
-                            selectedAlert.alert_level as keyof typeof alertLevelConfig
-                          ]?.label
-                        }
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Status
-                    </Label>
-                    <div className="mt-2">
-                      <Badge variant={selectedAlert.deleted_at ? 'destructive' : 'default'}>
-                        {selectedAlert.deleted_at ? 'Deleted' : 'Active'}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                      Created
-                    </Label>
-                    <div className="mt-2 text-sm text-foreground">
-                      {new Date(selectedAlert.created_at).toLocaleDateString()} at{' '}
-                      {new Date(selectedAlert.created_at).toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-border">
-                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
-                    Close
-                  </Button>
                   <Button
-                    onClick={() => {
-                      setIsSheetOpen(false);
-                      if (selectedAlert) openEditModal(selectedAlert);
-                    }}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="gap-1 rounded-md"
                   >
-                    Edit
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
                 </div>
               </div>
             )}
-          </SheetContent>
-        </Sheet>
-      </div>
+          </div>
+
+          {/* Modal and Sheet */}
+          <AlertModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingAlert(null);
+              try {
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('alertModal.isOpen');
+                  localStorage.removeItem('alertModal.formData');
+                }
+              } catch {}
+            }}
+            alert={editingAlert}
+            onSave={
+              editingAlert
+                ? (data: AlertUpdate) => handleUpdate(editingAlert.id, data)
+                : handleCreate
+            }
+            loading={modalLoading}
+          />
+
+          <Sheet
+            open={isSheetOpen}
+            onOpenChange={(open) => {
+              setIsSheetOpen(open);
+              if (!open) setSelectedAlert(null);
+            }}
+          >
+            <SheetContent className="sm:max-w-2xl">
+              {selectedAlert && (
+                <div className="flex flex-col h-full">
+                  <SheetHeader>
+                    <SheetTitle>Alert Details</SheetTitle>
+                    <SheetDescription>Complete information about this alert</SheetDescription>
+                  </SheetHeader>
+
+                  <div className="flex-1 py-6 space-y-6 overflow-auto">
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        ID
+                      </Label>
+                      <div className="mt-2 font-mono text-sm break-all">{selectedAlert.id}</div>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        Title
+                      </Label>
+                      <div className="mt-2 font-medium text-foreground">
+                        {selectedAlert.title || 'Untitled Alert'}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        Content
+                      </Label>
+                      <div className="mt-2 text-sm whitespace-pre-wrap text-foreground">
+                        {selectedAlert.content || 'No content'}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        Level
+                      </Label>
+                      <div className="mt-2">
+                        <Badge className={alertLevelColor(selectedAlert.alert_level)}>
+                          {
+                            alertLevelConfig[
+                              selectedAlert.alert_level as keyof typeof alertLevelConfig
+                            ]?.label
+                          }
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        Status
+                      </Label>
+                      <div className="mt-2">
+                        <Badge variant={selectedAlert.deleted_at ? 'destructive' : 'default'}>
+                          {selectedAlert.deleted_at ? 'Deleted' : 'Active'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                        Created
+                      </Label>
+                      <div className="mt-2 text-sm text-foreground">
+                        {new Date(selectedAlert.created_at).toLocaleDateString()} at{' '}
+                        {new Date(selectedAlert.created_at).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                    <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                      Close
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        if (selectedAlert) openEditModal(selectedAlert);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
+        </div>
+      </ModuleGuard>
     </AuthWrapper>
   );
 }

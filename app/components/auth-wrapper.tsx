@@ -89,7 +89,7 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
             return;
           }
 
-          if (userData?.role !== 'admin') {
+          if (userData?.role !== 'admin' && userData?.role !== 'sub_admin') {
             globalAuthState = { isAuthenticated: false, isChecked: true };
             setError('Admin access required. Please contact your administrator.');
             setIsLoading(false);
@@ -143,17 +143,17 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   // Non-destructive loading overlay to avoid unmounting children (prevents modal/input loss)
   const LoadingOverlay = () => (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/60 backdrop-blur-sm">
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8 max-w-md w-full text-center">
+      <div className="w-full max-w-md p-8 text-center border shadow-lg bg-white/80 backdrop-blur-sm rounded-2xl border-white/20">
         <div className="mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4 animate-pulse">
-            <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse">
+            <div className="w-8 h-8 border-white rounded-full border-3 border-t-transparent animate-spin"></div>
           </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Verifying Access</h2>
-          <p className="text-gray-600 text-sm">Checking your admin credentials...</p>
+          <h2 className="mb-2 text-xl font-semibold text-gray-800">Verifying Access</h2>
+          <p className="text-sm text-gray-600">Checking your admin credentials...</p>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
           <div
-            className="bg-gradient-to-r from-blue-500 to-purple-600 h-full rounded-full animate-pulse"
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse"
             style={{ width: '70%' }}
           ></div>
         </div>
@@ -165,10 +165,10 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   // Error state with modern design
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-8 max-w-md w-full text-center">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-red-50 via-white to-orange-50">
+        <div className="w-full max-w-md p-8 text-center border shadow-lg bg-white/80 backdrop-blur-sm rounded-2xl border-white/20">
           <div className="mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-red-500 to-orange-600 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gradient-to-r from-red-500 to-orange-600">
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -183,8 +183,8 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
-            <p className="text-gray-600 text-sm mb-6">{error}</p>
+            <h2 className="mb-2 text-xl font-semibold text-gray-800">Access Denied</h2>
+            <p className="mb-6 text-sm text-gray-600">{error}</p>
           </div>
 
           <div className="space-y-3">

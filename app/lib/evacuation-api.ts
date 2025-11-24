@@ -2,8 +2,14 @@ import { Database } from '@/database.types';
 
 // Types
 export type EvacuationCenter = Database['public']['Tables']['evacuation_centers']['Row'];
-export type EvacuationCenterInsert = Database['public']['Tables']['evacuation_centers']['Insert'];
-export type EvacuationCenterUpdate = Database['public']['Tables']['evacuation_centers']['Update'];
+export type EvacuationCenterInsert =
+  Database['public']['Tables']['evacuation_centers']['Insert'] & {
+    userId?: string;
+  };
+export type EvacuationCenterUpdate =
+  Database['public']['Tables']['evacuation_centers']['Update'] & {
+    userId?: string;
+  };
 export type EvacuationStatus = Database['public']['Enums']['evacuation_status'];
 
 export interface ApiResponse<T> {
@@ -146,13 +152,17 @@ class EvacuationAPI {
   }
 
   // DELETE /api/evacuation/[id] - Delete an evacuation center
-  async deleteEvacuationCenter(id: number): Promise<ApiResponse<EvacuationCenter>> {
+  async deleteEvacuationCenter(
+    id: number,
+    userId?: string,
+  ): Promise<ApiResponse<EvacuationCenter>> {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {

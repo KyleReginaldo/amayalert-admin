@@ -54,8 +54,13 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
           <div className="hidden md:block md:w-1/2 bg-gray-50">
             <div className="h-full w-full relative">
               <Image src={'/amaya.jpg'} alt="amaya" fill className="object-cover" />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-transparent w-full py-4 px-6">
-                <p className="text-white">Amaya V</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 w-full py-8 px-8">
+                <h2 className="text-3xl font-bold text-white mb-3">Welcome Back, Admin</h2>
+                <p className="text-white/90 text-lg leading-relaxed">
+                  Your vigilance keeps communities safe. Sign in to manage alerts, coordinate
+                  rescues, and protect lives.
+                </p>
               </div>
             </div>
           </div>

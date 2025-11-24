@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
 import TopRightDialog from '@/app/components/top-right-dialog';
 import usersAPI from '@/app/lib/users-api';
@@ -140,119 +141,121 @@ export default function SettingsPage() {
 
   return (
     <AuthWrapper>
-      <div className="min-h-screen bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <PageHeader title="Settings" subtitle="Manage your account info and security" />
+      <ModuleGuard requiredModule="setting">
+        <div className="min-h-screen bg-background p-4 sm:p-6">
+          <div className="mx-auto max-w-3xl space-y-6">
+            <PageHeader title="Settings" subtitle="Manage your account info and security" />
 
-          {/* Alerts */}
-          <TopRightDialog
-            open={!!status}
-            variant={
-              status?.type === 'error' ? 'error' : status?.type === 'success' ? 'success' : 'info'
-            }
-            title={status?.title}
-            message={status?.message}
-            onClose={() => setStatus(null)}
-            inline
-          />
+            {/* Alerts */}
+            <TopRightDialog
+              open={!!status}
+              variant={
+                status?.type === 'error' ? 'error' : status?.type === 'success' ? 'success' : 'info'
+              }
+              title={status?.title}
+              message={status?.message}
+              onClose={() => setStatus(null)}
+              inline
+            />
 
-          {/* Profile */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={email} disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Your name"
-                    disabled={loadingProfile}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSaveName} disabled={!canSaveName || savingName}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {savingName ? 'Saving…' : 'Save changes'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Security */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currentPassword">Current password</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter your current password"
-                  />
-                </div>
+            {/* Profile */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword">New password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="At least 8 characters"
-                    />
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={email} disabled />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm new password</Label>
+                    <Label htmlFor="fullName">Full name</Label>
                     <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Repeat new password"
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Your name"
+                      disabled={loadingProfile}
                     />
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <ShieldCheck className="h-4 w-4" /> Enter current password and new password (8+
-                  characters).
-                </p>
-                <Button
-                  variant="secondary"
-                  onClick={handleChangePassword}
-                  disabled={!canChangePass || changingPass}
-                >
-                  {changingPass ? 'Changing…' : 'Change password'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveName} disabled={!canSaveName || savingName}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {savingName ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Separator />
+            {/* Security */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Security</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current password</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter your current password"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New password</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="At least 8 characters"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm new password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repeat new password"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <ShieldCheck className="h-4 w-4" /> Enter current password and new password (8+
+                    characters).
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={handleChangePassword}
+                    disabled={!canChangePass || changingPass}
+                  >
+                    {changingPass ? 'Changing…' : 'Change password'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Sign out */}
-          <div className="flex justify-end">
-            <Button variant="destructive" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" /> Sign out
-            </Button>
+            <Separator />
+
+            {/* Sign out */}
+            <div className="flex justify-end">
+              <Button variant="destructive" onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" /> Sign out
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </ModuleGuard>
     </AuthWrapper>
   );
 }

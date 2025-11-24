@@ -1,4 +1,5 @@
 import { supabase } from '@/app/client/supabase';
+import { logEvacuationAction } from '@/app/lib/activity-logger';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -65,6 +66,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const body = await request.json();
 
+    // Extract userId from request body (don't include in updateData)
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
+
     // Validate required fields if provided
     if (body.name !== undefined && (!body.name || !body.name.trim())) {
       return NextResponse.json({ success: false, error: 'Name cannot be empty' }, { status: 400 });
@@ -87,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    // Prepare update data
+    // Prepare update data (exclude userId which is only for logging)
     const updateData: EvacuationCenterUpdate = {
       updated_at: new Date().toISOString(),
     };
@@ -129,6 +134,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // Log the activity
+    await logEvacuationAction(
+      'update',
+      data.name,
+      `Status: ${data.status}, Occupancy: ${data.current_occupancy}/${data.capacity}`,
+      userId,
+    );
+
     return NextResponse.json({
       success: true,
       data: data,
@@ -151,6 +164,10 @@ export async function DELETE(
   try {
     const { id: idParam } = await params;
     const id = parseInt(idParam);
+
+    // Extract userId from request body
+    const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -179,6 +196,9 @@ export async function DELETE(
         { status: 500 },
       );
     }
+
+    // Log the activity
+    await logEvacuationAction('delete', data.name, undefined, userId);
 
     return NextResponse.json({
       success: true,

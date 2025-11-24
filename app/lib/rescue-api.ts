@@ -3,7 +3,9 @@ import { Database } from '@/database.types';
 // Base types
 export type RescueBase = Database['public']['Tables']['rescues']['Row'];
 export type RescueInsert = Database['public']['Tables']['rescues']['Insert'];
-export type RescueUpdate = Database['public']['Tables']['rescues']['Update'];
+export type RescueUpdate = Database['public']['Tables']['rescues']['Update'] & {
+  userId?: string;
+};
 export type RescueStatus = Database['public']['Enums']['rescue_status'];
 export type User = Database['public']['Tables']['users']['Row'];
 
@@ -153,13 +155,14 @@ class RescueAPI {
   }
 
   // DELETE /api/rescues/[id] - Delete a rescue
-  async deleteRescue(id: string): Promise<ApiResponse<Rescue>> {
+  async deleteRescue(id: string, userId?: string): Promise<ApiResponse<Rescue>> {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {

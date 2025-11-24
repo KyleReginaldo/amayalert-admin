@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -321,194 +322,201 @@ export default function ChatPage() {
 
   return (
     <AuthWrapper>
-      <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
-        <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
-          {/* Header */}
-          <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" />
+      <ModuleGuard requiredModule="chat">
+        <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
+          <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
+            {/* Header */}
+            <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-            {/* Left: Users list */}
-            <div className="bg-white border rounded-lg overflow-hidden flex flex-col">
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search users..."
-                    className="pl-9"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+              {/* Left: Users list */}
+              <div className="bg-white border rounded-lg overflow-hidden flex flex-col">
+                <div className="p-3 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search users..."
+                      className="pl-9"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-auto">
+                  {usersLoading ? (
+                    <div className="p-4 text-sm text-gray-500">Loading users...</div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="p-4 text-sm text-gray-500">No users found</div>
+                  ) : (
+                    <ul className="divide-y">
+                      {filteredUsers.map((u) => (
+                        <li key={u.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUser(u)}
+                            className={`w-full text-left p-3 flex items-center gap-3 hover:bg-gray-50 ${
+                              selectedUser?.id === u.id ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
+                              <UserIcon className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900 truncate">
+                                {u.full_name}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                            </div>
+                            {unreadCounts[u.id] > 0 && (
+                              <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">
+                                {unreadCounts[u.id]}
+                              </Badge>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
-              <div className="flex-1 overflow-auto">
-                {usersLoading ? (
-                  <div className="p-4 text-sm text-gray-500">Loading users...</div>
-                ) : filteredUsers.length === 0 ? (
-                  <div className="p-4 text-sm text-gray-500">No users found</div>
-                ) : (
-                  <ul className="divide-y">
-                    {filteredUsers.map((u) => (
-                      <li key={u.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedUser(u)}
-                          className={`w-full text-left p-3 flex items-center gap-3 hover:bg-gray-50 ${
-                            selectedUser?.id === u.id ? 'bg-blue-50' : ''
-                          }`}
-                        >
-                          <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
-                            <UserIcon className="h-5 w-5 text-gray-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900 truncate">{u.full_name}</div>
-                            <div className="text-xs text-gray-500 truncate">{u.email}</div>
-                          </div>
-                          {unreadCounts[u.id] > 0 && (
-                            <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">
-                              {unreadCounts[u.id]}
-                            </Badge>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+              {/* Right: Conversation */}
+              <div className="md:col-span-2 bg-white border rounded-lg overflow-hidden flex flex-col h-full">
+                <ConversationHeader />
 
-            {/* Right: Conversation */}
-            <div className="md:col-span-2 bg-white border rounded-lg overflow-hidden flex flex-col h-full">
-              <ConversationHeader />
+                {/* Messages */}
+                <div className="flex-1 overflow-auto p-4 space-y-2 bg-gray-50">
+                  {loadingMessages && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation...
+                    </div>
+                  )}
+                  {!selectedUser && !loadingMessages && (
+                    <div className="text-center text-sm text-gray-500 mt-10">
+                      Pick a user from the left to view messages.
+                    </div>
+                  )}
+                  {selectedUser && messages.length === 0 && !loadingMessages && (
+                    <div className="text-center text-sm text-gray-500 mt-10">No messages yet.</div>
+                  )}
 
-              {/* Messages */}
-              <div className="flex-1 overflow-auto p-4 space-y-2 bg-gray-50">
-                {loadingMessages && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation...
-                  </div>
-                )}
-                {!selectedUser && !loadingMessages && (
-                  <div className="text-center text-sm text-gray-500 mt-10">
-                    Pick a user from the left to view messages.
-                  </div>
-                )}
-                {selectedUser && messages.length === 0 && !loadingMessages && (
-                  <div className="text-center text-sm text-gray-500 mt-10">No messages yet.</div>
-                )}
-
-                {messages.map((m) => {
-                  const isMine = m.sender === currentUserId;
-                  return (
-                    <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  {messages.map((m) => {
+                    const isMine = m.sender === currentUserId;
+                    return (
                       <div
-                        className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm border ${
-                          isMine
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-800 border-gray-200'
-                        }`}
+                        key={m.id}
+                        className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
                       >
-                        {m.attachment_url ? (
-                          <Image
-                            src={m.attachment_url}
-                            alt="attachment"
-                            width={200}
-                            height={200}
-                            className="h-[200px] w-auto rounded-lg object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="whitespace-pre-wrap">{m.content}</div>
-                        )}
                         <div
-                          className={`text-[10px] mt-1 ${
-                            isMine ? 'text-blue-100' : 'text-gray-400'
+                          className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm border ${
+                            isMine
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-800 border-gray-200'
                           }`}
                         >
-                          {new Date(m.created_at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                          {isMine && <span className="ml-2">{m.seen_at ? 'Seen' : 'Sent'}</span>}
+                          {m.attachment_url ? (
+                            <Image
+                              src={m.attachment_url}
+                              alt="attachment"
+                              width={200}
+                              height={200}
+                              className="h-[200px] w-auto rounded-lg object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="whitespace-pre-wrap">{m.content}</div>
+                          )}
+                          <div
+                            className={`text-[10px] mt-1 ${
+                              isMine ? 'text-blue-100' : 'text-gray-400'
+                            }`}
+                          >
+                            {new Date(m.created_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            {isMine && <span className="ml-2">{m.seen_at ? 'Seen' : 'Sent'}</span>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
 
-              {/* Input */}
-              <div className="p-3 border-t bg-white">
-                {/* Image preview */}
-                {previewUrl && (
-                  <div className="mb-3 relative">
-                    <div className="relative inline-block">
-                      <Image
-                        src={previewUrl}
-                        alt="Preview"
-                        width={128}
-                        height={128}
-                        className="max-w-32 max-h-32 rounded-lg border object-cover"
-                        unoptimized
-                      />
-                      <button
-                        type="button"
-                        onClick={clearFileSelection}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                {/* Input */}
+                <div className="p-3 border-t bg-white">
+                  {/* Image preview */}
+                  {previewUrl && (
+                    <div className="mb-3 relative">
+                      <div className="relative inline-block">
+                        <Image
+                          src={previewUrl}
+                          alt="Preview"
+                          width={128}
+                          height={128}
+                          className="max-w-32 max-h-32 rounded-lg border object-cover"
+                          unoptimized
+                        />
+                        <button
+                          type="button"
+                          onClick={clearFileSelection}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
-                    disabled={sending}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </button>
-                  <Input
-                    placeholder={
-                      selectedUser ? 'Type a message…' : 'Select a user to start chatting'
-                    }
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+                      disabled={sending}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </button>
+                    <Input
+                      placeholder={
+                        selectedUser ? 'Type a message…' : 'Select a user to start chatting'
                       }
-                    }}
-                    disabled={!selectedUser || sending}
-                  />
-                  <Button
-                    onClick={sendMessage}
-                    disabled={!selectedUser || sending || (!input.trim() && !selectedFile)}
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                      }}
+                      disabled={!selectedUser || sending}
+                    />
+                    <Button
+                      onClick={sendMessage}
+                      disabled={!selectedUser || sending || (!input.trim() && !selectedFile)}
+                    >
+                      {sending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </ModuleGuard>
     </AuthWrapper>
   );
 }

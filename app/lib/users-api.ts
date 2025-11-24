@@ -2,8 +2,12 @@ import { Database } from '@/database.types';
 
 // Use database types for the users table
 export type User = Database['public']['Tables']['users']['Row'];
-export type UserInsert = Database['public']['Tables']['users']['Insert'];
-export type UserUpdate = Database['public']['Tables']['users']['Update'];
+export type UserInsert = Database['public']['Tables']['users']['Insert'] & {
+  userId?: string;
+};
+export type UserUpdate = Database['public']['Tables']['users']['Update'] & {
+  userId?: string;
+};
 export type UserRole = Database['public']['Enums']['user_role'];
 
 export interface ApiResponse<T> {
@@ -27,6 +31,10 @@ export interface UserStats {
   regularUsers: number;
   recentUsers: number;
   userGrowth: number;
+  usersThisMonth: number;
+  usersLastMonth: number;
+  usersThisYear: number;
+  usersLastYear: number;
 }
 
 const API_BASE_URL = '/api/users';
@@ -149,13 +157,14 @@ class UsersAPI {
   }
 
   // DELETE /api/users/[id] - Delete a user
-  async deleteUser(id: string): Promise<ApiResponse<User>> {
+  async deleteUser(id: string, userId?: string): Promise<ApiResponse<User>> {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {
@@ -184,6 +193,10 @@ class UsersAPI {
           regularUsers: 0,
           recentUsers: 0,
           userGrowth: 0,
+          usersThisMonth: 0,
+          usersLastMonth: 0,
+          usersThisYear: 0,
+          usersLastYear: 0,
         };
       }
 
@@ -191,6 +204,12 @@ class UsersAPI {
       const now = new Date();
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+      // Get start of this year and last year
+      const startOfThisYear = new Date(now.getFullYear(), 0, 1);
+      const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1);
+      const endOfLastYear = new Date(now.getFullYear(), 0, 0, 23, 59, 59);
 
       const recentUsers = users.filter((user) => new Date(user.created_at) > oneWeekAgo).length;
 
@@ -198,23 +217,32 @@ class UsersAPI {
 
       const usersLastMonth = users.filter((user) => {
         const userDate = new Date(user.created_at);
-        const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
         return userDate > twoMonthsAgo && userDate <= oneMonthAgo;
       }).length;
 
-      const userGrowth =
-        usersLastMonth > 0
-          ? ((usersThisMonth - usersLastMonth) / usersLastMonth) * 100
-          : usersThisMonth > 0
-          ? 100
-          : 0;
+      const usersThisYear = users.filter((user) => {
+        const userDate = new Date(user.created_at);
+        return userDate >= startOfThisYear;
+      }).length;
+
+      const usersLastYear = users.filter((user) => {
+        const userDate = new Date(user.created_at);
+        return userDate >= startOfLastYear && userDate <= endOfLastYear;
+      }).length;
+
+      // User growth is now the count of new users this month
+      const userGrowth = usersThisMonth;
 
       return {
         totalUsers: users.length,
         adminUsers: users.filter((user) => user.role === 'admin').length,
         regularUsers: users.filter((user) => user.role === 'user').length,
         recentUsers,
-        userGrowth: Math.round(userGrowth * 10) / 10, // Round to 1 decimal place
+        userGrowth,
+        usersThisMonth,
+        usersLastMonth,
+        usersThisYear,
+        usersLastYear,
       };
     } catch (error) {
       console.error('Error calculating user stats:', error);
@@ -224,6 +252,10 @@ class UsersAPI {
         regularUsers: 0,
         recentUsers: 0,
         userGrowth: 0,
+        usersThisMonth: 0,
+        usersLastMonth: 0,
+        usersThisYear: 0,
+        usersLastYear: 0,
       };
     }
   }

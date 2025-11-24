@@ -44,6 +44,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     regularUsers: 0,
     recentUsers: 0,
     userGrowth: 0,
+    usersThisMonth: 0,
+    usersLastMonth: 0,
+    usersThisYear: 0,
+    usersLastYear: 0,
   });
 
   // Loading states
@@ -62,6 +66,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             regularUsers: 0,
             recentUsers: 0,
             userGrowth: 0,
+            usersThisMonth: 0,
+            usersLastMonth: 0,
+            usersThisYear: 0,
+            usersLastYear: 0,
           },
         lastUpdated: {
           users: data.users ? Date.now() : existingCache?.lastUpdated.users ?? 0,

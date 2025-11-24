@@ -1,3 +1,4 @@
+import { logAlertAction } from '@/app/lib/activity-logger';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,6 +55,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const body = await request.json();
 
+    // Extract userId from request body (don't include in updateData)
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
+
     // Validate required fields
     if (!body.title || !body.title.trim()) {
       return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
@@ -62,7 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
     }
 
-    // Prepare update data
+    // Prepare update data (exclude userId which is only for logging)
     const updateData = {
       title: body.title.trim(),
       content: body.content.trim(),
@@ -89,6 +94,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // Log the activity
+    await logAlertAction(
+      'update',
+      updatedAlert.alert_level || 'medium',
+      updatedAlert.title || 'Untitled Alert',
+      undefined,
+      userId,
+    );
+
     return NextResponse.json({
       success: true,
       data: updatedAlert,
@@ -113,6 +127,11 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Invalid alert ID' }, { status: 400 });
     }
 
+    // Extract userId from request body
+    const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
+
     // Soft delete the alert by setting deleted_at
     const { data: deletedAlert, error } = await supabase
       .from('alert')
@@ -132,6 +151,15 @@ export async function DELETE(
         { status: 500 },
       );
     }
+
+    // Log the activity
+    await logAlertAction(
+      'delete',
+      deletedAlert.alert_level || 'medium',
+      deletedAlert.title || 'Untitled Alert',
+      undefined,
+      userId,
+    );
 
     return NextResponse.json({
       success: true,

@@ -1,3 +1,4 @@
+import { logAlertAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
@@ -88,6 +89,10 @@ async function sendViaInternalSMSAPI(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Extract userId from request body
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
 
     // Validate required fields
     if (!body.title || !body.title.trim()) {
@@ -282,6 +287,15 @@ export async function POST(request: NextRequest) {
     if (smsErrors.length > 0 || emailErrors.length > 0 || pushErrors.length > 0) {
       console.warn('Some notifications failed:', { smsErrors, emailErrors, pushErrors });
     }
+
+    // Log the activity
+    await logAlertAction(
+      'create',
+      alertData.alert_level,
+      alertData.title,
+      `Sent ${pushCount + smsCount + emailCount} notifications via ${notificationMethod}`,
+      userId,
+    );
 
     return NextResponse.json(
       {

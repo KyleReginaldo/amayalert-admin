@@ -139,6 +139,35 @@ export type Database = {
           },
         ]
       }
+      logs: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: number
+          user: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: number
+          user?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: number
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachment_url: string | null
@@ -439,6 +468,7 @@ export type Database = {
           id_picture: string | null
           latitude: number | null
           longitude: number | null
+          modules: Database["public"]["Enums"]["modules"][] | null
           phone_number: string | null
           profile_picture: string | null
           role: Database["public"]["Enums"]["user_role"] | null
@@ -454,6 +484,7 @@ export type Database = {
           id_picture?: string | null
           latitude?: number | null
           longitude?: number | null
+          modules?: Database["public"]["Enums"]["modules"][] | null
           phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
@@ -469,11 +500,41 @@ export type Database = {
           id_picture?: string | null
           latitude?: number | null
           longitude?: number | null
+          modules?: Database["public"]["Enums"]["modules"][] | null
           phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
         }
         Relationships: []
+      }
+      word_filters: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          word: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          word?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          word?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_filters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -484,8 +545,17 @@ export type Database = {
     }
     Enums: {
       evacuation_status: "open" | "closed" | "full" | "maintenance"
+      modules:
+        | "rescue"
+        | "alert"
+        | "evacuation"
+        | "user"
+        | "admin"
+        | "report"
+        | "chat"
+        | "setting"
       rescue_status: "pending" | "in_progress" | "completed" | "cancelled"
-      user_role: "admin" | "user"
+      user_role: "admin" | "user" | "sub_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -614,8 +684,18 @@ export const Constants = {
   public: {
     Enums: {
       evacuation_status: ["open", "closed", "full", "maintenance"],
+      modules: [
+        "rescue",
+        "alert",
+        "evacuation",
+        "user",
+        "admin",
+        "report",
+        "chat",
+        "setting",
+      ],
       rescue_status: ["pending", "in_progress", "completed", "cancelled"],
-      user_role: ["admin", "user"],
+      user_role: ["admin", "user", "sub_admin"],
     },
   },
 } as const

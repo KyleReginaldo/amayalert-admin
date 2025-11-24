@@ -5,7 +5,14 @@ import { useAlerts } from '@/app/providers/alerts-provider';
 import { useData } from '@/app/providers/data-provider';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Building2, Download, Loader2, Users } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { AlertTriangle, Building2, Calendar, Download, Loader2, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const Dashboard = () => {
@@ -15,6 +22,10 @@ const Dashboard = () => {
   const { users, userStats, usersLoading, refreshUsers } = useData();
 
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   // Overall loading state
   const loading = alertsLoading || evacuationLoading || usersLoading;
@@ -28,7 +39,55 @@ const Dashboard = () => {
     try {
       setIsExporting(true);
 
+      const [year, month] = selectedMonth.split('-');
+      const selectedDate = new Date(parseInt(year), parseInt(month) - 1);
+      const monthName = selectedDate.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
       const timestamp = new Date().toLocaleString();
+
+      // Filter data by selected month
+      const filteredAlerts = alerts.filter((alert) => {
+        if (!alert.created_at) return false;
+        const alertDate = new Date(alert.created_at);
+        return (
+          alertDate.getMonth() === parseInt(month) - 1 && alertDate.getFullYear() === parseInt(year)
+        );
+      });
+
+      const filteredUsers = users.filter((user) => {
+        if (!user.created_at) return false;
+        const userDate = new Date(user.created_at);
+        return (
+          userDate.getMonth() === parseInt(month) - 1 && userDate.getFullYear() === parseInt(year)
+        );
+      });
+
+      const monthStats = {
+        totalUsers: filteredUsers.length,
+        activeAlerts: filteredAlerts.filter((alert) => !alert.deleted_at).length,
+        evacuationCenters: evacuationCenters.length,
+        criticalAlerts: filteredAlerts.filter((alert) => alert.alert_level === 'critical').length,
+      };
+
+      const monthAlerts = filteredAlerts.slice(0, 20).map((alert) => ({
+        id: alert.id,
+        title: alert.title || 'Untitled Alert',
+        severity: alert.alert_level || 'medium',
+        time: new Date(alert.created_at).toLocaleTimeString(),
+        date: new Date(alert.created_at).toLocaleDateString(),
+        status: alert.deleted_at ? 'deleted' : 'active',
+      }));
+
+      const monthUsers = filteredUsers.slice(0, 20).map((user) => ({
+        id: user.id,
+        name: user.full_name || 'Unknown User',
+        email: user.email,
+        role: user.role || 'user',
+        joinDate: user.created_at,
+        status: 'active',
+      }));
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -55,6 +114,7 @@ const Dashboard = () => {
         <body>
           <div class="header">
             <h1>Amayalert Report</h1>
+            <p>Report Period: ${monthName}</p>
             <p>Generated on: ${timestamp}</p>
           </div>
 
@@ -62,26 +122,26 @@ const Dashboard = () => {
             <h2>Overview Statistics</h2>
             <div class="stats">
               <div class="stat">
-                <div class="stat-value">${stats.totalUsers.toLocaleString()}</div>
-                <div class="stat-label">Total Users</div>
+                <div class="stat-value">${monthStats.totalUsers.toLocaleString()}</div>
+                <div class="stat-label">New Users</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${stats.activeAlerts}</div>
+                <div class="stat-value">${monthStats.activeAlerts}</div>
                 <div class="stat-label">Active Alerts</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${stats.evacuationCenters}</div>
+                <div class="stat-value">${monthStats.evacuationCenters}</div>
                 <div class="stat-label">Evacuation Centers</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${stats.criticalAlerts}</div>
+                <div class="stat-value">${monthStats.criticalAlerts}</div>
                 <div class="stat-label">Critical Alerts</div>
               </div>
             </div>
           </div>
 
           <div class="section">
-            <h2>Recent Alerts</h2>
+            <h2>Alerts for ${monthName}</h2>
             <table>
               <thead>
                 <tr>
@@ -93,9 +153,11 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                ${recentAlerts
-                  .map(
-                    (alert) => `
+                ${
+                  monthAlerts.length > 0
+                    ? monthAlerts
+                        .map(
+                          (alert) => `
                   <tr>
                     <td>#${alert.id}</td>
                     <td>${alert.title}</td>
@@ -104,14 +166,16 @@ const Dashboard = () => {
                     <td>${alert.status}</td>
                   </tr>
                 `,
-                  )
-                  .join('')}
+                        )
+                        .join('')
+                    : '<tr><td colspan="5" style="text-align: center; color: #666;">No alerts for this period</td></tr>'
+                }
               </tbody>
             </table>
           </div>
 
           <div class="section">
-            <h2>Recent Users</h2>
+            <h2>New Users in ${monthName}</h2>
             <table>
               <thead>
                 <tr>
@@ -122,9 +186,11 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                ${recentUsers
-                  .map(
-                    (user) => `
+                ${
+                  monthUsers.length > 0
+                    ? monthUsers
+                        .map(
+                          (user) => `
                   <tr>
                     <td>${user.name}</td>
                     <td>${user.email}</td>
@@ -132,8 +198,10 @@ const Dashboard = () => {
                     <td>${new Date(user.joinDate).toLocaleDateString()}</td>
                   </tr>
                 `,
-                  )
-                  .join('')}
+                        )
+                        .join('')
+                    : '<tr><td colspan="4" style="text-align: center; color: #666;">No new users for this period</td></tr>'
+                }
               </tbody>
             </table>
           </div>
@@ -236,9 +304,9 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="w-6 h-6 animate-spin" />
           <span>Loading dashboard data...</span>
         </div>
       </div>
@@ -246,59 +314,92 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+      <div className="mx-auto space-y-6 max-w-7xl">
         {/* Header */}
         <PageHeader
           title="Dashboard"
           subtitle="Overview of alerts, users, and evacuation centers"
           action={
-            <Button
-              onClick={handleExport}
-              disabled={isExporting}
-              variant="outline"
-              className="gap-2 border-gray-300"
-            >
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export Report
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const months = [];
+                      const now = new Date();
+                      for (let i = 0; i < 12; i++) {
+                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+                          2,
+                          '0',
+                        )}`;
+                        const label = date.toLocaleDateString('en-US', {
+                          month: 'long',
+                          year: 'numeric',
+                        });
+                        months.push({ value, label });
+                      }
+                      return months.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleExport}
+                disabled={isExporting}
+                variant="outline"
+                className="gap-2 border-gray-300"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Export Report
+              </Button>
+            </div>
           }
         />
 
         {/* Minimal Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-gray-900">
               {stats.totalUsers.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Total Users</div>
-            <div className="text-xs text-green-600 mt-1">+{stats.userGrowth}% growth</div>
+            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this month</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-orange-600">{stats.activeAlerts}</div>
             <div className="text-sm text-gray-600">Active Alerts</div>
-            <div className="text-xs text-gray-500 mt-1">{stats.criticalAlerts} critical</div>
+            <div className="mt-1 text-xs text-gray-500">{stats.criticalAlerts} critical</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-blue-600">{stats.evacuationCenters}</div>
             <div className="text-sm text-gray-600">Evacuation Centers</div>
-            <div className="text-xs text-gray-500 mt-1">{stats.availableCenters} available</div>
+            <div className="mt-1 text-xs text-gray-500">{stats.availableCenters} available</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-green-600">{stats.responseTime}</div>
             <div className="text-sm text-gray-600">Avg Response</div>
-            <div className="text-xs text-gray-500 mt-1">12% better</div>
+            <div className="mt-1 text-xs text-gray-500">12% better</div>
           </div>
         </div>
 
         {/* Chart Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Alert Severity Distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">Alert Severity Distribution</h2>
@@ -380,7 +481,7 @@ const Dashboard = () => {
                                     key={index}
                                     d={pathData}
                                     fill={segment.color}
-                                    className="hover:opacity-80 transition-opacity"
+                                    className="transition-opacity hover:opacity-80"
                                   />
                                 );
                               })}
@@ -422,7 +523,7 @@ const Dashboard = () => {
                             }`}
                           ></div>
                           <div className="flex-1">
-                            <div className="flex justify-between items-center">
+                            <div className="flex items-center justify-between">
                               <span className="text-sm font-medium capitalize">{severity}</span>
                               <span className="text-sm text-gray-600">{count}</span>
                             </div>
@@ -436,8 +537,8 @@ const Dashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <AlertTriangle className="h-12 w-12 mx-auto mb-3" />
+                <div className="py-12 text-center text-gray-500">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-3" />
                   <p>No alert data available</p>
                 </div>
               )}
@@ -445,7 +546,7 @@ const Dashboard = () => {
           </div>
 
           {/* User Growth Chart */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">User Growth Trend</h2>
@@ -560,7 +661,7 @@ const Dashboard = () => {
                                 cy={point.y}
                                 r="4"
                                 fill="#3b82f6"
-                                className="hover:r-6 transition-all cursor-pointer"
+                                className="transition-all cursor-pointer hover:r-6"
                               />
                             ))}
 
@@ -585,7 +686,7 @@ const Dashboard = () => {
                                 x={point.x}
                                 y={point.y - 10}
                                 textAnchor="middle"
-                                className="text-xs fill-blue-600 font-medium"
+                                className="text-xs font-medium fill-blue-600"
                                 fontSize="11"
                               >
                                 {point.users}
@@ -598,28 +699,36 @@ const Dashboard = () => {
                   </div>
 
                   {/* Growth Metrics */}
-                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-200">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-green-600">+{stats.userGrowth}%</div>
+                      <div className="text-lg font-bold text-green-600">
+                        +{userStats.usersThisMonth}
+                      </div>
                       <div className="text-xs text-gray-500">This Month</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-blue-600">
-                        {Math.round(recentUsers.length / 6)}
+                        {userStats.usersLastMonth}
                       </div>
-                      <div className="text-xs text-gray-500">Avg/Month</div>
+                      <div className="text-xs text-gray-500">Last Month</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-purple-600">
-                        {recentUsers.filter((u) => u.role === 'admin').length}
+                        {userStats.usersThisYear}
                       </div>
-                      <div className="text-xs text-gray-500">Admins</div>
+                      <div className="text-xs text-gray-500">This Year</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600">
+                        {userStats.usersLastYear}
+                      </div>
+                      <div className="text-xs text-gray-500">Last Year</div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-3" />
+                <div className="py-12 text-center text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-3" />
                   <p>No user data available</p>
                 </div>
               )}
@@ -628,7 +737,7 @@ const Dashboard = () => {
         </div>
 
         {/* Evacuation Centers Overview */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Evacuation Centers Overview</h2>
@@ -639,7 +748,7 @@ const Dashboard = () => {
             {evacuationCenters.length > 0 ? (
               <div className="space-y-6">
                 {/* Status Distribution */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {(() => {
                     const statusCounts = evacuationCenters.reduce((acc, center) => {
                       const status = center.status || 'closed';
@@ -661,16 +770,16 @@ const Dashboard = () => {
                       return (
                         <div
                           key={status}
-                          className="text-center p-4 border border-gray-200 rounded-lg"
+                          className="p-4 text-center border border-gray-200 rounded-lg"
                         >
                           <div
                             className={`w-16 h-16 ${config.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
                           >
-                            <Building2 className="h-8 w-8 text-white" />
+                            <Building2 className="w-8 h-8 text-white" />
                           </div>
                           <div className={`text-2xl font-bold ${config.textColor}`}>{count}</div>
                           <div className="text-sm text-gray-600">{config.label}</div>
-                          <div className="text-xs text-gray-500 mt-1">{percentage.toFixed(1)}%</div>
+                          <div className="mt-1 text-xs text-gray-500">{percentage.toFixed(1)}%</div>
                         </div>
                       );
                     });
@@ -678,8 +787,8 @@ const Dashboard = () => {
                 </div>
 
                 {/* Capacity Analysis */}
-                <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-md font-medium text-gray-900 mb-4">Capacity Analysis</h3>
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="mb-4 font-medium text-gray-900 text-md">Capacity Analysis</h3>
                   <div className="space-y-3">
                     {evacuationCenters.slice(0, 8).map((center) => {
                       const capacity = center.capacity || 0;
@@ -703,7 +812,7 @@ const Dashboard = () => {
                                 {occupancy}/{capacity}
                               </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full h-2 bg-gray-200 rounded-full">
                               <div
                                 className={`h-2 rounded-full transition-all duration-300 ${getStatusColor(
                                   occupancyRate,
@@ -730,8 +839,8 @@ const Dashboard = () => {
                 </div>
 
                 {/* Summary Stats */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-blue-600">
                         {evacuationCenters
@@ -777,8 +886,8 @@ const Dashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Building2 className="h-12 w-12 mx-auto mb-3" />
+              <div className="py-12 text-center text-gray-500">
+                <Building2 className="w-12 h-12 mx-auto mb-3" />
                 <p>No evacuation centers data available</p>
               </div>
             )}

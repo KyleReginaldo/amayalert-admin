@@ -1,4 +1,5 @@
 import { supabase } from '@/app/client/supabase';
+import { logEvacuationAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -113,6 +114,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Extract userId from request body
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
 
     // Validate required fields
     if (!body.name || !body.name.trim()) {
@@ -243,6 +248,14 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('No users found for SMS notifications');
     }
+
+    // Log the activity
+    await logEvacuationAction(
+      'create',
+      data.name,
+      `Capacity: ${data.capacity}, Status: ${data.status}`,
+      userId,
+    );
 
     return NextResponse.json(
       {

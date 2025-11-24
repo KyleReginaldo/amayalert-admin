@@ -2,6 +2,7 @@
 
 import { supabase } from '@/app/client/supabase';
 import AuthWrapper from '@/app/components/auth-wrapper';
+import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
 import SmartMapPicker from '@/app/components/SmartMapPicker';
 import evacuationAPI, {
@@ -81,7 +82,13 @@ export default function EvacuationPage() {
   const handleCreate = async (centerData: EvacuationCenterInsert) => {
     setModalLoading(true);
     try {
-      const response = await evacuationAPI.createEvacuationCenter(centerData);
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const response = await evacuationAPI.createEvacuationCenter({ ...centerData, userId });
       if (response.success && response.data) {
         addEvacuationCenter(response.data);
         setTimeout(() => {
@@ -100,7 +107,13 @@ export default function EvacuationPage() {
   const handleUpdate = async (id: number, centerData: Partial<EvacuationCenterUpdate>) => {
     setModalLoading(true);
     try {
-      const response = await evacuationAPI.updateEvacuationCenter(id, centerData);
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const response = await evacuationAPI.updateEvacuationCenter(id, { ...centerData, userId });
       if (response.success && response.data) {
         updateEvacuationCenter(id, response.data);
         setTimeout(() => {
@@ -119,7 +132,13 @@ export default function EvacuationPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this evacuation center?')) return;
     try {
-      const response = await evacuationAPI.deleteEvacuationCenter(id);
+      // Get current user ID from Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const response = await evacuationAPI.deleteEvacuationCenter(id, userId);
       if (response.success) removeEvacuationCenter(id);
     } catch (e) {
       console.error(e);
@@ -186,320 +205,324 @@ export default function EvacuationPage() {
 
   return (
     <AuthWrapper>
-      {evacuationCenters.length === 0 ? (
-        <div className="min-h-screen bg-gray-50 md:bg-background">
-          <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="text-center max-w-md mx-auto">
-              <div className="mb-6">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mx-auto mb-4">
-                  <Building2 className="h-10 w-10 text-gray-400" />
+      <ModuleGuard requiredModule="evacuation">
+        {evacuationCenters.length === 0 ? (
+          <div className="min-h-screen bg-gray-50 md:bg-background">
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <div className="text-center max-w-md mx-auto">
+                <div className="mb-6">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 mx-auto mb-4">
+                    <Building2 className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">No Evacuation Centers</h2>
+                  <p className="text-gray-600 mb-6">
+                    Get started by creating your first evacuation center to help manage emergency
+                    situations.
+                  </p>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">No Evacuation Centers</h2>
-                <p className="text-gray-600 mb-6">
-                  Get started by creating your first evacuation center to help manage emergency
-                  situations.
-                </p>
-              </div>
 
-              <div className="space-y-4">
-                <Button onClick={openCreateModal} className="w-full md:w-auto gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create First Evacuation Center
-                </Button>
+                <div className="space-y-4">
+                  <Button onClick={openCreateModal} className="w-full md:w-auto gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create First Evacuation Center
+                  </Button>
 
-                <div className="text-sm text-gray-500">
-                  <p className="mb-2">Evacuation centers help you:</p>
-                  <ul className="text-left space-y-1 max-w-xs mx-auto">
-                    <li className="flex items-center gap-2">
-                      <Shield className="h-3 w-3 text-green-500" />
-                      Track shelter capacity and occupancy
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Users className="h-3 w-3 text-blue-500" />
-                      Manage evacuee information
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <MapPin className="h-3 w-3 text-orange-500" />
-                      Monitor locations on map
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Phone className="h-3 w-3 text-purple-500" />
-                      Store contact information
-                    </li>
-                  </ul>
+                  <div className="text-sm text-gray-500">
+                    <p className="mb-2">Evacuation centers help you:</p>
+                    <ul className="text-left space-y-1 max-w-xs mx-auto">
+                      <li className="flex items-center gap-2">
+                        <Shield className="h-3 w-3 text-green-500" />
+                        Track shelter capacity and occupancy
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Users className="h-3 w-3 text-blue-500" />
+                        Manage evacuee information
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3 text-orange-500" />
+                        Monitor locations on map
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Phone className="h-3 w-3 text-purple-500" />
+                        Store contact information
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="min-h-screen bg-background p-4 sm:p-6">
-          <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-            {/* Header */}
-            <PageHeader
-              title="Evacuation Centers"
-              subtitle="Monitor and manage evacuation facilities"
-              action={
-                <Button onClick={openCreateModal} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Center
-                </Button>
-              }
-            />
+        ) : (
+          <div className="min-h-screen bg-background p-4 sm:p-6">
+            <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+              {/* Header */}
+              <PageHeader
+                title="Evacuation Centers"
+                subtitle="Monitor and manage evacuation facilities"
+                action={
+                  <Button onClick={openCreateModal} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Center
+                  </Button>
+                }
+              />
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
-              <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
-                <div className="text-lg md:text-2xl font-bold text-gray-900">{stats.total}</div>
-                <div className="text-xs md:text-sm text-gray-600">Total</div>
-              </div>
-              <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
-                <div className="text-lg md:text-2xl font-bold text-green-600">{stats.open}</div>
-                <div className="text-xs md:text-sm text-gray-600">Open</div>
-              </div>
-              <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
-                <div className="text-lg md:text-2xl font-bold text-blue-600">
-                  {evacuationCenters
-                    .reduce((sum, center) => sum + (center.capacity || 0), 0)
-                    .toLocaleString()}
+              {/* Stats */}
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
+                  <div className="text-lg md:text-2xl font-bold text-gray-900">{stats.total}</div>
+                  <div className="text-xs md:text-sm text-gray-600">Total</div>
                 </div>
-                <div className="text-xs md:text-sm text-gray-600">Capacity</div>
-              </div>
-              <div className="hidden md:block bg-white p-4 rounded-lg border border-gray-200 text-center">
-                <div className="text-2xl font-bold text-orange-600">
-                  {evacuationCenters
-                    .reduce((sum, center) => sum + (center.current_occupancy || 0), 0)
-                    .toLocaleString()}
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
+                  <div className="text-lg md:text-2xl font-bold text-green-600">{stats.open}</div>
+                  <div className="text-xs md:text-sm text-gray-600">Open</div>
                 </div>
-                <div className="text-sm text-gray-600">Current</div>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder="Search centers..."
-                    className="pl-10 border-gray-300 focus:border-gray-400"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 text-center">
+                  <div className="text-lg md:text-2xl font-bold text-blue-600">
+                    {evacuationCenters
+                      .reduce((sum, center) => sum + (center.capacity || 0), 0)
+                      .toLocaleString()}
+                  </div>
+                  <div className="text-xs md:text-sm text-gray-600">Capacity</div>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="full">Full</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Responsive List (single markup) */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              {/* Header row for md+ */}
-              <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 border-b text-sm font-medium text-gray-900">
-                <div className="col-span-3">Center</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-2">Occupancy</div>
-                <div className="col-span-3">Location</div>
-                <div className="col-span-2 text-right">Actions</div>
+                <div className="hidden md:block bg-white p-4 rounded-lg border border-gray-200 text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {evacuationCenters
+                      .reduce((sum, center) => sum + (center.current_occupancy || 0), 0)
+                      .toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Current</div>
+                </div>
               </div>
 
-              {/* Rows */}
-              <div>
-                {pagedCenters.map((center) => (
-                  <div
-                    key={center.id}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 py-4 border-b last:border-0"
-                  >
-                    {/* Center info */}
-                    <div className="md:col-span-3">
-                      <div className="font-medium text-gray-900 flex items-center gap-2">
-                        <Link href={`/evacuation/${center.id}`} className="hover:underline">
-                          {center.name}
-                        </Link>
-                        <Badge
-                          className="md:hidden text-[10px]"
-                          variant={getStatusVariant(center.status || 'closed')}
-                        >
+              {/* Filters */}
+              <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      placeholder="Search centers..."
+                      className="pl-10 border-gray-300 focus:border-gray-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="full">Full</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Responsive List (single markup) */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                {/* Header row for md+ */}
+                <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 border-b text-sm font-medium text-gray-900">
+                  <div className="col-span-3">Center</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Occupancy</div>
+                  <div className="col-span-3">Location</div>
+                  <div className="col-span-2 text-right">Actions</div>
+                </div>
+
+                {/* Rows */}
+                <div>
+                  {pagedCenters.map((center) => (
+                    <div
+                      key={center.id}
+                      className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 py-4 border-b last:border-0"
+                    >
+                      {/* Center info */}
+                      <div className="md:col-span-3">
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          <Link href={`/evacuation/${center.id}`} className="hover:underline">
+                            {center.name}
+                          </Link>
+                          <Badge
+                            className="md:hidden text-[10px]"
+                            variant={getStatusVariant(center.status || 'closed')}
+                          >
+                            {center.status || 'closed'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500">#{center.id}</div>
+
+                        {/* Mobile-only extra details */}
+                        <div className="mt-2 space-y-1 md:hidden">
+                          <div className="text-sm text-gray-600">{center.address}</div>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium">
+                              {center.current_occupancy || 0}/{center.capacity || 0}
+                            </span>
+                          </div>
+                          {center.contact_phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-gray-400" />
+                              <span className="text-sm text-gray-600">{center.contact_phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status (md+) */}
+                      <div className="hidden md:flex md:col-span-2 items-center">
+                        <Badge variant={getStatusVariant(center.status || 'closed')}>
                           {center.status || 'closed'}
                         </Badge>
                       </div>
-                      <div className="text-xs text-gray-500">#{center.id}</div>
 
-                      {/* Mobile-only extra details */}
-                      <div className="mt-2 space-y-1 md:hidden">
-                        <div className="text-sm text-gray-600">{center.address}</div>
+                      {/* Occupancy (md+) */}
+                      <div className="hidden md:block md:col-span-2">
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm font-medium">
-                            {center.current_occupancy || 0}/{center.capacity || 0}
-                          </span>
-                        </div>
-                        {center.contact_phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">{center.contact_phone}</span>
+                          <div className="h-2 w-20 rounded-full bg-gray-200">
+                            <div
+                              className="h-2 rounded-full bg-blue-500"
+                              style={{
+                                width: `${Math.min(
+                                  getOccupancyPercentage(
+                                    center.current_occupancy || 0,
+                                    center.capacity || 1,
+                                  ),
+                                  100,
+                                )}%`,
+                              }}
+                            />
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Status (md+) */}
-                    <div className="hidden md:flex md:col-span-2 items-center">
-                      <Badge variant={getStatusVariant(center.status || 'closed')}>
-                        {center.status || 'closed'}
-                      </Badge>
-                    </div>
-
-                    {/* Occupancy (md+) */}
-                    <div className="hidden md:block md:col-span-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-20 rounded-full bg-gray-200">
-                          <div
-                            className="h-2 rounded-full bg-blue-500"
-                            style={{
-                              width: `${Math.min(
-                                getOccupancyPercentage(
-                                  center.current_occupancy || 0,
-                                  center.capacity || 1,
-                                ),
-                                100,
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {center.current_occupancy || 0}/{center.capacity || 0}
+                          <div className="text-sm text-gray-600">
+                            {center.current_occupancy || 0}/{center.capacity || 0}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Location (md+) */}
-                    <div className="hidden md:flex md:col-span-3 items-center">
-                      <div
-                        className="max-w-[260px] truncate text-sm text-gray-600"
-                        title={center.address}
-                      >
-                        {center.address}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="md:col-span-2 flex items-center justify-end gap-1">
-                      <Link
-                        href={`/evacuation/${center.id}`}
-                        className="h-8 w-8 inline-flex items-center justify-center text-gray-600 hover:text-gray-900"
-                        aria-label="View details"
-                        title="View details"
-                      >
-                        {/* eye icon via text fallback or use lucide Eye if desired */}
-                        <span className="sr-only">View</span>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="h-4 w-4"
+                      {/* Location (md+) */}
+                      <div className="hidden md:flex md:col-span-3 items-center">
+                        <div
+                          className="max-w-[260px] truncate text-sm text-gray-600"
+                          title={center.address}
                         >
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditModal(center)}
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(center.id)}
-                        className="h-8 w-8 text-gray-600 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                          {center.address}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="md:col-span-2 flex items-center justify-end gap-1">
+                        <Link
+                          href={`/evacuation/${center.id}`}
+                          className="h-8 w-8 inline-flex items-center justify-center text-gray-600 hover:text-gray-900"
+                          aria-label="View details"
+                          title="View details"
+                        >
+                          {/* eye icon via text fallback or use lucide Eye if desired */}
+                          <span className="sr-only">View</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="h-4 w-4"
+                          >
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(center)}
+                          className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(center.id)}
+                          className="h-8 w-8 text-gray-600 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {filteredCenters.length === 0 && (
-                  <div className="text-center py-12">
-                    <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No evacuation centers found</p>
-                    <p className="text-sm text-gray-400">Try adjusting your search or filter</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pagination */}
-            <div className="bg-white rounded-lg border border-gray-200 p-3 md:p-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="text-sm text-gray-600">
-                  Showing{' '}
-                  <span className="font-medium">{filteredCenters.length ? startIndex + 1 : 0}</span>{' '}
-                  to{' '}
-                  <span className="font-medium">
-                    {Math.min(startIndex + entriesPerPage, filteredCenters.length)}
-                  </span>{' '}
-                  of <span className="font-medium">{filteredCenters.length}</span> results
+                  {filteredCenters.length === 0 && (
+                    <div className="text-center py-12">
+                      <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No evacuation centers found</p>
+                      <p className="text-sm text-gray-400">Try adjusting your search or filter</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="border-gray-300"
-                  >
-                    Previous
-                  </Button>
-                  <div className="px-3 py-1 text-sm font-medium bg-gray-100 rounded">
-                    {currentPage}
+              </div>
+
+              {/* Pagination */}
+              <div className="bg-white rounded-lg border border-gray-200 p-3 md:p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-sm text-gray-600">
+                    Showing{' '}
+                    <span className="font-medium">
+                      {filteredCenters.length ? startIndex + 1 : 0}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-medium">
+                      {Math.min(startIndex + entriesPerPage, filteredCenters.length)}
+                    </span>{' '}
+                    of <span className="font-medium">{filteredCenters.length}</span> results
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="border-gray-300"
-                  >
-                    Next
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="border-gray-300"
+                    >
+                      Previous
+                    </Button>
+                    <div className="px-3 py-1 text-sm font-medium bg-gray-100 rounded">
+                      {currentPage}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="border-gray-300"
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Single Modal Instance */}
-      {isModalOpen && (
-        <EvacuationModal
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          center={editingCenter}
-          onSave={
-            editingCenter
-              ? (data) => handleUpdate(editingCenter.id, data as Partial<EvacuationCenterUpdate>)
-              : (data) => handleCreate(data as EvacuationCenterInsert)
-          }
-          loading={modalLoading}
-        />
-      )}
+        {/* Single Modal Instance */}
+        {isModalOpen && (
+          <EvacuationModal
+            isOpen={isModalOpen}
+            onClose={closeModal}
+            center={editingCenter}
+            onSave={
+              editingCenter
+                ? (data) => handleUpdate(editingCenter.id, data as Partial<EvacuationCenterUpdate>)
+                : (data) => handleCreate(data as EvacuationCenterInsert)
+            }
+            loading={modalLoading}
+          />
+        )}
+      </ModuleGuard>
     </AuthWrapper>
   );
 }

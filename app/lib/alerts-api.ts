@@ -4,11 +4,14 @@ import axios from 'axios';
 // Use database types for the alert table
 export type Alert = Database['public']['Tables']['alert']['Row'];
 export type AlertInsert = Database['public']['Tables']['alert']['Insert'];
-export type AlertUpdate = Database['public']['Tables']['alert']['Update'];
+export type AlertUpdate = Database['public']['Tables']['alert']['Update'] & {
+  userId?: string;
+};
 
 // Extended type for alert creation with notification preferences
 export interface AlertCreateRequest extends AlertInsert {
   notification_method?: 'app_push' | 'app' | 'sms' | 'both';
+  userId?: string;
 }
 
 export interface NotificationStatus {
@@ -97,16 +100,11 @@ class AlertsAPI {
   // POST /api/alerts - Create a new alert
   async createAlert(alertData: AlertCreateRequest): Promise<ApiResponse<Alert>> {
     try {
-      const response = await axios.post(
-        API_BASE_URL,
-
-        alertData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      const response = await axios.post(API_BASE_URL, alertData, {
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+      });
 
       if (!response.status || response.status < 200 || response.status >= 300) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -148,13 +146,14 @@ class AlertsAPI {
   }
 
   // DELETE /api/alerts/[id] - Delete an alert
-  async deleteAlert(id: number): Promise<ApiResponse<Alert>> {
+  async deleteAlert(id: number, userId?: string): Promise<ApiResponse<Alert>> {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {

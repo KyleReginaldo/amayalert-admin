@@ -1,4 +1,5 @@
 import { supabase } from '@/app/client/supabase';
+import { logAdminAction, logUserAction } from '@/app/lib/activity-logger';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -67,6 +68,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const body: UserUpdate = await request.json();
 
+    // Extract userId from request body
+    const userId = (body as { userId?: string }).userId;
+    console.log('🔐 User ID from request:', userId);
+
     if (!id) {
       return NextResponse.json(
         {
@@ -78,9 +83,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    // Remove id from body if present to prevent updates
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id: _, ...updateData } = body as UserUpdate & { id?: string };
+    // Prepare update payload without allowing id or userId to be updated
+    const updateData = { ...body } as UserUpdate & { id?: string; userId?: string };
+    if ('id' in updateData) {
+      delete updateData.id;
+    }
+    if ('userId' in updateData) {
+      delete updateData.userId;
+    }
 
     const { data: user, error } = await supabase
       .from('users')
@@ -99,6 +109,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         } as ApiResponse<User>,
         { status: error.code === 'PGRST116' ? 404 : 500 },
       );
+    }
+
+    // Log the activity
+    if (user.role === 'sub_admin' || user.role === 'admin') {
+      await logAdminAction('update', user.full_name, user.modules as string[] | undefined, userId);
+    } else {
+      await logUserAction('update', user.full_name, `Email: ${user.email}`, userId);
     }
 
     return NextResponse.json({
@@ -127,6 +144,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
+    // Extract userId from request body
+    const body = await request.json().catch(() => ({}));
+    const userId = body.userId;
+    console.log('🔐 User ID from request:', userId);
+
     if (!id) {
       return NextResponse.json(
         {
@@ -138,7 +160,9 @@ export async function DELETE(
       );
     }
 
-    // First fetch the user to return it
+    // First fetch the user to get details before deletion
+    const { data: userData } = await supabase.from('users').select('*').eq('id', id).single();
+
     const { error: fetchError } = await supabase.auth.admin.deleteUser(id);
 
     if (fetchError) {
@@ -165,6 +189,15 @@ export async function DELETE(
         } as ApiResponse<User>,
         { status: 500 },
       );
+    }
+
+    // Log the activity
+    if (userData) {
+      if (userData.role === 'sub_admin' || userData.role === 'admin') {
+        await logAdminAction('delete', userData.full_name, undefined, userId);
+      } else {
+        await logUserAction('delete', userData.full_name, `Email: ${userData.email}`, userId);
+      }
     }
 
     return NextResponse.json({
