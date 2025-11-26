@@ -5,14 +5,8 @@ import { useAlerts } from '@/app/providers/alerts-provider';
 import { useData } from '@/app/providers/data-provider';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AlertTriangle, Building2, Calendar, Download, Loader2, Users } from 'lucide-react';
+import { format } from 'date-fns';
+import { AlertTriangle, Building2, Download, Loader2, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const Dashboard = () => {
@@ -22,10 +16,10 @@ const Dashboard = () => {
   const { users, userStats, usersLoading, refreshUsers } = useData();
 
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [exportDate, setExportDate] = useState<Date>(new Date());
+  const today = new Date();
+  const [selectedDay, setSelectedDay] = useState<string>(format(today, 'yyyy-MM-dd'));
+  const exportDay = format(exportDate, 'yyyy-MM-dd');
 
   // Overall loading state
   const loading = alertsLoading || evacuationLoading || usersLoading;
@@ -39,20 +33,23 @@ const Dashboard = () => {
     try {
       setIsExporting(true);
 
-      const [year, month] = selectedMonth.split('-');
-      const selectedDate = new Date(parseInt(year), parseInt(month) - 1);
-      const monthName = selectedDate.toLocaleDateString('en-US', {
+      const [year, month, day] = exportDay.split('-');
+      const reportDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      const dayName = reportDate.toLocaleDateString('en-US', {
         month: 'long',
+        day: 'numeric',
         year: 'numeric',
       });
       const timestamp = new Date().toLocaleString();
 
-      // Filter data by selected month
+      // Filter data by selected day
       const filteredAlerts = alerts.filter((alert) => {
         if (!alert.created_at) return false;
         const alertDate = new Date(alert.created_at);
         return (
-          alertDate.getMonth() === parseInt(month) - 1 && alertDate.getFullYear() === parseInt(year)
+          alertDate.getFullYear() === parseInt(year) &&
+          alertDate.getMonth() === parseInt(month) - 1 &&
+          alertDate.getDate() === parseInt(day)
         );
       });
 
@@ -60,18 +57,31 @@ const Dashboard = () => {
         if (!user.created_at) return false;
         const userDate = new Date(user.created_at);
         return (
-          userDate.getMonth() === parseInt(month) - 1 && userDate.getFullYear() === parseInt(year)
+          userDate.getFullYear() === parseInt(year) &&
+          userDate.getMonth() === parseInt(month) - 1 &&
+          userDate.getDate() === parseInt(day)
         );
       });
 
-      const monthStats = {
+      const filteredEvacuationCenters = evacuationCenters.filter((center) => {
+        const stamp = center.updated_at || center.created_at;
+        if (!stamp) return false;
+        const cDate = new Date(stamp);
+        return (
+          cDate.getFullYear() === parseInt(year) &&
+          cDate.getMonth() === parseInt(month) - 1 &&
+          cDate.getDate() === parseInt(day)
+        );
+      });
+
+      const dayStats = {
         totalUsers: filteredUsers.length,
         activeAlerts: filteredAlerts.filter((alert) => !alert.deleted_at).length,
-        evacuationCenters: evacuationCenters.length,
+        evacuationCenters: filteredEvacuationCenters.length,
         criticalAlerts: filteredAlerts.filter((alert) => alert.alert_level === 'critical').length,
       };
 
-      const monthAlerts = filteredAlerts.slice(0, 20).map((alert) => ({
+      const dayAlerts = filteredAlerts.slice(0, 20).map((alert) => ({
         id: alert.id,
         title: alert.title || 'Untitled Alert',
         severity: alert.alert_level || 'medium',
@@ -80,7 +90,7 @@ const Dashboard = () => {
         status: alert.deleted_at ? 'deleted' : 'active',
       }));
 
-      const monthUsers = filteredUsers.slice(0, 20).map((user) => ({
+      const dayUsers = filteredUsers.slice(0, 20).map((user) => ({
         id: user.id,
         name: user.full_name || 'Unknown User',
         email: user.email,
@@ -114,7 +124,7 @@ const Dashboard = () => {
         <body>
           <div class="header">
             <h1>Amayalert Report</h1>
-            <p>Report Period: ${monthName}</p>
+            <p>Report Period: ${dayName}</p>
             <p>Generated on: ${timestamp}</p>
           </div>
 
@@ -122,26 +132,26 @@ const Dashboard = () => {
             <h2>Overview Statistics</h2>
             <div class="stats">
               <div class="stat">
-                <div class="stat-value">${monthStats.totalUsers.toLocaleString()}</div>
+                <div class="stat-value">${dayStats.totalUsers.toLocaleString()}</div>
                 <div class="stat-label">New Users</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${monthStats.activeAlerts}</div>
+                <div class="stat-value">${dayStats.activeAlerts}</div>
                 <div class="stat-label">Active Alerts</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${monthStats.evacuationCenters}</div>
+                <div class="stat-value">${dayStats.evacuationCenters}</div>
                 <div class="stat-label">Evacuation Centers</div>
               </div>
               <div class="stat">
-                <div class="stat-value">${monthStats.criticalAlerts}</div>
+                <div class="stat-value">${dayStats.criticalAlerts}</div>
                 <div class="stat-label">Critical Alerts</div>
               </div>
             </div>
           </div>
 
           <div class="section">
-            <h2>Alerts for ${monthName}</h2>
+            <h2>Alerts for ${dayName}</h2>
             <table>
               <thead>
                 <tr>
@@ -154,8 +164,8 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 ${
-                  monthAlerts.length > 0
-                    ? monthAlerts
+                  dayAlerts.length > 0
+                    ? dayAlerts
                         .map(
                           (alert) => `
                   <tr>
@@ -175,7 +185,7 @@ const Dashboard = () => {
           </div>
 
           <div class="section">
-            <h2>New Users in ${monthName}</h2>
+            <h2>New Users in ${dayName}</h2>
             <table>
               <thead>
                 <tr>
@@ -187,8 +197,8 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 ${
-                  monthUsers.length > 0
-                    ? monthUsers
+                  dayUsers.length > 0
+                    ? dayUsers
                         .map(
                           (user) => `
                   <tr>
@@ -219,9 +229,11 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                ${evacuationCenters
-                  .map(
-                    (center) => `
+                ${
+                  filteredEvacuationCenters.length > 0
+                    ? filteredEvacuationCenters
+                        .map(
+                          (center) => `
                   <tr>
                     <td>${center.name}</td>
                     <td>${(center.status || 'closed').toUpperCase()}</td>
@@ -230,8 +242,10 @@ const Dashboard = () => {
                     <td>${center.address}</td>
                   </tr>
                 `,
-                  )
-                  .join('')}
+                        )
+                        .join('')
+                    : '<tr><td colspan="5" style="text-align: center; color: #666;">No evacuation center updates for this period</td></tr>'
+                }
               </tbody>
             </table>
           </div>
@@ -267,44 +281,53 @@ const Dashboard = () => {
   }, [alerts, evacuationCenters, users, refreshAll]);
 
   const stats = useMemo(() => {
-    const [yearStr, monthStr] = selectedMonth.split('-');
+    const [yearStr, monthStr, dayStr] = selectedDay.split('-');
     const selYear = parseInt(yearStr, 10);
     const selMonth = parseInt(monthStr, 10) - 1; // zero-based
+    const selDay = parseInt(dayStr, 10);
 
-    // Filter alerts/users for selected month
-    const monthAlerts = alerts.filter((a) => {
+    // Filter alerts/users for selected day
+    const dayAlerts = alerts.filter((a) => {
       if (!a.created_at) return false;
       const d = new Date(a.created_at);
-      return d.getFullYear() === selYear && d.getMonth() === selMonth;
+      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
     });
 
-    const monthUsers = users.filter((u) => {
+    const dayUsers = users.filter((u) => {
       if (!u.created_at) return false;
       const d = new Date(u.created_at);
-      return d.getFullYear() === selYear && d.getMonth() === selMonth;
+      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
+    });
+
+    const dayEvacuations = evacuationCenters.filter((c) => {
+      const stamp = c.updated_at || c.created_at;
+      if (!stamp) return false;
+      const d = new Date(stamp);
+      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
     });
 
     return {
-      totalUsers: monthUsers.length, // show new users in selected month
-      activeAlerts: monthAlerts.filter((a) => !a.deleted_at).length,
-      evacuationCenters: evacuationCenters.length,
-      criticalAlerts: monthAlerts.filter((a) => a.alert_level === 'critical').length,
-      userGrowth: monthUsers.length, // for selected month
-      alertsToday: monthAlerts.filter((a) => {
+      totalUsers: dayUsers.length, // show new users in selected day
+      activeAlerts: dayAlerts.filter((a) => !a.deleted_at).length,
+      evacuationCenters: dayEvacuations.length,
+      criticalAlerts: dayAlerts.filter((a) => a.alert_level === 'critical').length,
+      userGrowth: dayUsers.length, // for selected day
+      alertsToday: dayAlerts.filter((a) => {
         if (!a.created_at) return false;
         const ad = new Date(a.created_at).toDateString();
         return ad === new Date().toDateString();
       }).length,
-      availableCenters: evacuationCenters.filter((center) => center.status === 'open').length,
+      availableCenters: dayEvacuations.filter((center) => center.status === 'open').length,
       responseTime: '4.2 min',
-      monthAlerts,
-      monthUsers,
+      dayAlerts,
+      dayUsers,
+      dayEvacuations,
     };
-  }, [alerts, evacuationCenters, users, selectedMonth]);
+  }, [alerts, evacuationCenters, users, selectedDay]);
 
   const recentAlerts = useMemo(
     () =>
-      stats.monthAlerts
+      stats.dayAlerts
         .slice()
         .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
         .slice(0, 20)
@@ -316,12 +339,12 @@ const Dashboard = () => {
           date: new Date(alert.created_at).toLocaleDateString(),
           status: alert.deleted_at ? 'deleted' : 'active',
         })),
-    [stats.monthAlerts],
+    [stats.dayAlerts],
   );
 
   const recentUsers = useMemo(
     () =>
-      stats.monthUsers
+      stats.dayUsers
         .slice()
         .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
         .slice(0, 20)
@@ -333,7 +356,7 @@ const Dashboard = () => {
           joinDate: user.created_at,
           status: 'active',
         })),
-    [stats.monthUsers],
+    [stats.dayUsers],
   );
 
   if (loading) {
@@ -356,37 +379,17 @@ const Dashboard = () => {
           subtitle="Overview of alerts, users, and evacuation centers"
           action={
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      const months = [];
-                      const now = new Date();
-                      for (let i = 0; i < 12; i++) {
-                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-                          2,
-                          '0',
-                        )}`;
-                        const label = date.toLocaleDateString('en-US', {
-                          month: 'long',
-                          year: 'numeric',
-                        });
-                        months.push({ value, label });
-                      }
-                      return months.map((month) => (
-                        <SelectItem key={month.value} value={month.value}>
-                          {month.label}
-                        </SelectItem>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
-              </div>
+              <input
+                type="date"
+                value={selectedDay}
+                max={format(new Date(), 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedDay(val);
+                  if (val) setExportDate(new Date(val));
+                }}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
               <Button
                 onClick={handleExport}
                 disabled={isExporting}
@@ -411,7 +414,7 @@ const Dashboard = () => {
               {stats.totalUsers.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Total Users</div>
-            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this month</div>
+            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this day</div>
           </div>
           <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-orange-600">{stats.activeAlerts}</div>
@@ -437,9 +440,9 @@ const Dashboard = () => {
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">
-                  Alert Severity ({selectedMonth})
+                  Alert Severity ({selectedDay})
                 </h2>
-                <span className="text-sm text-gray-500">{recentAlerts.length} in month</span>
+                <span className="text-sm text-gray-500">{recentAlerts.length} in day</span>
               </div>
             </div>
             <div className="p-6">
@@ -586,7 +589,7 @@ const Dashboard = () => {
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">
-                  User Growth (ending {selectedMonth})
+                  User Growth (ending {selectedDay})
                 </h2>
                 <span className="text-sm text-gray-500">{recentUsers.length} new users</span>
               </div>
@@ -598,12 +601,12 @@ const Dashboard = () => {
                   <div className="h-48">
                     {(() => {
                       // Group users by month for the last 6 months
-                      // Base end month on selectedMonth instead of current real-time month
-                      const [yearStr, monthStr] = selectedMonth.split('-');
+                      // Base end month on selectedDay instead of current real-time month
+                      const [yearStr, monthStr, dayStr] = selectedDay.split('-');
                       const endDate = new Date(
                         parseInt(yearStr, 10),
                         parseInt(monthStr, 10) - 1,
-                        1,
+                        parseInt(dayStr, 10),
                       );
                       const months = [];
                       for (let i = 5; i >= 0; i--) {
@@ -784,12 +787,12 @@ const Dashboard = () => {
         <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">History ({selectedMonth})</h2>
-              <span className="text-sm text-gray-500">{stats.monthUsers.length} total</span>
+              <h2 className="text-lg font-medium text-gray-900">History ({selectedDay})</h2>
+              <span className="text-sm text-gray-500">{stats.dayUsers.length} total</span>
             </div>
           </div>
           <div className="p-6">
-            {stats.monthUsers.length > 0 ? (
+            {stats.dayUsers.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
@@ -801,7 +804,7 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.monthUsers
+                    {stats.dayUsers
                       .slice()
                       .sort(
                         (a, b) =>
@@ -831,7 +834,7 @@ const Dashboard = () => {
             ) : (
               <div className="py-12 text-center text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3" />
-                <p>No users signed up in this month</p>
+                <p>No users signed up in this day</p>
               </div>
             )}
           </div>
@@ -842,16 +845,16 @@ const Dashboard = () => {
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Evacuation Centers Overview</h2>
-              <span className="text-sm text-gray-500">{evacuationCenters.length} total</span>
+              <span className="text-sm text-gray-500">{stats.dayEvacuations.length} total</span>
             </div>
           </div>
           <div className="p-6">
-            {evacuationCenters.length > 0 ? (
+            {stats.dayEvacuations.length > 0 ? (
               <div className="space-y-6">
                 {/* Status Distribution */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {(() => {
-                    const statusCounts = evacuationCenters.reduce((acc, center) => {
+                    const statusCounts = stats.dayEvacuations.reduce((acc, center) => {
                       const status = center.status || 'closed';
                       acc[status] = (acc[status] || 0) + 1;
                       return acc;
@@ -866,7 +869,9 @@ const Dashboard = () => {
                     return Object.entries(statusConfig).map(([status, config]) => {
                       const count = statusCounts[status] || 0;
                       const percentage =
-                        evacuationCenters.length > 0 ? (count / evacuationCenters.length) * 100 : 0;
+                        stats.dayEvacuations.length > 0
+                          ? (count / stats.dayEvacuations.length) * 100
+                          : 0;
 
                       return (
                         <div
@@ -891,7 +896,7 @@ const Dashboard = () => {
                 <div className="pt-6 border-t border-gray-200">
                   <h3 className="mb-4 font-medium text-gray-900 text-md">Capacity Analysis</h3>
                   <div className="space-y-3">
-                    {evacuationCenters.slice(0, 8).map((center) => {
+                    {stats.dayEvacuations.slice(0, 8).map((center) => {
                       const capacity = center.capacity || 0;
                       const occupancy = center.current_occupancy || 0;
                       const occupancyRate = capacity > 0 ? (occupancy / capacity) * 100 : 0;
@@ -930,10 +935,10 @@ const Dashboard = () => {
                     })}
                   </div>
 
-                  {evacuationCenters.length > 8 && (
+                  {stats.dayEvacuations.length > 8 && (
                     <div className="mt-4 text-center">
                       <span className="text-sm text-gray-500">
-                        +{evacuationCenters.length - 8} more centers
+                        +{stats.dayEvacuations.length - 8} more centers
                       </span>
                     </div>
                   )}
@@ -944,7 +949,7 @@ const Dashboard = () => {
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-blue-600">
-                        {evacuationCenters
+                        {stats.dayEvacuations
                           .reduce((sum, center) => sum + (center.capacity || 0), 0)
                           .toLocaleString()}
                       </div>
@@ -952,7 +957,7 @@ const Dashboard = () => {
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-green-600">
-                        {evacuationCenters
+                        {stats.dayEvacuations
                           .reduce((sum, center) => sum + (center.current_occupancy || 0), 0)
                           .toLocaleString()}
                       </div>
@@ -960,18 +965,18 @@ const Dashboard = () => {
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-purple-600">
-                        {evacuationCenters.filter((center) => center.status === 'open').length}
+                        {stats.dayEvacuations.filter((center) => center.status === 'open').length}
                       </div>
                       <div className="text-xs text-gray-500">Available Now</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-orange-600">
                         {(() => {
-                          const totalCapacity = evacuationCenters.reduce(
+                          const totalCapacity = stats.dayEvacuations.reduce(
                             (sum, center) => sum + (center.capacity || 0),
                             0,
                           );
-                          const totalOccupancy = evacuationCenters.reduce(
+                          const totalOccupancy = stats.dayEvacuations.reduce(
                             (sum, center) => sum + (center.current_occupancy || 0),
                             0,
                           );
