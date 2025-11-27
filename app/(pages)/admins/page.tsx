@@ -209,10 +209,6 @@ export default function AdminsPage() {
       setModalLoading(true);
 
       // Get current user ID from Supabase
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const userId = user?.id;
 
       const response = await usersAPI.createUser({
         email: userData.email,
@@ -222,7 +218,6 @@ export default function AdminsPage() {
         gender: userData.gender || null,
         modules: userData.modules || [],
         id: userData.id || crypto.randomUUID(),
-        userId,
       });
 
       if (response.success && response.data) {
