@@ -16,10 +16,18 @@ const Dashboard = () => {
   const { users, userStats, usersLoading, refreshUsers } = useData();
 
   const [isExporting, setIsExporting] = useState(false);
-  const [exportDate, setExportDate] = useState<Date>(new Date());
   const today = new Date();
-  const [selectedDay, setSelectedDay] = useState<string>(format(today, 'yyyy-MM-dd'));
-  const exportDay = format(exportDate, 'yyyy-MM-dd');
+  const [startDate, setStartDate] = useState<string>(format(today, 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState<string>(format(today, 'yyyy-MM-dd'));
+
+  // Helper function to format dates for display
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), 'MMMM d, yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Overall loading state
   const loading = alertsLoading || evacuationLoading || usersLoading;
@@ -33,45 +41,47 @@ const Dashboard = () => {
     try {
       setIsExporting(true);
 
-      const [year, month, day] = exportDay.split('-');
-      const reportDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      const dayName = reportDate.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      const periodName =
+        startDate === endDate
+          ? startDateObj.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })
+          : `${startDateObj.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })} - ${endDateObj.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}`;
       const timestamp = new Date().toLocaleString();
 
-      // Filter data by selected day
+      // Filter data by date range
+      const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
+      const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
+
       const filteredAlerts = alerts.filter((alert) => {
         if (!alert.created_at) return false;
-        const alertDate = new Date(alert.created_at);
-        return (
-          alertDate.getFullYear() === parseInt(year) &&
-          alertDate.getMonth() === parseInt(month) - 1 &&
-          alertDate.getDate() === parseInt(day)
-        );
+        const alertTime = new Date(alert.created_at).getTime();
+        return alertTime >= startTimestamp && alertTime <= endTimestamp;
       });
 
       const filteredUsers = users.filter((user) => {
         if (!user.created_at) return false;
-        const userDate = new Date(user.created_at);
-        return (
-          userDate.getFullYear() === parseInt(year) &&
-          userDate.getMonth() === parseInt(month) - 1 &&
-          userDate.getDate() === parseInt(day)
-        );
+        const userTime = new Date(user.created_at).getTime();
+        return userTime >= startTimestamp && userTime <= endTimestamp;
       });
 
       const filteredEvacuationCenters = evacuationCenters.filter((center) => {
         const stamp = center.updated_at || center.created_at;
         if (!stamp) return false;
-        const cDate = new Date(stamp);
-        return (
-          cDate.getFullYear() === parseInt(year) &&
-          cDate.getMonth() === parseInt(month) - 1 &&
-          cDate.getDate() === parseInt(day)
-        );
+        const centerTime = new Date(stamp).getTime();
+        return centerTime >= startTimestamp && centerTime <= endTimestamp;
       });
 
       const dayStats = {
@@ -124,7 +134,7 @@ const Dashboard = () => {
         <body>
           <div class="header">
             <h1>Amayalert Report</h1>
-            <p>Report Period: ${dayName}</p>
+            <p>Report Period: ${periodName}</p>
             <p>Generated on: ${timestamp}</p>
           </div>
 
@@ -151,7 +161,7 @@ const Dashboard = () => {
           </div>
 
           <div class="section">
-            <h2>Alerts for ${dayName}</h2>
+            <h2>Alerts for ${periodName}</h2>
             <table>
               <thead>
                 <tr>
@@ -185,7 +195,7 @@ const Dashboard = () => {
           </div>
 
           <div class="section">
-            <h2>New Users in ${dayName}</h2>
+            <h2>New Users in ${periodName}</h2>
             <table>
               <thead>
                 <tr>
@@ -281,29 +291,27 @@ const Dashboard = () => {
   }, [alerts, evacuationCenters, users, refreshAll]);
 
   const stats = useMemo(() => {
-    const [yearStr, monthStr, dayStr] = selectedDay.split('-');
-    const selYear = parseInt(yearStr, 10);
-    const selMonth = parseInt(monthStr, 10) - 1; // zero-based
-    const selDay = parseInt(dayStr, 10);
+    const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
+    const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
 
-    // Filter alerts/users for selected day
+    // Filter alerts/users for selected date range
     const dayAlerts = alerts.filter((a) => {
       if (!a.created_at) return false;
-      const d = new Date(a.created_at);
-      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
+      const time = new Date(a.created_at).getTime();
+      return time >= startTimestamp && time <= endTimestamp;
     });
 
     const dayUsers = users.filter((u) => {
       if (!u.created_at) return false;
-      const d = new Date(u.created_at);
-      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
+      const time = new Date(u.created_at).getTime();
+      return time >= startTimestamp && time <= endTimestamp;
     });
 
     const dayEvacuations = evacuationCenters.filter((c) => {
       const stamp = c.updated_at || c.created_at;
       if (!stamp) return false;
-      const d = new Date(stamp);
-      return d.getFullYear() === selYear && d.getMonth() === selMonth && d.getDate() === selDay;
+      const time = new Date(stamp).getTime();
+      return time >= startTimestamp && time <= endTimestamp;
     });
 
     return {
@@ -323,7 +331,7 @@ const Dashboard = () => {
       dayUsers,
       dayEvacuations,
     };
-  }, [alerts, evacuationCenters, users, selectedDay]);
+  }, [alerts, evacuationCenters, users, startDate, endDate]);
 
   const recentAlerts = useMemo(
     () =>
@@ -378,31 +386,42 @@ const Dashboard = () => {
           title="Dashboard"
           subtitle="Overview of alerts, users, and evacuation centers"
           action={
-            <div className="flex items-center gap-3">
-              <input
-                type="date"
-                value={selectedDay}
-                max={format(new Date(), 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedDay(val);
-                  if (val) setExportDate(new Date(val));
-                }}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <Button
-                onClick={handleExport}
-                disabled={isExporting}
-                variant="outline"
-                className="gap-2 border-gray-300"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                Export Report
-              </Button>
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={startDate}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Start date"
+                  />
+                  <span className="text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="End date"
+                  />
+                </div>
+                <Button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  variant="outline"
+                  className="gap-2 border-gray-300"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Export Report
+                </Button>
+              </div>
             </div>
           }
         />
@@ -414,7 +433,7 @@ const Dashboard = () => {
               {stats.totalUsers.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Total Users</div>
-            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this day</div>
+            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this period</div>
           </div>
           <div className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="text-2xl font-bold text-orange-600">{stats.activeAlerts}</div>
@@ -439,10 +458,16 @@ const Dashboard = () => {
           <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Alert Severity ({selectedDay})
+                <h2 className="font-medium text-gray-900 text-md">
+                  Alert Severity (
+                  <span className="text-gray-600">
+                    {startDate === endDate
+                      ? formatDateDisplay(startDate)
+                      : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
+                  </span>
+                  )
                 </h2>
-                <span className="text-sm text-gray-500">{recentAlerts.length} in day</span>
+                <span className="text-sm text-gray-500">{recentAlerts.length} in period</span>
               </div>
             </div>
             <div className="p-6">
@@ -588,8 +613,14 @@ const Dashboard = () => {
           <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
-                  User Growth (ending {selectedDay})
+                <h2 className="font-medium text-gray-900 text-md">
+                  User Growth (
+                  <span className="text-gray-600">
+                    {startDate === endDate
+                      ? formatDateDisplay(startDate)
+                      : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
+                  </span>
+                  )
                 </h2>
                 <span className="text-sm text-gray-500">{recentUsers.length} new users</span>
               </div>
@@ -601,16 +632,20 @@ const Dashboard = () => {
                   <div className="h-48">
                     {(() => {
                       // Group users by month for the last 6 months
-                      // Base end month on selectedDay instead of current real-time month
-                      const [yearStr, monthStr, dayStr] = selectedDay.split('-');
-                      const endDate = new Date(
+                      // Base end month on endDate instead of current real-time month
+                      const [yearStr, monthStr, dayStr] = endDate.split('-');
+                      const endDateObj = new Date(
                         parseInt(yearStr, 10),
                         parseInt(monthStr, 10) - 1,
                         parseInt(dayStr, 10),
                       );
                       const months = [];
                       for (let i = 5; i >= 0; i--) {
-                        const date = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+                        const date = new Date(
+                          endDateObj.getFullYear(),
+                          endDateObj.getMonth() - i,
+                          1,
+                        );
                         months.push({
                           name: date.toLocaleDateString('en-US', { month: 'short' }),
                           users: users.filter((user) => {
@@ -787,7 +822,15 @@ const Dashboard = () => {
         <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">History ({selectedDay})</h2>
+              <h2 className="font-medium text-gray-900 text-md">
+                History (
+                <span className="text-gray-600">
+                  {startDate === endDate
+                    ? formatDateDisplay(startDate)
+                    : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
+                </span>
+                )
+              </h2>
               <span className="text-sm text-gray-500">{stats.dayUsers.length} total</span>
             </div>
           </div>
@@ -834,7 +877,7 @@ const Dashboard = () => {
             ) : (
               <div className="py-12 text-center text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3" />
-                <p>No users signed up in this day</p>
+                <p>No users signed up in this period</p>
               </div>
             )}
           </div>
@@ -844,7 +887,7 @@ const Dashboard = () => {
         <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Evacuation Centers Overview</h2>
+              <h2 className="font-medium text-gray-900 text-md">Evacuation Centers Overview</h2>
               <span className="text-sm text-gray-500">{stats.dayEvacuations.length} total</span>
             </div>
           </div>
@@ -894,7 +937,7 @@ const Dashboard = () => {
 
                 {/* Capacity Analysis */}
                 <div className="pt-6 border-t border-gray-200">
-                  <h3 className="mb-4 font-medium text-gray-900 text-md">Capacity Analysis</h3>
+                  <h3 className="mb-4 text-sm font-medium text-gray-900">Capacity Analysis</h3>
                   <div className="space-y-3">
                     {stats.dayEvacuations.slice(0, 8).map((center) => {
                       const capacity = center.capacity || 0;

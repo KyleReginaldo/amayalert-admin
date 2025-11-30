@@ -21,9 +21,12 @@ export function PageHeader({
     <div className={cn('mb-6', className)}>
       {/* Title row - with or without button */}
       {hasAction ? (
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-col items-start justify-between mb-1 md:items-center md:flex-row">
           <h1
-            className={cn('font-semibold text-gray-900', size === 'small' ? 'text-lg' : 'text-xl')}
+            className={cn(
+              'font-semibold text-gray-900',
+              size === 'small' ? 'text-lg' : 'text-xl mb-2',
+            )}
           >
             {title}
           </h1>
