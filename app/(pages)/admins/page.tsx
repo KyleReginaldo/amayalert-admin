@@ -864,6 +864,31 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
     gender: '',
     modules: [],
   });
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhoneLocal = (value: string) => {
+    if (!value) return null; // optional field
+    if (!/^\d+$/.test(value)) return 'Digits only after +63';
+    if (value.length !== 10) return 'Must be 10 digits after +63';
+    if (!value.startsWith('9')) return 'Must start with 9 (e.g. 9XXXXXXXXX)';
+    return null;
+  };
+
+  const parseStoredPhoneToLocal = (stored?: string | null) => {
+    if (!stored) return '';
+    const digits = (stored || '').replace(/\D/g, '');
+    if (digits.startsWith('63')) {
+      return digits.slice(2, 12);
+    }
+    if (digits.length === 11 && digits.startsWith('0')) {
+      return digits.slice(1);
+    }
+    if (digits.length === 10 && digits.startsWith('9')) {
+      return digits;
+    }
+    return '';
+  };
 
   const availableModules: { value: ModuleType; label: string }[] = [
     { value: 'rescue', label: 'Rescue Operations' },
@@ -873,7 +898,6 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
     { value: 'admin', label: 'Admin Management' },
     { value: 'report', label: 'Reports' },
     { value: 'chat', label: 'Chat' },
-    { value: 'setting', label: 'Settings' },
   ];
 
   useEffect(() => {
@@ -885,6 +909,9 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
         gender: admin.gender || '',
         modules: admin.modules || [],
       });
+      const local = parseStoredPhoneToLocal(admin.phone_number || '');
+      setPhoneLocal(local);
+      setPhoneError(validatePhoneLocal(local));
     } else {
       setFormData({
         full_name: '',
@@ -893,6 +920,8 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
         gender: '',
         modules: [],
       });
+      setPhoneLocal('');
+      setPhoneError(null);
     }
   }, [admin]);
 
@@ -917,7 +946,14 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const err = validatePhoneLocal(phoneLocal);
+    setPhoneError(err);
+    if (err) return;
+    const payload = {
+      ...formData,
+      phone_number: phoneLocal ? `+63${phoneLocal}` : '',
+    };
+    onSave(payload);
   };
 
   if (!isOpen) return null;
@@ -963,16 +999,37 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
           </div>
 
           <div>
-            <Label htmlFor="phone_number">Phone Number</Label>
-            <Input
-              id="phone_number"
-              type="tel"
-              value={formData.phone_number}
-              onChange={(e) => setFormData((prev) => ({ ...prev, phone_number: e.target.value }))}
-              placeholder="+639000000000"
-              disabled={loading}
-              className="mt-2"
-            />
+            <Label htmlFor="phone_number_local">Phone Number (Philippines)</Label>
+            <div className="mt-2 flex">
+              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-600 text-sm">
+                +63
+              </span>
+              <Input
+                id="phone_number_local"
+                type="tel"
+                inputMode="numeric"
+                value={phoneLocal}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  const limited = raw.slice(0, 10);
+                  setPhoneLocal(limited);
+                  setFormData((prev) => ({
+                    ...prev,
+                    phone_number: limited ? `+63${limited}` : '',
+                  }));
+                  setPhoneError(validatePhoneLocal(limited));
+                }}
+                placeholder="9XXXXXXXXX"
+                disabled={loading}
+                className="rounded-l-none"
+              />
+            </div>
+            {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
+            {!phoneError && phoneLocal.length === 10 && (
+              <p className="mt-1 text-xs text-gray-500">
+                Full number will be saved as +63{phoneLocal}
+              </p>
+            )}
           </div>
 
           <div>
@@ -1053,7 +1110,7 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !!phoneError}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

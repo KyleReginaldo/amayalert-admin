@@ -510,6 +510,28 @@ export default function UsersPage() {
             <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
               {viewMode === 'map' ? (
                 <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm text-gray-600">
+                      Showing {usersWithLocation.length} users with location
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshUsers()}
+                      className="gap-2"
+                      disabled={usersLoading}
+                      title="Refresh user locations"
+                    >
+                      {usersLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>Refresh</>
+                      )}
+                    </Button>
+                  </div>
                   <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
                   {usersWithLocation.length === 0 && (
                     <div className="mt-3 text-sm text-center text-gray-500">
@@ -685,20 +707,22 @@ export default function UsersPage() {
                                 </TableCell>
                                 <TableCell className="w-[18%] text-right">
                                   <div className="flex items-center justify-end gap-1 ml-auto">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openEditModal(user)}
-                                      disabled={currentUserId === user.id}
-                                      className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title={
-                                        currentUserId === user.id
-                                          ? 'Cannot edit your own account'
-                                          : 'Edit user'
-                                      }
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
+                                    {user.full_name !== 'Guest User' && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openEditModal(user)}
+                                        disabled={currentUserId === user.id}
+                                        className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                          currentUserId === user.id
+                                            ? 'Cannot edit your own account'
+                                            : 'Edit user'
+                                        }
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -834,20 +858,22 @@ export default function UsersPage() {
                     <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
                       Close
                     </Button>
-                    <Button
-                      onClick={() => {
-                        setIsSheetOpen(false);
-                        openEditModal(selectedUser);
-                      }}
-                      disabled={currentUserId === selectedUser.id}
-                      title={
-                        currentUserId === selectedUser.id
-                          ? 'Cannot edit your own account'
-                          : 'Edit user'
-                      }
-                    >
-                      Edit
-                    </Button>
+                    {selectedUser.full_name !== 'Guest User' && (
+                      <Button
+                        onClick={() => {
+                          setIsSheetOpen(false);
+                          openEditModal(selectedUser);
+                        }}
+                        disabled={currentUserId === selectedUser.id}
+                        title={
+                          currentUserId === selectedUser.id
+                            ? 'Cannot edit your own account'
+                            : 'Edit user'
+                        }
+                      >
+                        Edit
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
@@ -876,6 +902,34 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
     role: 'user' as 'admin' | 'user' | 'sub_admin',
     gender: '',
   });
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhoneLocal = (value: string) => {
+    if (!value) return null; // optional field
+    if (!/^\d+$/.test(value)) return 'Digits only after +63';
+    if (value.length !== 10) return 'Must be 10 digits after +63';
+    if (!value.startsWith('9')) return 'Must start with 9 (e.g. 9XXXXXXXXX)';
+    return null;
+  };
+
+  const parseStoredPhoneToLocal = (stored?: string | null) => {
+    if (!stored) return '';
+    const digits = (stored || '').replace(/\D/g, '');
+    // If starts with country code 63
+    if (digits.startsWith('63')) {
+      return digits.slice(2, 12); // next 10 digits
+    }
+    // If local 11-digit starting with 0 (e.g., 09XXXXXXXXX)
+    if (digits.length === 11 && digits.startsWith('0')) {
+      return digits.slice(1); // drop leading 0 -> 10 digits
+    }
+    // If already 10-digit starting with 9
+    if (digits.length === 10 && digits.startsWith('9')) {
+      return digits;
+    }
+    return '';
+  };
 
   useEffect(() => {
     if (user) {
@@ -886,6 +940,9 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
         role: user.role || 'user',
         gender: user.gender || '',
       });
+      const local = parseStoredPhoneToLocal(user.phone_number || '');
+      setPhoneLocal(local);
+      setPhoneError(validatePhoneLocal(local));
     } else {
       setFormData({
         full_name: '',
@@ -894,12 +951,21 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
         role: 'user',
         gender: '',
       });
+      setPhoneLocal('');
+      setPhoneError(null);
     }
   }, [user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const err = validatePhoneLocal(phoneLocal);
+    setPhoneError(err);
+    if (err) return;
+    const payload = {
+      ...formData,
+      phone_number: phoneLocal ? `+63${phoneLocal}` : '',
+    };
+    onSave(payload);
   };
 
   if (!isOpen) return null;
@@ -945,16 +1011,38 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
           </div>
 
           <div>
-            <Label htmlFor="phone_number">Phone Number</Label>
-            <Input
-              id="phone_number"
-              type="tel"
-              value={formData.phone_number}
-              onChange={(e) => setFormData((prev) => ({ ...prev, phone_number: e.target.value }))}
-              placeholder="+6390000000000"
-              disabled={loading}
-              className="mt-2"
-            />
+            <Label htmlFor="phone_number_local">Phone Number (Philippines)</Label>
+            <div className="flex mt-2">
+              <span className="inline-flex items-center px-3 text-sm text-gray-600 border border-r-0 border-gray-300 rounded-l-md bg-gray-50">
+                +63
+              </span>
+              <Input
+                id="phone_number_local"
+                type="tel"
+                inputMode="numeric"
+                value={phoneLocal}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  const limited = raw.slice(0, 10);
+                  setPhoneLocal(limited);
+                  // Keep formData in sync as full international format
+                  setFormData((prev) => ({
+                    ...prev,
+                    phone_number: limited ? `+63${limited}` : '',
+                  }));
+                  setPhoneError(validatePhoneLocal(limited));
+                }}
+                placeholder="9XXXXXXXXX"
+                disabled={loading}
+                className="rounded-l-none"
+              />
+            </div>
+            {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
+            {!phoneError && phoneLocal.length === 10 && (
+              <p className="mt-1 text-xs text-gray-500">
+                Full number will be saved as +63{phoneLocal}
+              </p>
+            )}
           </div>
 
           <div>
@@ -1005,7 +1093,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !!phoneError}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

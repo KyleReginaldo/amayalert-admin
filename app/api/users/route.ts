@@ -30,7 +30,6 @@ const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWER = 'abcdefghijklmnopqrstuvwxyz';
 const DIGITS = '0123456789';
 // Keep a conservative symbol set to avoid email or form escaping issues
-const SYMBOLS = '!@#$%^&*()-_=+';
 
 function getRandomUint32Array(count: number): Uint32Array {
   if (typeof globalThis.crypto !== 'undefined' && 'getRandomValues' in globalThis.crypto) {
@@ -70,10 +69,9 @@ function generateStrongPassword(length = 8): string {
     UPPER[randomInt(UPPER.length)],
     LOWER[randomInt(LOWER.length)],
     DIGITS[randomInt(DIGITS.length)],
-    SYMBOLS[randomInt(SYMBOLS.length)],
   ];
 
-  const all = UPPER + LOWER + DIGITS + SYMBOLS;
+  const all = UPPER + LOWER + DIGITS;
   const remaining: string[] = [];
   for (let i = required.length; i < L; i++) {
     remaining.push(all[randomInt(all.length)]);

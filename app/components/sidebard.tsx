@@ -192,7 +192,7 @@ const Sidebar = () => {
       icon: Settings,
       label: 'Settings',
       isActive: pathname === '/settings',
-      requiredModule: 'setting' as ModuleType,
+      requiredModule: null,
     },
   ];
 
@@ -240,7 +240,11 @@ const Sidebar = () => {
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-6 border-b border-blue-400/20">
           <h1 className="text-xl font-bold">Amayalert</h1>
-          <p className="text-blue-100 text-md">
+          <p
+            className={`text-blue-100 text-sm w-fit px-2 rounded-full py-0.5 mt-1 bg-white ${
+              userRole === 'admin' ? 'text-blue-800' : 'text-blue-400'
+            }`}
+          >
             {userRole === 'admin' ? 'Admin' : userRole === 'sub_admin' ? 'Sub Admin' : 'User'}
           </p>
         </div>

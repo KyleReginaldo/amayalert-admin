@@ -141,7 +141,7 @@ export default function SettingsPage() {
 
   return (
     <AuthWrapper>
-      <ModuleGuard requiredModule="setting">
+      <ModuleGuard>
         <div className="min-h-screen bg-background p-4 sm:p-6">
           <div className="mx-auto max-w-3xl space-y-6">
             <PageHeader title="Settings" subtitle="Manage your account info and security" />
