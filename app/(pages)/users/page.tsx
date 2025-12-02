@@ -584,20 +584,22 @@ export default function UsersPage() {
                                   </div>
                                 </div>
                                 <div className="flex gap-1 ml-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => openEditModal(user)}
-                                    disabled={currentUserId === user.id}
-                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={
-                                      currentUserId === user.id
-                                        ? 'Cannot edit your own account'
-                                        : 'Edit user'
-                                    }
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                  </Button>
+                                  {user.full_name !== 'Guest User' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditModal(user)}
+                                      disabled={currentUserId === user.id}
+                                      className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title={
+                                        currentUserId === user.id
+                                          ? 'Cannot edit your own account'
+                                          : 'Edit user'
+                                      }
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="sm"

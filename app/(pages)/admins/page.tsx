@@ -1000,8 +1000,8 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
 
           <div>
             <Label htmlFor="phone_number_local">Phone Number (Philippines)</Label>
-            <div className="mt-2 flex">
-              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-600 text-sm">
+            <div className="flex mt-2">
+              <span className="inline-flex items-center px-3 text-sm text-gray-600 border border-r-0 border-gray-300 rounded-l-md bg-gray-50">
                 +63
               </span>
               <Input
