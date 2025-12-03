@@ -302,6 +302,25 @@ export default function RescuePage() {
       email: '',
       important_information: '',
     });
+    const [phoneLocal, setPhoneLocal] = useState('');
+    const [phoneError, setPhoneError] = useState<string | null>(null);
+
+    const validatePhoneLocal = (value: string) => {
+      if (!value) return null; // optional
+      if (!/^\d+$/.test(value)) return 'Digits only after +63';
+      if (value.length !== 10) return 'Must be 10 digits after +63';
+      if (!value.startsWith('9')) return 'Must start with 9 (e.g. 9XXXXXXXXX)';
+      return null;
+    };
+
+    const parseStoredPhoneToLocal = (stored?: string | null) => {
+      if (!stored) return '';
+      const digits = (stored || '').replace(/\D/g, '');
+      if (digits.startsWith('63')) return digits.slice(2, 12);
+      if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+      if (digits.length === 10 && digits.startsWith('9')) return digits;
+      return '';
+    };
 
     useEffect(() => {
       if (rescue) {
@@ -317,11 +336,18 @@ export default function RescuePage() {
           email: rescue.email || '',
           important_information: rescue.important_information || '',
         });
+        const local = parseStoredPhoneToLocal(rescue.contact_phone || '');
+        setPhoneLocal(local);
+        setPhoneError(validatePhoneLocal(local));
       }
     }, [rescue]);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
+      const err = validatePhoneLocal(phoneLocal);
+      setPhoneError(err);
+      if (err) return;
+
       const submitData = {
         status: formData.status,
         scheduled_for: formData.scheduled_for || null,
@@ -335,7 +361,7 @@ export default function RescuePage() {
           formData.male_count === '' || formData.male_count === null
             ? null
             : Number(formData.male_count),
-        contact_phone: formData.contact_phone || null,
+        contact_phone: phoneLocal ? `+63${phoneLocal}` : formData.contact_phone || null,
         email: formData.email || null,
         important_information: formData.important_information || null,
         metadata: {

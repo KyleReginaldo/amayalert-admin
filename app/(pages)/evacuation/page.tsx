@@ -555,6 +555,25 @@ function EvacuationModal({
     contact_phone: '',
     photos: [] as string[],
   });
+  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhoneLocal = (value: string) => {
+    if (!value) return null; // optional
+    if (!/^\d+$/.test(value)) return 'Digits only after +63';
+    if (value.length !== 10) return 'Must be 10 digits after +63';
+    if (!value.startsWith('9')) return 'Must start with 9 (e.g. 9XXXXXXXXX)';
+    return null;
+  };
+
+  const parseStoredPhoneToLocal = (stored?: string | null) => {
+    if (!stored) return '';
+    const digits = (stored || '').replace(/\D/g, '');
+    if (digits.startsWith('63')) return digits.slice(2, 12);
+    if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+    if (digits.length === 10 && digits.startsWith('9')) return digits;
+    return '';
+  };
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
   const bucketName = 'files';
@@ -573,6 +592,9 @@ function EvacuationModal({
         contact_phone: center.contact_phone || '',
         photos: center.photos || [],
       });
+      const local = parseStoredPhoneToLocal(center.contact_phone || '');
+      setPhoneLocal(local);
+      setPhoneError(validatePhoneLocal(local));
     } else {
       setFormData({
         name: '',
@@ -586,6 +608,8 @@ function EvacuationModal({
         contact_phone: '',
         photos: [],
       });
+      setPhoneLocal('');
+      setPhoneError(null);
     }
     // Reset pending files and previews when switching mode or item
     setNewFiles([]);
@@ -633,10 +657,15 @@ function EvacuationModal({
     }
 
     const finalPhotos = [...(formData.photos || []), ...uploadedUrls];
+    const err = validatePhoneLocal(phoneLocal);
+    setPhoneError(err);
+    if (err) return;
+
     const submitData = {
       ...formData,
       capacity: formData.capacity ? parseInt(formData.capacity) : null,
       current_occupancy: formData.current_occupancy ? parseInt(formData.current_occupancy) : null,
+      contact_phone: phoneLocal ? `+63${phoneLocal}` : formData.contact_phone || null,
       photos: finalPhotos.length ? finalPhotos : null,
     };
     onSave(submitData);
@@ -775,15 +804,34 @@ function EvacuationModal({
                 />
               </div>
               <div>
-                <Label htmlFor="contact_phone">Contact Phone</Label>
-                <Input
-                  id="contact_phone"
-                  value={formData.contact_phone}
-                  placeholder="+639123456789"
-                  onChange={(e) => setFormData((p) => ({ ...p, contact_phone: e.target.value }))}
-                  disabled={loading}
-                  className="mt-2"
-                />
+                <Label htmlFor="contact_phone_local">Contact Phone</Label>
+                <div className="flex mt-2">
+                  <span className="inline-flex items-center px-3 text-sm text-gray-600 border border-r-0 border-gray-300 rounded-l-md bg-gray-50">
+                    +63
+                  </span>
+                  <Input
+                    id="contact_phone_local"
+                    type="tel"
+                    inputMode="numeric"
+                    value={phoneLocal}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      const limited = raw.slice(0, 10);
+                      setPhoneLocal(limited);
+                      setFormData((p) => ({ ...p, contact_phone: limited ? `+63${limited}` : '' }));
+                      setPhoneError(validatePhoneLocal(limited));
+                    }}
+                    placeholder="9XXXXXXXXX"
+                    disabled={loading}
+                    className="rounded-l-none"
+                  />
+                </div>
+                {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
+                {!phoneError && phoneLocal.length === 10 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Full number will be saved as +63{phoneLocal}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -908,7 +956,7 @@ function EvacuationModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !!phoneError}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
