@@ -3,51 +3,7 @@ import { logEvacuationAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
 type EvacuationCenterInsert = Database['public']['Tables']['evacuation_centers']['Insert'];
-
-const getTwilioConfig = () => {
-  const accountSid = process.env.ACCOUNT_SID;
-  const authToken = process.env.AUTH_TOKEN;
-  const twilioNumber = process.env.TWILIO_NUMBER;
-
-  if (!accountSid || !authToken || !twilioNumber) {
-    throw new Error('Missing required Twilio configuration');
-  }
-
-  console.log('✅ Twilio config initialized');
-
-  return {
-    client: twilio(accountSid, authToken, { timeout: 30000 }),
-    twilioNumber,
-  };
-};
-
-async function sendSMS(to: string, message: string) {
-  try {
-    const config = getTwilioConfig();
-
-    const messageOptions = {
-      body: message,
-      to: to.startsWith('+') ? to : `+${to}`,
-      from: config.twilioNumber, // ✅ Use Twilio number, not messaging service
-    };
-
-    console.log('Sending SMS with options:', messageOptions);
-
-    const twilioMessage = await config.client.messages.create(messageOptions);
-
-    console.log(`✅ SMS sent to ${to}, SID: ${twilioMessage.sid}`);
-
-    return { success: true, sid: twilioMessage.sid };
-  } catch (error) {
-    console.error('❌ SMS sending error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
 // GET /api/evacuation - Fetch all evacuation centers with optional filtering
 export async function GET(request: NextRequest) {
   try {
@@ -222,31 +178,6 @@ export async function POST(request: NextRequest) {
         </body>
         </html>`,
       );
-    }
-    if (users && users.length > 0) {
-      for (let i = 0; i < users.length; i++) {
-        const user = users[i];
-        console.log(`\n\nSending SMS alerts to ${user.phone_number}`);
-
-        if (user.phone_number) {
-          try {
-            const smsResult = await sendSMS(
-              user.phone_number,
-              `NEW EVACUATION CENTER\nAng bagong evacuation ay mahahanap niyo sa ${data.address}\nkasalukuyang kapasidad ay ${data.current_occupancy}/${data.capacity}\nMaaring kontakin si ${data.contact_name} ${data.contact_phone}`,
-            );
-
-            if (smsResult.success) {
-              console.log(`SMS sent successfully to ${user.phone_number}, SID: ${smsResult.sid}`);
-            } else {
-              console.error(`Failed to send SMS to ${user.phone_number}:`, smsResult.error);
-            }
-          } catch (error) {
-            console.error('Error sending SMS to', user.phone_number, error);
-          }
-        }
-      }
-    } else {
-      console.log('No users found for SMS notifications');
     }
 
     // Log the activity

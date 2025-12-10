@@ -2,7 +2,7 @@
  * SMS Service Utility
  *
  * This utility provides a clean interface for sending SMS messages
- * throughout the application using Twilio.
+ * throughout the application.
  */
 
 export interface SMSOptions {
