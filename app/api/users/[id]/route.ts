@@ -191,12 +191,20 @@ export async function DELETE(
       );
     }
 
-    // Log the activity
+    // Log the activity with full user details
     if (userData) {
+      const userDetails = [
+        `Email: ${userData.email || 'N/A'}`,
+        `Phone: ${userData.phone_number || 'N/A'}`,
+        `Gender: ${userData.gender || 'N/A'}`,
+        `Birth Date: ${userData.birth_date || 'N/A'}`,
+      ].join(' | ');
+
       if (userData.role === 'sub_admin' || userData.role === 'admin') {
-        await logAdminAction('delete', userData.full_name, undefined, userId);
+        const modules = userData.modules as string[] | undefined;
+        await logAdminAction('delete', userData.full_name, modules, userId);
       } else {
-        await logUserAction('delete', userData.full_name, `Email: ${userData.email}`, userId);
+        await logUserAction('delete', userData.full_name, userDetails, userId);
       }
     }
 

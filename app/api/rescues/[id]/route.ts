@@ -552,8 +552,21 @@ export async function DELETE(
       );
     }
 
-    // Log the activity
-    await logRescueAction('delete', parseInt(id), undefined, userId);
+    // Log the activity with full rescue details
+    const rescueDetails = [
+      `Title: ${data.title || 'Rescue #' + id}`,
+      `Status: ${data.status}`,
+      `Type: ${data.emergency_type || 'N/A'}`,
+      `People: ${(data.male_count || 0) + (data.female_count || 0)} (M: ${
+        data.male_count || 0
+      }, F: ${data.female_count || 0})`,
+      `Address: ${data.address || 'N/A'}`,
+      `Contact Phone: ${data.contact_phone || 'N/A'}`,
+      `Email: ${data.email || 'N/A'}`,
+      `Created: ${new Date(data.created_at).toLocaleString()}`,
+    ].join(' | ');
+
+    await logRescueAction('delete', parseInt(id), rescueDetails, userId);
 
     return NextResponse.json({
       success: true,

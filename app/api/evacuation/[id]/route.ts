@@ -197,8 +197,18 @@ export async function DELETE(
       );
     }
 
-    // Log the activity
-    await logEvacuationAction('delete', data.name, undefined, userId);
+    // Log the activity with full evacuation center details
+    const evacuationDetails = [
+      `Name: ${data.name}`,
+      `Address: ${data.address}`,
+      `Capacity: ${data.capacity || 0}`,
+      `Current Occupancy: ${data.current_occupancy || 0}`,
+      `Status: ${data.status}`,
+      `Contact: ${data.contact_name || 'N/A'} (${data.contact_phone || 'N/A'})`,
+      `Coordinates: ${data.latitude}, ${data.longitude}`,
+    ].join(' | ');
+
+    await logEvacuationAction('delete', data.name, evacuationDetails, userId);
 
     return NextResponse.json({
       success: true,

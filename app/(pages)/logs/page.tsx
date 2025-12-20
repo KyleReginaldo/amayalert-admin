@@ -24,6 +24,8 @@ import {
   AlertTriangle,
   Building2,
   Calendar,
+  ChevronDown,
+  ChevronRight,
   Download,
   FileText,
   Filter,
@@ -59,6 +61,7 @@ export default function LogsPage() {
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchLogs();
@@ -247,6 +250,40 @@ export default function LogsPage() {
     return <FileText className={`${iconClass} text-gray-500`} />;
   };
 
+  const toggleLogExpansion = (logId: number) => {
+    setExpandedLogs((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
+  };
+
+  const parseLogDetails = (content: string) => {
+    // Extract details after the pipe separator
+    const parts = content.split(' | ');
+    if (parts.length > 1) {
+      // First part is the main message, rest are details
+      const mainMessage = parts[0];
+      const details = parts.slice(1).map((detail) => {
+        const [key, ...valueParts] = detail.split(': ');
+        return {
+          key: key.trim(),
+          value: valueParts.join(': ').trim(),
+        };
+      });
+      return { mainMessage, details };
+    }
+    return { mainMessage: content, details: [] };
+  };
+
+  const isDeleteAction = (content: string) => {
+    return content?.toLowerCase().includes('delete');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -382,72 +419,126 @@ export default function LogsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium text-gray-600">#{log.id}</TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {new Date(log.created_at).toLocaleDateString()}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(log.created_at).toLocaleTimeString()}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full">
-                            <span className="text-sm font-medium text-gray-600">
-                              {log.users?.full_name?.charAt(0).toUpperCase() || 'S'}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">
-                              {log.users?.full_name || 'System'}
-                            </span>
-                            {log.users?.email && (
-                              <span className="text-xs text-gray-500">{log.users.email}</span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            log.users?.role === 'admin'
-                              ? 'bg-red-100 text-red-800'
-                              : log.users?.role === 'sub_admin'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }
-                        >
-                          {log.users?.role?.toUpperCase() || 'SYSTEM'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-start gap-2">
-                          <div className="mt-0.5">{getActivityIcon(log.content || '')}</div>
-                          <div className="flex-1">
-                            <Badge className={`${getActivityTypeColor(log.content || '')} text-xs`}>
-                              {log.content?.includes('CREATE')
-                                ? 'CREATE'
-                                : log.content?.includes('UPDATE')
-                                ? 'UPDATE'
-                                : log.content?.includes('DELETE')
-                                ? 'DELETE'
-                                : log.content?.includes('SEND')
-                                ? 'SEND'
-                                : log.content?.includes('VIEW')
-                                ? 'VIEW'
-                                : 'ACTION'}
+                  {filteredLogs.map((log) => {
+                    const { mainMessage, details } = parseLogDetails(log.content || '');
+                    const hasDetails = details.length > 0;
+                    const isExpanded = expandedLogs.has(log.id);
+                    const showExpandButton = hasDetails && isDeleteAction(log.content || '');
+
+                    return (
+                      <>
+                        <TableRow key={log.id}>
+                          <TableCell className="font-medium text-gray-600">#{log.id}</TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {new Date(log.created_at).toLocaleDateString()}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(log.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full">
+                                <span className="text-sm font-medium text-gray-600">
+                                  {log.users?.full_name?.charAt(0).toUpperCase() || 'S'}
+                                </span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {log.users?.full_name || 'System'}
+                                </span>
+                                {log.users?.email && (
+                                  <span className="text-xs text-gray-500">{log.users.email}</span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                log.users?.role === 'admin'
+                                  ? 'bg-red-100 text-red-800'
+                                  : log.users?.role === 'sub_admin'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }
+                            >
+                              {log.users?.role?.toUpperCase() || 'SYSTEM'}
                             </Badge>
-                            <p className="mt-1 text-sm text-gray-700">{log.content}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-start gap-2">
+                              <div className="mt-0.5">{getActivityIcon(log.content || '')}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    className={`${getActivityTypeColor(log.content || '')} text-xs`}
+                                  >
+                                    {log.content?.includes('CREATE')
+                                      ? 'CREATE'
+                                      : log.content?.includes('UPDATE')
+                                      ? 'UPDATE'
+                                      : log.content?.includes('DELETE')
+                                      ? 'DELETE'
+                                      : log.content?.includes('SEND')
+                                      ? 'SEND'
+                                      : log.content?.includes('VIEW')
+                                      ? 'VIEW'
+                                      : 'ACTION'}
+                                  </Badge>
+                                  {showExpandButton && (
+                                    <button
+                                      onClick={() => toggleLogExpansion(log.id)}
+                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      title={
+                                        isExpanded ? 'Hide details' : 'Show deleted content details'
+                                      }
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="mt-1 text-sm text-gray-700">{mainMessage}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && hasDetails && (
+                          <TableRow key={`${log.id}-details`} className="bg-gray-50">
+                            <TableCell colSpan={5}>
+                              <div className="px-4 py-3 border-l-4 border-red-300 bg-red-50/50">
+                                <div className="text-xs font-semibold text-gray-700 uppercase mb-2">
+                                  Deleted Content Details
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {details.map((detail, index) => (
+                                    <div
+                                      key={index}
+                                      className="bg-white p-2 rounded border border-gray-200"
+                                    >
+                                      <div className="text-xs font-medium text-gray-600">
+                                        {detail.key}
+                                      </div>
+                                      <div className="text-sm text-gray-900 mt-0.5 break-words">
+                                        {detail.value}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

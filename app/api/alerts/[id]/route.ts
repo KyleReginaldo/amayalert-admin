@@ -152,12 +152,19 @@ export async function DELETE(
       );
     }
 
-    // Log the activity
+    // Log the activity with full alert details
+    const alertDetails = [
+      `Title: ${deletedAlert.title || 'Untitled'}`,
+      `Level: ${deletedAlert.alert_level || 'medium'}`,
+      `Content: ${deletedAlert.content || 'N/A'}`,
+      `Created: ${new Date(deletedAlert.created_at).toLocaleString()}`,
+    ].join(' | ');
+
     await logAlertAction(
       'delete',
       deletedAlert.alert_level || 'medium',
       deletedAlert.title || 'Untitled Alert',
-      undefined,
+      alertDetails,
       userId,
     );
 
