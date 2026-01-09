@@ -92,6 +92,58 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       delete updateData.userId;
     }
 
+    // If email is being updated, update it in Supabase Auth as well
+    if (updateData.email) {
+      // First check if the email is already in use by another user
+      const { data: existingUser } = await supabase.auth.admin.listUsers();
+      const emailExists = existingUser?.users.some(
+        (u) => u.email?.toLowerCase() === updateData.email?.toLowerCase() && u.id !== id,
+      );
+
+      if (emailExists) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Email already in use',
+            message:
+              'This email address is already registered to another user. Please use a different email.',
+          } as ApiResponse<User>,
+          { status: 409 },
+        );
+      }
+
+      const { error: authError } = await supabase.auth.admin.updateUserById(id, {
+        email: updateData.email,
+      });
+
+      if (authError) {
+        console.error('Error updating email in Supabase Auth:', authError);
+
+        // Provide more specific error messages based on the error
+        let errorMessage = 'Failed to update email address. ';
+
+        if (authError.message?.includes('already') || authError.message?.includes('exist')) {
+          errorMessage =
+            'This email address is already registered to another user. Please use a different email.';
+        } else if (authError.message?.includes('invalid')) {
+          errorMessage = 'The email address format is invalid. Please enter a valid email.';
+        } else if (authError.message) {
+          errorMessage += authError.message;
+        } else {
+          errorMessage += 'Please try again or contact support if the issue persists.';
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to update email',
+            message: errorMessage,
+          } as ApiResponse<User>,
+          { status: authError.status || 500 },
+        );
+      }
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .update(updateData)

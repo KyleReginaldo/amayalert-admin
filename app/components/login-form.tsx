@@ -9,12 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
 import Image from 'next/image';
 import type React from 'react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../client/supabase';
 import { useAlert } from './alert-context';
 
@@ -27,6 +36,9 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   const alert = useAlert();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,6 +56,29 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
       window.location.href = '/';
     }
     setIsLoading(false);
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResetting(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Password reset email sent! Check your inbox.');
+        setShowForgotPassword(false);
+        setResetEmail('');
+      }
+    } catch (error) {
+      toast.error('Failed to send reset email. Please try again.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (fullPage) {
@@ -136,7 +171,13 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                           Keep me signed in
                         </Label>
                       </div>
-                      <div />
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
                     </div>
                   </CardContent>
 
@@ -157,6 +198,51 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
             </div>
           </div>
         </div>
+
+        {/* Forgot Password Modal */}
+        <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Enter your email address and we&apos;ll send you a link to reset your password.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handlePasswordReset}>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={isResetting}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowForgotPassword(false)}
+                  disabled={isResetting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isResetting}>
+                  {isResetting ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -227,6 +313,13 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                 Keep me signed in
               </Label>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-primary hover:underline"
+            >
+              Forgot password?
+            </button>
           </div>
         </CardContent>
 
@@ -240,6 +333,51 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
           </Button>
         </CardFooter>
       </form>
+
+      {/* Forgot Password Modal */}
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your email address and we&apos;ll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handlePasswordReset}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email-compact">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="reset-email-compact"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    disabled={isResetting}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowForgotPassword(false)}
+                disabled={isResetting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isResetting}>
+                {isResetting ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

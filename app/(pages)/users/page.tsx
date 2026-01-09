@@ -56,6 +56,7 @@ import {
   Users as UsersIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 // Pagination Controls Component
 interface PaginationControlsProps {
@@ -237,10 +238,15 @@ export default function UsersPage() {
       if (response.success && response.data) {
         addUser(response.data);
         setIsModalOpen(false);
+        toast.success('User created successfully!');
       } else {
+        // Show user-friendly error message
+        const errorMsg = response.message || response.error || 'Failed to create user';
+        toast.error(errorMsg);
         console.error('Failed to create user:', response.error);
       }
     } catch (error) {
+      toast.error('An unexpected error occurred while creating the user. Please try again.');
       console.error('Failed to create user:', error);
     } finally {
       setModalLoading(false);
@@ -270,10 +276,15 @@ export default function UsersPage() {
         updateUser(id, response.data);
         setIsModalOpen(false);
         setEditingUser(null);
+        toast.success('User updated successfully!');
       } else {
+        // Show user-friendly error message
+        const errorMsg = response.message || response.error || 'Failed to update user';
+        toast.error('Failed to update user');
         console.error('Failed to update user:', response.error);
       }
     } catch (error) {
+      toast.error('An unexpected error occurred while updating the user. Please try again.');
       console.error('Failed to update user:', error);
     } finally {
       setModalLoading(false);
@@ -283,7 +294,7 @@ export default function UsersPage() {
   const handleDelete = async (id: string) => {
     // Prevent deleting own account
     if (currentUserId && id === currentUserId) {
-      alert('You cannot delete your own account.');
+      toast.error('You cannot delete your own account.');
       return;
     }
 
@@ -298,10 +309,13 @@ export default function UsersPage() {
         const response = await usersAPI.deleteUser(id, userId);
         if (response.success) {
           removeUser(id);
+          toast.success('User deleted successfully!');
         } else {
+          toast.error('Failed to delete user. Please try again.');
           console.error('Failed to delete user:', response.error);
         }
       } catch (error) {
+        toast.error('An error occurred while deleting the user. Please try again.');
         console.error('Failed to delete user:', error);
       }
     }
@@ -368,32 +382,401 @@ export default function UsersPage() {
     );
   }
 
-  // Empty state when no users exist
-  if (!usersLoading && users.length === 0) {
-    return (
-      <>
-        <div className="min-h-screen bg-gray-50 md:bg-background">
-          <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="max-w-md mx-auto text-center">
-              <div className="mb-6">
-                <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full">
-                  <UsersIcon className="w-10 h-10 text-gray-400" />
+  return (
+    <AuthWrapper>
+      <ModuleGuard requiredModule="user">
+        {/* Empty state when no users exist */}
+        {!usersLoading && users.length === 0 ? (
+          <div className="min-h-screen bg-gray-50 md:bg-background">
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <div className="max-w-md mx-auto text-center">
+                <div className="mb-6">
+                  <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full">
+                    <UsersIcon className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h2 className="mb-2 text-2xl font-bold text-gray-900">No Users Found</h2>
+                  <p className="mb-6 text-gray-600">
+                    Get started by adding your first user to the system.
+                  </p>
                 </div>
-                <h2 className="mb-2 text-2xl font-bold text-gray-900">No Users Found</h2>
-                <p className="mb-6 text-gray-600">
-                  Get started by adding your first user to the system.
-                </p>
-              </div>
 
-              <div className="space-y-4">
-                <Button onClick={openCreateModal} className="w-full gap-2 md:w-auto">
-                  <Plus className="w-4 h-4" />
-                  Add First User
-                </Button>
+                <div className="space-y-4">
+                  <Button onClick={openCreateModal} className="w-full gap-2 md:w-auto">
+                    <Plus className="w-4 h-4" />
+                    Add First User
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+            <div className="mx-auto space-y-6 max-w-7xl">
+              {/* Header */}
+              <PageHeader
+                title="User Management"
+                subtitle="Manage user accounts, roles, and permissions"
+                action={
+                  <Button onClick={openCreateModal} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add User
+                  </Button>
+                }
+              />
+
+              {/* Minimal Stats */}
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                  <div className="text-sm text-gray-600">Total Users</div>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                  <div className="text-sm text-gray-600">With Phone</div>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
+                  <div className="text-sm text-gray-600">Admins</div>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
+                  <div className="text-sm text-gray-600">Users</div>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-indigo-600">{genderStats.male}</div>
+                  <div className="text-sm text-gray-600">Male Users</div>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="text-2xl font-bold text-pink-600">{genderStats.female}</div>
+                  <div className="text-sm text-gray-600">Female Users</div>
+                </div>
+              </div>
+
+              {/* Minimal Filters */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                  <Input
+                    placeholder="Search users..."
+                    className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
+                <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+                  <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* View Toggle */}
+              <div className="flex items-center justify-end">
+                <div className="inline-flex overflow-hidden border border-gray-200 rounded-md">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1.5 text-sm ${
+                      viewMode === 'table' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('map')}
+                    className={`px-3 py-1.5 text-sm border-l border-gray-200 ${
+                      viewMode === 'map' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    Map
+                  </button>
+                </div>
+              </div>
+
+              {/* Users Table or Map */}
+              <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+                {viewMode === 'map' ? (
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm text-gray-600">
+                        Showing {usersWithLocation.length} users with location
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refreshUsers()}
+                        className="gap-2"
+                        disabled={usersLoading}
+                        title="Refresh user locations"
+                      >
+                        {usersLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Refreshing...
+                          </>
+                        ) : (
+                          <>Refresh</>
+                        )}
+                      </Button>
+                    </div>
+                    <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
+                    {usersWithLocation.length === 0 && (
+                      <div className="mt-3 text-sm text-center text-gray-500">
+                        No users with location data to display.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Mobile View - Stack Cards */}
+                    <div className="block md:hidden">
+                      <div className="divide-y divide-gray-200">
+                        {paginatedUsers.length > 0 ? (
+                          paginatedUsers.map((user) => {
+                            const RoleIcon = getRoleIcon(user.role);
+                            return (
+                              <div key={user.id} className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {user.full_name || 'No Name'}
+                                      </p>
+                                      <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                        <RoleIcon className="w-3 h-3 mr-1" />
+                                        {user.role}
+                                      </Badge>
+                                      {user.gender && (
+                                        <Badge
+                                          className={`text-xs ${
+                                            user.gender.toLowerCase() === 'male'
+                                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                              : 'bg-pink-50 text-pink-700 border-pink-200'
+                                          }`}
+                                        >
+                                          {user.gender}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="mb-1 text-xs text-gray-500">{user.email}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-500">
+                                        Phone: {user.phone_number || 'Not provided'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs text-gray-500">
+                                        Joined {new Date(user.created_at).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 ml-2">
+                                    {user.full_name !== 'Guest User' && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openEditModal(user)}
+                                        disabled={currentUserId === user.id}
+                                        className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                          currentUserId === user.id
+                                            ? 'Cannot edit your own account'
+                                            : 'Edit user'
+                                        }
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openUserSheet(user)}
+                                      className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
+                                      title={'View details'}
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDelete(user.id)}
+                                      disabled={currentUserId === user.id}
+                                      className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title={
+                                        currentUserId === user.id
+                                          ? 'Cannot delete your own account'
+                                          : 'Delete user'
+                                      }
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-8 text-center text-gray-500">
+                            <UsersIcon className="w-8 h-8 mx-auto mb-2" />
+                            <p>No users found</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Desktop View - Table */}
+                    <div className="hidden md:block">
+                      {paginatedUsers.length > 0 ? (
+                        <Table className="w-full table-fixed">
+                          <TableHeader>
+                            <TableRow className="border-gray-200">
+                              <TableHead className="w-[28%] font-medium text-gray-900">
+                                User
+                              </TableHead>
+                              <TableHead className="w-[12%] font-medium text-gray-900">
+                                Role
+                              </TableHead>
+                              <TableHead className="w-[10%] font-medium text-gray-900">
+                                Gender
+                              </TableHead>
+                              <TableHead className="w-[16%] font-medium text-gray-900">
+                                Phone
+                              </TableHead>
+                              <TableHead className="w-[16%] font-medium text-gray-900">
+                                Joined
+                              </TableHead>
+                              <TableHead className="w-[18%] font-medium text-gray-900 text-right">
+                                Actions
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedUsers.map((user) => {
+                              const RoleIcon = getRoleIcon(user.role);
+                              return (
+                                <TableRow
+                                  key={user.id}
+                                  className="border-gray-200 hover:bg-gray-50"
+                                >
+                                  <TableCell className="w-[28%]">
+                                    <div>
+                                      <div className="font-medium text-gray-900">
+                                        {user.full_name || 'No Name'}
+                                      </div>
+                                      <div className="text-sm text-gray-500">{user.email}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="w-[12%]">
+                                    <Badge className={`${getRoleColor(user.role)} text-xs`}>
+                                      <RoleIcon className="w-3 h-3 mr-1" />
+                                      {user.role || 'user'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="w-[10%]">
+                                    {user.gender ? (
+                                      <Badge
+                                        className={`text-xs ${
+                                          user.gender.toLowerCase() === 'male'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                            : 'bg-pink-50 text-pink-700 border-pink-200'
+                                        }`}
+                                      >
+                                        {user.gender}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="w-[16%] text-gray-600">
+                                    <div className="text-sm">
+                                      {user.phone_number || 'Not provided'}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="w-[16%] text-gray-600">
+                                    <div className="text-sm">
+                                      {new Date(user.created_at).toLocaleDateString()}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="w-[18%] text-right">
+                                    <div className="flex items-center justify-end gap-1 ml-auto">
+                                      {user.full_name !== 'Guest User' && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => openEditModal(user)}
+                                          disabled={currentUserId === user.id}
+                                          className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          title={
+                                            currentUserId === user.id
+                                              ? 'Cannot edit your own account'
+                                              : 'Edit user'
+                                          }
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openUserSheet(user)}
+                                        className="w-8 h-8 text-gray-600 hover:text-gray-900"
+                                        title={'View details'}
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDelete(user.id)}
+                                        disabled={currentUserId === user.id}
+                                        className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                          currentUserId === user.id
+                                            ? 'Cannot delete your own account'
+                                            : 'Delete user'
+                                        }
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="py-8 text-center text-gray-500">
+                          <UsersIcon className="w-8 h-8 mx-auto mb-2" />
+                          <p>No users found</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pagination */}
+                    {filteredUsers.length > itemsPerPage && (
+                      <div className="p-4 border-t border-gray-200">
+                        <PaginationControls
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          totalItems={filteredUsers.length}
+                          itemsPerPage={itemsPerPage}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create/Edit Modal */}
         <UserModal
@@ -410,478 +793,92 @@ export default function UsersPage() {
           }
           loading={modalLoading}
         />
-      </>
-    );
-  }
 
-  return (
-    <AuthWrapper>
-      <ModuleGuard requiredModule="user">
-        <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
-          <div className="mx-auto space-y-6 max-w-7xl">
-            {/* Header */}
-            <PageHeader
-              title="User Management"
-              subtitle="Manage user accounts, roles, and permissions"
-              action={
-                <Button onClick={openCreateModal} className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add User
-                </Button>
-              }
-            />
-
-            {/* Minimal Stats */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-                <div className="text-sm text-gray-600">With Phone</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
-                <div className="text-sm text-gray-600">Admins</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.regular}</div>
-                <div className="text-sm text-gray-600">Users</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">{genderStats.male}</div>
-                <div className="text-sm text-gray-600">Male Users</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-pink-600">{genderStats.female}</div>
-                <div className="text-sm text-gray-600">Female Users</div>
-              </div>
-            </div>
-
-            {/* Minimal Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-                <Input
-                  placeholder="Search users..."
-                  className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
-              <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex items-center justify-end">
-              <div className="inline-flex overflow-hidden border border-gray-200 rounded-md">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`px-3 py-1.5 text-sm ${
-                    viewMode === 'table' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
-                  }`}
-                >
-                  Table
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('map')}
-                  className={`px-3 py-1.5 text-sm border-l border-gray-200 ${
-                    viewMode === 'map' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700'
-                  }`}
-                >
-                  Map
-                </button>
-              </div>
-            </div>
-
-            {/* Users Table or Map */}
-            <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-              {viewMode === 'map' ? (
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm text-gray-600">
-                      Showing {usersWithLocation.length} users with location
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refreshUsers()}
-                      className="gap-2"
-                      disabled={usersLoading}
-                      title="Refresh user locations"
-                    >
-                      {usersLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>Refresh</>
-                      )}
-                    </Button>
+        {/* Right-side User Details Sheet */}
+        <Sheet
+          open={isSheetOpen}
+          onOpenChange={(open) => {
+            setIsSheetOpen(open);
+            if (!open) setSelectedUser(null);
+          }}
+        >
+          <SheetContent className="sm:max-w-xl">
+            {selectedUser && (
+              <div className="flex flex-col h-full">
+                <SheetHeader>
+                  <SheetTitle>User Details</SheetTitle>
+                  <SheetDescription>Read-only profile snapshot.</SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-500">Full name</div>
+                    <div>{selectedUser.full_name || 'No Name'}</div>
                   </div>
-                  <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
-                  {usersWithLocation.length === 0 && (
-                    <div className="mt-3 text-sm text-center text-gray-500">
-                      No users with location data to display.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Mobile View - Stack Cards */}
-                  <div className="block md:hidden">
-                    <div className="divide-y divide-gray-200">
-                      {paginatedUsers.length > 0 ? (
-                        paginatedUsers.map((user) => {
-                          const RoleIcon = getRoleIcon(user.role);
-                          return (
-                            <div key={user.id} className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-medium text-gray-900">
-                                      {user.full_name || 'No Name'}
-                                    </p>
-                                    <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                                      <RoleIcon className="w-3 h-3 mr-1" />
-                                      {user.role}
-                                    </Badge>
-                                    {user.gender && (
-                                      <Badge
-                                        className={`text-xs ${
-                                          user.gender.toLowerCase() === 'male'
-                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                            : 'bg-pink-50 text-pink-700 border-pink-200'
-                                        }`}
-                                      >
-                                        {user.gender}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="mb-1 text-xs text-gray-500">{user.email}</p>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500">
-                                      Phone: {user.phone_number || 'Not provided'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500">
-                                      Joined {new Date(user.created_at).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex gap-1 ml-2">
-                                  {user.full_name !== 'Guest User' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openEditModal(user)}
-                                      disabled={currentUserId === user.id}
-                                      className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title={
-                                        currentUserId === user.id
-                                          ? 'Cannot edit your own account'
-                                          : 'Edit user'
-                                      }
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => openUserSheet(user)}
-                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
-                                    title={'View details'}
-                                  >
-                                    <Eye className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(user.id)}
-                                    disabled={currentUserId === user.id}
-                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={
-                                      currentUserId === user.id
-                                        ? 'Cannot delete your own account'
-                                        : 'Delete user'
-                                    }
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="py-8 text-center text-gray-500">
-                          <UsersIcon className="w-8 h-8 mx-auto mb-2" />
-                          <p>No users found</p>
-                        </div>
-                      )}
+                  <div>
+                    <div className="text-xs text-gray-500">Email</div>
+                    <div>{selectedUser.email}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Role</div>
+                    <div className="inline-flex items-center gap-2">
+                      <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
+                        {selectedUser.role || 'user'}
+                      </Badge>
                     </div>
                   </div>
-
-                  {/* Desktop View - Table */}
-                  <div className="hidden md:block">
-                    {paginatedUsers.length > 0 ? (
-                      <Table className="w-full table-fixed">
-                        <TableHeader>
-                          <TableRow className="border-gray-200">
-                            <TableHead className="w-[28%] font-medium text-gray-900">
-                              User
-                            </TableHead>
-                            <TableHead className="w-[12%] font-medium text-gray-900">
-                              Role
-                            </TableHead>
-                            <TableHead className="w-[10%] font-medium text-gray-900">
-                              Gender
-                            </TableHead>
-                            <TableHead className="w-[16%] font-medium text-gray-900">
-                              Phone
-                            </TableHead>
-                            <TableHead className="w-[16%] font-medium text-gray-900">
-                              Joined
-                            </TableHead>
-                            <TableHead className="w-[18%] font-medium text-gray-900 text-right">
-                              Actions
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {paginatedUsers.map((user) => {
-                            const RoleIcon = getRoleIcon(user.role);
-                            return (
-                              <TableRow key={user.id} className="border-gray-200 hover:bg-gray-50">
-                                <TableCell className="w-[28%]">
-                                  <div>
-                                    <div className="font-medium text-gray-900">
-                                      {user.full_name || 'No Name'}
-                                    </div>
-                                    <div className="text-sm text-gray-500">{user.email}</div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="w-[12%]">
-                                  <Badge className={`${getRoleColor(user.role)} text-xs`}>
-                                    <RoleIcon className="w-3 h-3 mr-1" />
-                                    {user.role || 'user'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="w-[10%]">
-                                  {user.gender ? (
-                                    <Badge
-                                      className={`text-xs ${
-                                        user.gender.toLowerCase() === 'male'
-                                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                          : 'bg-pink-50 text-pink-700 border-pink-200'
-                                      }`}
-                                    >
-                                      {user.gender}
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-sm text-gray-400">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="w-[16%] text-gray-600">
-                                  <div className="text-sm">
-                                    {user.phone_number || 'Not provided'}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="w-[16%] text-gray-600">
-                                  <div className="text-sm">
-                                    {new Date(user.created_at).toLocaleDateString()}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="w-[18%] text-right">
-                                  <div className="flex items-center justify-end gap-1 ml-auto">
-                                    {user.full_name !== 'Guest User' && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openEditModal(user)}
-                                        disabled={currentUserId === user.id}
-                                        className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        title={
-                                          currentUserId === user.id
-                                            ? 'Cannot edit your own account'
-                                            : 'Edit user'
-                                        }
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openUserSheet(user)}
-                                      className="w-8 h-8 text-gray-600 hover:text-gray-900"
-                                      title={'View details'}
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDelete(user.id)}
-                                      disabled={currentUserId === user.id}
-                                      className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title={
-                                        currentUserId === user.id
-                                          ? 'Cannot delete your own account'
-                                          : 'Delete user'
-                                      }
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <div className="py-8 text-center text-gray-500">
-                        <UsersIcon className="w-8 h-8 mx-auto mb-2" />
-                        <p>No users found</p>
-                      </div>
-                    )}
+                  <div>
+                    <div className="text-xs text-gray-500">Phone</div>
+                    <div>{selectedUser.phone_number || 'Not provided'}</div>
                   </div>
-
-                  {/* Pagination */}
-                  {filteredUsers.length > itemsPerPage && (
-                    <div className="p-4 border-t border-gray-200">
-                      <PaginationControls
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        totalItems={filteredUsers.length}
-                        itemsPerPage={itemsPerPage}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Create/Edit Modal */}
-          <UserModal
-            isOpen={isModalOpen}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingUser(null);
-            }}
-            user={editingUser}
-            onSave={
-              editingUser
-                ? (data) => handleUpdate(editingUser.id, data as UserUpdate)
-                : (data) => handleCreate(data as UserInsert)
-            }
-            loading={modalLoading}
-          />
-
-          {/* Right-side User Details Sheet */}
-          <Sheet
-            open={isSheetOpen}
-            onOpenChange={(open) => {
-              setIsSheetOpen(open);
-              if (!open) setSelectedUser(null);
-            }}
-          >
-            <SheetContent className="sm:max-w-xl">
-              {selectedUser && (
-                <div className="flex flex-col h-full">
-                  <SheetHeader>
-                    <SheetTitle>User Details</SheetTitle>
-                    <SheetDescription>Read-only profile snapshot.</SheetDescription>
-                  </SheetHeader>
-                  <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-500">Gender</div>
                     <div>
-                      <div className="text-xs text-gray-500">Full name</div>
-                      <div>{selectedUser.full_name || 'No Name'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Email</div>
-                      <div>{selectedUser.email}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Role</div>
-                      <div className="inline-flex items-center gap-2">
-                        <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
-                          {selectedUser.role || 'user'}
+                      {selectedUser.gender ? (
+                        <Badge
+                          className={`text-xs ${
+                            selectedUser.gender.toLowerCase() === 'male'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-pink-50 text-pink-700 border-pink-200'
+                          }`}
+                        >
+                          {selectedUser.gender}
                         </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Phone</div>
-                      <div>{selectedUser.phone_number || 'Not provided'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Gender</div>
-                      <div>
-                        {selectedUser.gender ? (
-                          <Badge
-                            className={`text-xs ${
-                              selectedUser.gender.toLowerCase() === 'male'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-pink-50 text-pink-700 border-pink-200'
-                            }`}
-                          >
-                            {selectedUser.gender}
-                          </Badge>
-                        ) : (
-                          'Not provided'
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Joined</div>
-                      <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
+                      ) : (
+                        'Not provided'
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
-                      Close
-                    </Button>
-                    {selectedUser.full_name !== 'Guest User' && (
-                      <Button
-                        onClick={() => {
-                          setIsSheetOpen(false);
-                          openEditModal(selectedUser);
-                        }}
-                        disabled={currentUserId === selectedUser.id}
-                        title={
-                          currentUserId === selectedUser.id
-                            ? 'Cannot edit your own account'
-                            : 'Edit user'
-                        }
-                      >
-                        Edit
-                      </Button>
-                    )}
+                  <div>
+                    <div className="text-xs text-gray-500">Joined</div>
+                    <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
                   </div>
                 </div>
-              )}
-            </SheetContent>
-          </Sheet>
-        </div>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                    Close
+                  </Button>
+                  {selectedUser.full_name !== 'Guest User' && (
+                    <Button
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        openEditModal(selectedUser);
+                      }}
+                      disabled={currentUserId === selectedUser.id}
+                      title={
+                        currentUserId === selectedUser.id
+                          ? 'Cannot edit your own account'
+                          : 'Edit user'
+                      }
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </ModuleGuard>
     </AuthWrapper>
   );

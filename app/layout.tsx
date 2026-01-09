@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { AlertProvider } from './components/alert-context';
 import Sidebar, { SidebarProvider, useSidebar } from './components/sidebard';
 import './globals.css';
@@ -32,11 +33,11 @@ function GlobalMobileHeader() {
   };
 
   return (
-    <div className="md:hidden bg-white border-b shadow-sm sticky top-0 z-10">
+    <div className="sticky top-0 z-10 bg-white border-b shadow-sm md:hidden">
       <div className="px-4 py-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={toggleMobileMenu} className="p-2 rounded-lg">
-            <Menu className="h-5 w-5" />
+            <Menu className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold text-gray-900">{getPageTitle(pathname || '')}</h1>
         </div>
@@ -68,7 +69,8 @@ export default function RootLayout({
   const isPublicPage =
     pathname?.startsWith('/privacy-policy') ||
     pathname?.startsWith('/terms-of-service') ||
-    pathname?.startsWith('/contact-us');
+    pathname?.startsWith('/contact-us') ||
+    pathname?.startsWith('/reset-password');
 
   // Pages that should not have the admin layout
   const shouldHideAdminLayout = isAuthPage || isPublicPage;
@@ -112,6 +114,31 @@ export default function RootLayout({
           shouldHideAdminLayout ? 'bg-gray-50' : 'flex h-screen bg-gray-50 overflow-hidden'
         }`}
       >
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#fff',
+              color: '#363636',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              borderRadius: '8px',
+              padding: '12px 20px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
         <DataProvider>
           <AlertsProvider>
             <EvacuationProvider>
