@@ -78,7 +78,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>Amayalert Admin</title>
+        <title>Amayalert</title>
         <meta
           name="description"
           content="Emergency alert and rescue management system for Barangay Amaya V, Tanza Cavite"
