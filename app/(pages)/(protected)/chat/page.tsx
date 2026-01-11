@@ -1,9 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import AuthWrapper from '@/app/components/auth-wrapper';
-import ModuleGuard from '@/app/components/module-guard';
-import { PageHeader } from '@/app/components/page-header';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -300,11 +297,19 @@ export default function ChatPage() {
   };
 
   const ConversationHeader = () => (
-    <div className="px-4 py-3 border-b bg-white">
+    <div className="px-4 py-3 bg-white border-b">
       {selectedUser ? (
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center">
-            <UserIcon className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center justify-center bg-blue-100 rounded-full h-9 w-9">
+            {selectedUser.profile_picture ? (
+              <img
+                src={selectedUser.profile_picture}
+                alt={selectedUser.full_name}
+                className="w-8 h-8 rounded-full md:h-9 md:w-9"
+              />
+            ) : (
+              <UserIcon className="w-5 h-5 text-blue-600" />
+            )}
           </div>
           <div>
             <div className="font-medium text-gray-900">{selectedUser.full_name}</div>
@@ -321,202 +326,207 @@ export default function ChatPage() {
   );
 
   return (
-    <AuthWrapper>
-      <ModuleGuard requiredModule="chat">
-        <div className="min-h-screen bg-gray-50 md:bg-background p-4 md:p-6">
-          <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
-            {/* Header */}
-            <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" />
+    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+      <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
+        {/* Header */}
+        {/* <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" /> */}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-              {/* Left: Users list */}
-              <div className="bg-white border rounded-lg overflow-hidden flex flex-col">
-                <div className="p-3 border-b">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search users..."
-                      className="pl-9"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-auto">
-                  {usersLoading ? (
-                    <div className="p-4 text-sm text-gray-500">Loading users...</div>
-                  ) : filteredUsers.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500">No users found</div>
-                  ) : (
-                    <ul className="divide-y">
-                      {filteredUsers.map((u) => (
-                        <li key={u.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedUser(u)}
-                            className={`w-full text-left p-3 flex items-center gap-3 hover:bg-gray-50 ${
-                              selectedUser?.id === u.id ? 'bg-blue-50' : ''
-                            }`}
-                          >
-                            <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-gray-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900 truncate">
-                                {u.full_name}
-                              </div>
-                              <div className="text-xs text-gray-500 truncate">{u.email}</div>
-                            </div>
-                            {unreadCounts[u.id] > 0 && (
-                              <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">
-                                {unreadCounts[u.id]}
-                              </Badge>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+        <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Left: Users list */}
+          <div className="flex flex-col overflow-hidden bg-white border rounded-lg">
+            <div className="p-3 border-b">
+              <div className="relative">
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                <Input
+                  placeholder="Search users..."
+                  className="pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
+            </div>
 
-              {/* Right: Conversation */}
-              <div className="md:col-span-2 bg-white border rounded-lg overflow-hidden flex flex-col h-full">
-                <ConversationHeader />
-
-                {/* Messages */}
-                <div className="flex-1 overflow-auto p-4 space-y-2 bg-gray-50">
-                  {loadingMessages && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation...
-                    </div>
-                  )}
-                  {!selectedUser && !loadingMessages && (
-                    <div className="text-center text-sm text-gray-500 mt-10">
-                      Pick a user from the left to view messages.
-                    </div>
-                  )}
-                  {selectedUser && messages.length === 0 && !loadingMessages && (
-                    <div className="text-center text-sm text-gray-500 mt-10">No messages yet.</div>
-                  )}
-
-                  {messages.map((m) => {
-                    const isMine = m.sender === currentUserId;
-                    return (
-                      <div
-                        key={m.id}
-                        className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+            <div className="flex-none overflow-auto h-fit">
+              {usersLoading ? (
+                <div className="p-4 text-sm text-gray-500">Loading users...</div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="p-4 text-sm text-gray-500">No users found</div>
+              ) : (
+                <ul className="flex flex-row flex-wrap gap-2 p-3 md:flex-col md:divide-y md:gap-0 md:p-0">
+                  {filteredUsers.map((u) => (
+                    <li key={u.id} className="md:w-full">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUser(u)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors md:w-full md:rounded-none md:border-0 md:p-3 md:text-left ${
+                          selectedUser?.id === u.id
+                            ? 'bg-blue-100 border-blue-300 md:bg-blue-50'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100 md:bg-transparent md:hover:bg-gray-50'
+                        }`}
                       >
-                        <div
-                          className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm border ${
-                            isMine
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-800 border-gray-200'
-                          }`}
-                        >
-                          {m.attachment_url ? (
-                            <Image
-                              src={m.attachment_url}
-                              alt="attachment"
-                              width={200}
-                              height={200}
-                              className="h-[200px] w-auto rounded-lg object-cover"
-                              unoptimized
+                        <div className="relative flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full md:h-9 md:w-9 shrink-0">
+                          {u.profile_picture ? (
+                            <img
+                              src={u.profile_picture}
+                              alt={u.full_name}
+                              className="w-8 h-8 rounded-full md:h-9 md:w-9"
                             />
                           ) : (
-                            <div className="whitespace-pre-wrap">{m.content}</div>
+                            <UserIcon className="w-4 h-4 text-gray-600 md:w-5 md:h-5" />
                           )}
-                          <div
-                            className={`text-[10px] mt-1 ${
-                              isMine ? 'text-blue-100' : 'text-gray-400'
-                            }`}
-                          >
-                            {new Date(m.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            {isMine && <span className="ml-2">{m.seen_at ? 'Seen' : 'Sent'}</span>}
-                          </div>
+                          {unreadCounts[u.id] > 0 && (
+                            <span className="absolute flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full -top-1 -right-1 md:hidden">
+                              {unreadCounts[u.id]}
+                            </span>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </div>
+                        <div className="flex-1 hidden min-w-0 md:block">
+                          <div className="font-medium text-gray-900 truncate">{u.full_name}</div>
+                          <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 md:hidden truncate max-w-[80px]">
+                          {u.full_name.split(' ')[0]}
+                        </span>
+                        {unreadCounts[u.id] > 0 && (
+                          <Badge className="hidden md:flex bg-red-500 text-white text-xs min-w-[20px] h-5 items-center justify-center rounded-full">
+                            {unreadCounts[u.id]}
+                          </Badge>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
 
-                {/* Input */}
-                <div className="p-3 border-t bg-white">
-                  {/* Image preview */}
-                  {previewUrl && (
-                    <div className="mb-3 relative">
-                      <div className="relative inline-block">
+          {/* Right: Conversation */}
+          <div className="flex flex-col h-full overflow-hidden bg-white border rounded-lg md:col-span-2">
+            <ConversationHeader />
+
+            {/* Messages */}
+            <div className="flex-1 p-4 space-y-2 overflow-auto bg-gray-50">
+              {loadingMessages && (
+                <div className="flex items-center gap-2 mx-auto text-sm text-gray-500 w-fit">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading conversation...
+                </div>
+              )}
+              {!selectedUser && !loadingMessages && (
+                <div className="mt-10 text-sm text-center text-gray-500">
+                  Pick a user from the left to view messages.
+                </div>
+              )}
+              {selectedUser && messages.length === 0 && !loadingMessages && (
+                <div className="mt-10 text-sm text-center text-gray-500">No messages yet.</div>
+              )}
+
+              {messages.map((m) => {
+                const isMine = m.sender === currentUserId;
+                return (
+                  <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm border ${
+                        isMine
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-800 border-gray-200'
+                      }`}
+                    >
+                      {m.attachment_url ? (
                         <Image
-                          src={previewUrl}
-                          alt="Preview"
-                          width={128}
-                          height={128}
-                          className="max-w-32 max-h-32 rounded-lg border object-cover"
+                          src={m.attachment_url}
+                          alt="attachment"
+                          width={200}
+                          height={200}
+                          className="h-[200px] w-auto rounded-lg object-cover"
                           unoptimized
                         />
-                        <button
-                          type="button"
-                          onClick={clearFileSelection}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{m.content}</div>
+                      )}
+                      <div
+                        className={`text-[10px] mt-1 ${isMine ? 'text-blue-100' : 'text-gray-400'}`}
+                      >
+                        {new Date(m.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                        {isMine && <span className="ml-2">{m.seen_at ? 'Seen' : 'Sent'}</span>}
                       </div>
                     </div>
-                  )}
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
 
-                  <div className="flex items-center gap-2">
+            {/* Input */}
+            <div className="p-3 bg-white border-t">
+              {/* Image preview */}
+              {previewUrl && (
+                <div className="relative mb-3">
+                  <div className="relative inline-block">
+                    <Image
+                      src={previewUrl}
+                      alt="Preview"
+                      width={128}
+                      height={128}
+                      className="object-cover border rounded-lg max-w-32 max-h-32"
+                      unoptimized
+                    />
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
-                      disabled={sending}
+                      onClick={clearFileSelection}
+                      className="absolute p-1 text-white bg-red-500 rounded-full -top-2 -right-2 hover:bg-red-600"
                     >
-                      <Paperclip className="h-4 w-4" />
+                      <X className="w-3 h-3" />
                     </button>
-                    <Input
-                      placeholder={
-                        selectedUser ? 'Type a message…' : 'Select a user to start chatting'
-                      }
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                      disabled={!selectedUser || sending}
-                    />
-                    <Button
-                      onClick={sendMessage}
-                      disabled={!selectedUser || sending || (!input.trim() && !selectedFile)}
-                    >
-                      {sending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
                   </div>
                 </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-gray-500 rounded-md hover:text-gray-700 hover:bg-gray-100"
+                  disabled={sending}
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <Input
+                  placeholder={selectedUser ? 'Type a message…' : 'Select a user to start chatting'}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  disabled={!selectedUser || sending}
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={!selectedUser || sending || (!input.trim() && !selectedFile)}
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
               </div>
             </div>
           </div>
         </div>
-      </ModuleGuard>
-    </AuthWrapper>
+      </div>
+    </div>
   );
 }

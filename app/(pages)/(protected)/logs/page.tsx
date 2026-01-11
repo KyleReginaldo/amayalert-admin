@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/app/components/page-header';
+import { getActivityStatColor } from '@/app/core/utils/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -333,24 +334,24 @@ export default function LogsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{logs.length}</div>
+          <div className={`p-4 rounded-lg ${getActivityStatColor('total')}`}>
+            <div className="text-2xl font-bold ">{logs.length}</div>
             <div className="text-sm text-gray-600">Total Activities</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">
+          <div className={`p-4 rounded-lg ${getActivityStatColor('create')}`}>
+            <div className="text-2xl font-bold ">
               {logs.filter((log) => log.content?.toLowerCase().includes('create')).length}
             </div>
             <div className="text-sm text-gray-600">Create Actions</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className={`p-4 rounded-lg ${getActivityStatColor('update')}`}>
+            <div className="text-2xl font-bold ">
               {logs.filter((log) => log.content?.toLowerCase().includes('update')).length}
             </div>
-            <div className="text-sm text-gray-600">Update Actions</div>
+            <div className="text-sm ">Update Actions</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-red-600">
+          <div className={`p-4 rounded-lg ${getActivityStatColor('delete')}`}>
+            <div className="text-2xl font-bold ">
               {logs.filter((log) => log.content?.toLowerCase().includes('delete')).length}
             </div>
             <div className="text-sm text-gray-600">Delete Actions</div>
@@ -492,7 +493,7 @@ export default function LogsPage() {
                                   {showExpandButton && (
                                     <button
                                       onClick={() => toggleLogExpansion(log.id)}
-                                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                                      className="text-gray-500 transition-colors hover:text-gray-700"
                                       title={
                                         isExpanded ? 'Hide details' : 'Show deleted content details'
                                       }
@@ -514,14 +515,14 @@ export default function LogsPage() {
                           <TableRow key={`${log.id}-details`} className="bg-gray-50">
                             <TableCell colSpan={5}>
                               <div className="px-4 py-3 border-l-4 border-red-300 bg-red-50/50">
-                                <div className="text-xs font-semibold text-gray-700 uppercase mb-2">
+                                <div className="mb-2 text-xs font-semibold text-gray-700 uppercase">
                                   Deleted Content Details
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                   {details.map((detail, index) => (
                                     <div
                                       key={index}
-                                      className="bg-white p-2 rounded border border-gray-200"
+                                      className="p-2 bg-white border border-gray-200 rounded"
                                     >
                                       <div className="text-xs font-medium text-gray-600">
                                         {detail.key}

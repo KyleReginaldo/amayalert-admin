@@ -83,27 +83,74 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
 
   if (fullPage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
-        <div className="w-full max-w-6xl bg-white rounded-2xl overflow-hidden shadow-md flex flex-col md:flex-row">
+      <div
+        className="relative flex items-center justify-center min-h-screen p-6 overflow-hidden"
+        style={{ backgroundColor: '#0F172A' }}
+      >
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Large gradient circle - top left */}
+          <div
+            className="absolute rounded-full w-96 h-96 bg-gradient-to-br from-blue-500/20 to-purple-500/10 blur-3xl -top-20 -left-20 animate-pulse"
+            style={{ animationDuration: '4s' }}
+          />
+
+          {/* Medium gradient circle - bottom right */}
+          <div
+            className="absolute rounded-full w-80 h-80 bg-gradient-to-tr from-cyan-500/15 to-blue-500/10 blur-2xl -bottom-32 -right-32 animate-pulse"
+            style={{ animationDuration: '6s' }}
+          />
+
+          {/* Small circle - top right */}
+          <div
+            className="absolute w-64 h-64 rounded-full bg-gradient-to-bl from-indigo-500/20 to-transparent blur-2xl top-10 right-20 animate-pulse"
+            style={{ animationDuration: '5s' }}
+          />
+
+          {/* Accent circle - left middle */}
+          <div
+            className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/5 blur-xl top-1/3 left-10 animate-pulse"
+            style={{ animationDuration: '7s' }}
+          />
+
+          {/* Small decorative dots */}
+          <div
+            className="absolute w-32 h-32 rounded-full bg-blue-400/5 blur-lg top-2/3 right-1/4 animate-pulse"
+            style={{ animationDuration: '3s' }}
+          />
+          <div
+            className="absolute w-24 h-24 rounded-full bg-cyan-400/5 blur-lg bottom-1/4 left-1/3 animate-pulse"
+            style={{ animationDuration: '4.5s' }}
+          />
+        </div>
+
+        <div className="relative z-10 flex flex-col w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-2xl md:flex-row">
           {/* Left - decorative hero */}
-          <div className="hidden md:block md:w-1/2 bg-gray-50">
-            <div className="h-full w-full relative">
-              <Image src={'/amaya.jpg'} alt="amaya" fill className="object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 w-full py-8 px-8">
-                <h2 className="text-3xl font-bold text-white mb-3">Welcome Back, Admin</h2>
-                <p className="text-white/90 text-lg leading-relaxed">
-                  Your vigilance keeps communities safe. Sign in to manage alerts, coordinate
-                  rescues, and protect lives.
-                </p>
+          <div className="relative hidden overflow-hidden md:flex md:w-1/2 bg-slate-900">
+            <div className="relative w-full h-full">
+              <Image src={'/amaya.jpg'} alt="amaya" fill className="object-cover opacity-50" />
+
+              {/* Simple gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
+
+              {/* Content */}
+              <div className="absolute inset-0 flex flex-col justify-end p-10">
+                <div className="max-w-md space-y-3">
+                  <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
+
+                  <p className="text-slate-300">
+                    Your vigilance keeps communities safe. Sign in to manage alerts and coordinate
+                    emergency responses.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Right - form */}
-          <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-12">
+          <div className="flex items-center justify-center w-full p-8 md:w-1/2 md:p-12">
             <div className="w-full max-w-md">
-              <Card className="w-full shadow-none border-0 bg-transparent">
+              <Card className="w-full bg-transparent border-0 shadow-none">
                 <CardHeader className="space-y-1 text-center md:text-left">
                   <CardTitle className="text-2xl font-bold text-foreground">Sign in</CardTitle>
                   <CardDescription className="text-muted-foreground">
@@ -112,13 +159,13 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
-                  <CardContent className="space-y-4 mt-2">
+                  <CardContent className="mt-2 space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-sm font-medium text-foreground">
                         E-mail Address
                       </Label>
                       <div className="relative">
-                        <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Shield className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
                         <Input
                           id="email"
                           type="email"
@@ -136,7 +183,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                         Password
                       </Label>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Lock className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
                         <Input
                           id="password"
                           type={showPassword ? 'text' : 'password'}
@@ -149,12 +196,12 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                          className="absolute transition-colors right-3 top-3 text-muted-foreground hover:text-foreground"
                         >
                           {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff className="w-4 h-4" />
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="w-4 h-4" />
                           )}
                         </button>
                       </div>
@@ -165,7 +212,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                         <input
                           id="remember"
                           type="checkbox"
-                          className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-ring"
                         />
                         <Label htmlFor="remember" className="text-sm text-muted-foreground">
                           Keep me signed in
@@ -181,7 +228,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                     </div>
                   </CardContent>
 
-                  <CardFooter className="flex flex-col space-y-4 mt-4">
+                  <CardFooter className="flex flex-col mt-4 space-y-4">
                     <Button
                       type="submit"
                       className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5"
@@ -189,7 +236,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
                     >
                       {isLoading ? 'Signing in...' : 'Sign in'}
                     </Button>
-                    <div className="text-center text-xs text-muted-foreground">
+                    <div className="text-xs text-center text-muted-foreground">
                       Don&apos;t have an account? <a className="text-primary">Sign Up!</a>
                     </div>
                   </CardFooter>
@@ -209,11 +256,11 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handlePasswordReset}>
-              <div className="space-y-4 py-4">
+              <div className="py-4 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
                     <Input
                       id="reset-email"
                       type="email"
@@ -249,7 +296,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
 
   // default compact card (unchanged)
   return (
-    <Card className="w-full shadow-lg border-0 bg-card">
+    <Card className="w-full border-0 shadow-lg bg-card">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl font-bold text-card-foreground">Sign In</CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -264,7 +311,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
               Email
             </Label>
             <div className="relative">
-              <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Shield className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -282,7 +329,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
               Password
             </Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -295,9 +342,9 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute transition-colors right-3 top-3 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
@@ -307,7 +354,7 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
               <input
                 id="remember"
                 type="checkbox"
-                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                className="w-4 h-4 rounded border-border text-primary focus:ring-ring"
               />
               <Label htmlFor="remember" className="text-sm text-muted-foreground">
                 Keep me signed in
@@ -344,11 +391,11 @@ export function LoginForm({ fullPage = false }: LoginFormProps) {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePasswordReset}>
-            <div className="space-y-4 py-4">
+            <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reset-email-compact">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
                   <Input
                     id="reset-email-compact"
                     type="email"

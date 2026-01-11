@@ -5,8 +5,11 @@ import { useAlerts } from '@/app/providers/alerts-provider';
 import { useData } from '@/app/providers/data-provider';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { AlertTriangle, Building2, Download, Loader2, Users } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarIcon, Download, Loader2, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const Dashboard = () => {
@@ -17,15 +20,15 @@ const Dashboard = () => {
 
   const [isExporting, setIsExporting] = useState(false);
   const today = new Date();
-  const [startDate, setStartDate] = useState<string>(format(today, 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState<string>(format(today, 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState<Date>(today);
+  const [endDate, setEndDate] = useState<Date>(today);
 
   // Helper function to format dates for display
-  const formatDateDisplay = (dateStr: string) => {
+  const formatDateDisplay = (date: Date) => {
     try {
-      return format(new Date(dateStr), 'MMMM d, yyyy');
+      return format(date, 'MMMM d, yyyy');
     } catch {
-      return dateStr;
+      return date.toLocaleDateString();
     }
   };
 
@@ -41,10 +44,10 @@ const Dashboard = () => {
     try {
       setIsExporting(true);
 
-      const startDateObj = new Date(startDate);
-      const endDateObj = new Date(endDate);
+      const startDateObj = startDate;
+      const endDateObj = endDate;
       const periodName =
-        startDate === endDate
+        startDate.toDateString() === endDate.toDateString()
           ? startDateObj.toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -291,7 +294,7 @@ const Dashboard = () => {
   }, [alerts, evacuationCenters, users, refreshAll]);
 
   const stats = useMemo(() => {
-    const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
+    const startTimestamp = startDate.getTime();
     const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
 
     // Filter alerts/users for selected date range
@@ -389,30 +392,59 @@ const Dashboard = () => {
             <div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    max={format(new Date(), 'yyyy-MM-dd')}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Start date"
-                  />
-                  <span className="text-gray-500">to</span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    max={format(new Date(), 'yyyy-MM-dd')}
-                    min={startDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="End date"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'justify-start text-left font-normal bg-blue-50 border-gray-300',
+                          !startDate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        {startDate ? format(startDate, 'PPP') : <span>Pick start date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => date && setStartDate(date)}
+                        disabled={(date) => date > new Date() || date > endDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-gray-500">-</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'justify-start text-left font-normal bg-blue-50 border-gray-300',
+                          !endDate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        {endDate ? format(endDate, 'PPP') : <span>Pick end date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={(date) => date && setEndDate(date)}
+                        disabled={(date) => date > new Date() || date < startDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <Button
                   onClick={handleExport}
                   disabled={isExporting}
-                  variant="outline"
-                  className="gap-2 border-gray-300"
+                  variant="default"
+                  className="gap-2 bg-[#4988C4] cursor-pointer"
                 >
                   {isExporting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -428,27 +460,28 @@ const Dashboard = () => {
 
         {/* Minimal Stats */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">
+          <div className="p-4 bg-[#E0F2FE] border border-[#0284C7] text-[#0369A1] rounded-lg">
+            <div className="text-2xl font-bold text-[#0369A1]">
               {stats.totalUsers.toLocaleString()}
             </div>
-            <div className="text-sm text-gray-600">Total Users</div>
-            <div className="mt-1 text-xs text-green-600">+{stats.userGrowth} this period</div>
+            <div className="te.toDateString() === endDate.toDateString()ray-600">Total Users</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+          <div className="p-4 bg-[#FEF3C7] border border-[#F59E0B] text-[#B45309] rounded-lg">
             <div className="text-2xl font-bold text-orange-600">{stats.activeAlerts}</div>
-            <div className="text-sm text-gray-600">Active Alerts</div>
+            <div className="text-sm text-[#B45309]">Active Alerts</div>
             <div className="mt-1 text-xs text-gray-500">{stats.criticalAlerts} critical</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{stats.evacuationCenters}</div>
-            <div className="text-sm text-gray-600">Evacuation Centers</div>
+          <div className="p-4 bg-[#ECFDF5] border border-[#10B981] text-[#047857] rounded-lg">
+            <div className="text-2xl font-bold">{stats.evacuationCenters}</div>
+            <div className="text-sm ">Evacuation Centers</div>
             <div className="mt-1 text-xs text-gray-500">{stats.availableCenters} available</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{stats.responseTime}</div>
-            <div className="text-sm text-gray-600">Avg Response</div>
-            <div className="mt-1 text-xs text-gray-500">12% better</div>
+          <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+            <div className="text-2xl font-semibold text-blue-700">{stats.responseTime}</div>
+
+            <div className="text-sm text-blue-800/80">Avg Response</div>
+
+            <div className="mt-1 text-xs font-medium text-blue-600">▲ 12% better</div>
           </div>
         </div>
 
@@ -461,7 +494,7 @@ const Dashboard = () => {
                 <h2 className="font-medium text-gray-900 text-md">
                   Alert Severity (
                   <span className="text-gray-600">
-                    {startDate === endDate
+                    {startDate.toDateString() === endDate.toDateString()
                       ? formatDateDisplay(startDate)
                       : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
                   </span>
@@ -616,7 +649,7 @@ const Dashboard = () => {
                 <h2 className="font-medium text-gray-900 text-md">
                   User Growth (
                   <span className="text-gray-600">
-                    {startDate === endDate
+                    {startDate.toDateString() === endDate.toDateString()
                       ? formatDateDisplay(startDate)
                       : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
                   </span>
@@ -633,12 +666,7 @@ const Dashboard = () => {
                     {(() => {
                       // Group users by month for the last 6 months
                       // Base end month on endDate instead of current real-time month
-                      const [yearStr, monthStr, dayStr] = endDate.split('-');
-                      const endDateObj = new Date(
-                        parseInt(yearStr, 10),
-                        parseInt(monthStr, 10) - 1,
-                        parseInt(dayStr, 10),
-                      );
+                      const endDateObj = endDate;
                       const months = [];
                       for (let i = 5; i >= 0; i--) {
                         const date = new Date(
@@ -825,7 +853,7 @@ const Dashboard = () => {
               <h2 className="font-medium text-gray-900 text-md">
                 History (
                 <span className="text-gray-600">
-                  {startDate === endDate
+                  {startDate.toDateString() === endDate.toDateString()
                     ? formatDateDisplay(startDate)
                     : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
                 </span>

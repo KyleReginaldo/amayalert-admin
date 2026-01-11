@@ -1,9 +1,8 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import AuthWrapper from '@/app/components/auth-wrapper';
-import ModuleGuard from '@/app/components/module-guard';
 import { PageHeader } from '@/app/components/page-header';
+import { getAdminStatColor } from '@/app/core/utils/utils';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -377,7 +376,7 @@ export default function AdminsPage() {
   // Empty state when no admins exist
   if (!usersLoading && admins.length === 0) {
     return (
-      <AuthWrapper>
+      <>
         <div className="min-h-screen bg-gray-50 md:bg-background">
           <div className="flex items-center justify-center min-h-screen p-4">
             <div className="max-w-md mx-auto text-center">
@@ -416,426 +415,422 @@ export default function AdminsPage() {
           }
           loading={modalLoading}
         />
-      </AuthWrapper>
+      </>
     );
   }
 
   return (
-    <AuthWrapper>
-      <ModuleGuard requiredModule="admin">
-        <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
-          <div className="mx-auto space-y-6 max-w-7xl">
-            {/* Header */}
-            <PageHeader
-              title="Admin Management"
-              subtitle="Manage administrator accounts and permissions"
-              action={
-                <Button onClick={openCreateModal} className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Admin
-                </Button>
-              }
+    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+      <div className="mx-auto space-y-6 max-w-7xl">
+        {/* Header */}
+        <PageHeader
+          title="Admin Management"
+          subtitle="Manage administrator accounts and permissions"
+          action={
+            <Button onClick={openCreateModal} className="gap-2 bg-[#4988C4] cursor-pointer">
+              <Plus className="w-4 h-4" />
+              Add Admin
+            </Button>
+          }
+        />
+
+        {/* Minimal Stats */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className={`p-4 rounded-lg ${getAdminStatColor('total')}`}>
+            <div className="text-2xl font-bold ">{stats.total}</div>
+            <div className="text-sm text-gray-600">Total Admins</div>
+          </div>
+          <div className={`p-4 rounded-lg ${getAdminStatColor('with-phone')}`}>
+            <div className="text-2xl font-bold ">{stats.withPhone}</div>
+            <div className="text-sm text-gray-600">With Phone</div>
+          </div>
+          <div className={`p-4 rounded-lg ${getAdminStatColor('male')}`}>
+            <div className="text-2xl font-bold ">{stats.male}</div>
+            <div className="text-sm text-gray-600">Male</div>
+          </div>
+          <div className={`p-4 rounded-lg ${getAdminStatColor('female')}`}>
+            <div className="text-2xl font-bold ">{stats.female}</div>
+            <div className="text-sm text-gray-600">Female</div>
+          </div>
+        </div>
+
+        {/* Search Filter */}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+            <Input
+              placeholder="Search admins..."
+              className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
+          </div>
+        </div>
 
-            {/* Minimal Stats */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                <div className="text-sm text-gray-600">Total Admins</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.withPhone}</div>
-                <div className="text-sm text-gray-600">With Phone</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">{stats.male}</div>
-                <div className="text-sm text-gray-600">Male</div>
-              </div>
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="text-2xl font-bold text-pink-600">{stats.female}</div>
-                <div className="text-sm text-gray-600">Female</div>
-              </div>
-            </div>
-
-            {/* Search Filter */}
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-                <Input
-                  placeholder="Search admins..."
-                  className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Admins Table */}
-            <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-              {/* Mobile View - Stack Cards */}
-              <div className="block md:hidden">
-                <div className="divide-y divide-gray-200">
-                  {paginatedAdmins.length > 0 ? (
-                    paginatedAdmins.map((admin) => {
-                      return (
-                        <div key={admin.id} className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {admin.full_name || 'No Name'}
-                                </p>
-                                <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
-                                  <Crown className="w-3 h-3 mr-1" />
-                                  Sub Admin
-                                </Badge>
-                                {admin.gender && (
-                                  <Badge
-                                    className={`text-xs ${
-                                      admin.gender.toLowerCase() === 'male'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                        : 'bg-pink-50 text-pink-700 border-pink-200'
-                                    }`}
-                                  >
-                                    {admin.gender}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="mb-1 text-xs text-gray-500">{admin.email}</p>
-                              <p className="text-xs text-gray-500">
-                                Modules: {admin.modules?.length || 0} / 8
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">
-                                  Phone: {admin.phone_number || 'Not provided'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-500">
-                                  Joined {new Date(admin.created_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex gap-1 ml-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditModal(admin)}
-                                disabled={currentUserId === admin.id}
-                                className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                  currentUserId === admin.id
-                                    ? 'Cannot edit your own account'
-                                    : 'Edit admin'
-                                }
+        {/* Admins Table */}
+        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+          {/* Mobile View - Stack Cards */}
+          <div className="block md:hidden">
+            <div className="divide-y divide-gray-200">
+              {paginatedAdmins.length > 0 ? (
+                paginatedAdmins.map((admin) => {
+                  return (
+                    <div key={admin.id} className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {admin.full_name || 'No Name'}
+                            </p>
+                            <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
+                              <Crown className="w-3 h-3 mr-1" />
+                              Sub Admin
+                            </Badge>
+                            {admin.gender && (
+                              <Badge
+                                className={`text-xs ${
+                                  admin.gender.toLowerCase() === 'male'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-pink-50 text-pink-700 border-pink-200'
+                                }`}
                               >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openAdminSheet(admin)}
-                                className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
-                                title="View details"
-                              >
-                                <Eye className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(admin.id)}
-                                disabled={currentUserId === admin.id}
-                                className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                  currentUserId === admin.id
-                                    ? 'Cannot delete your own account'
-                                    : 'Delete admin'
-                                }
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
+                                {admin.gender}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="mb-1 text-xs text-gray-500">{admin.email}</p>
+                          <p className="text-xs text-gray-500">
+                            Modules: {admin.modules?.length || 0} / 8
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">
+                              Phone: {admin.phone_number || 'Not provided'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">
+                              Joined {new Date(admin.created_at).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="py-8 text-center text-gray-500">
-                      <Shield className="w-8 h-8 mx-auto mb-2" />
-                      <p>No admins found</p>
+                        <div className="flex gap-1 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditModal(admin)}
+                            disabled={currentUserId === admin.id}
+                            className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={
+                              currentUserId === admin.id
+                                ? 'Cannot edit your own account'
+                                : 'Edit admin'
+                            }
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openAdminSheet(admin)}
+                            className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
+                            title="View details"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(admin.id)}
+                            disabled={currentUserId === admin.id}
+                            className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={
+                              currentUserId === admin.id
+                                ? 'Cannot delete your own account'
+                                : 'Delete admin'
+                            }
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Desktop View - Table */}
-              <div className="hidden md:block">
-                {paginatedAdmins.length > 0 ? (
-                  <Table className="w-full table-fixed">
-                    <TableHeader>
-                      <TableRow className="border-gray-200">
-                        <TableHead className="w-[30%] font-medium text-gray-900">Admin</TableHead>
-                        <TableHead className="w-[10%] font-medium text-gray-900">Gender</TableHead>
-                        <TableHead className="w-[20%] font-medium text-gray-900">Phone</TableHead>
-                        <TableHead className="w-[20%] font-medium text-gray-900">Joined</TableHead>
-                        <TableHead className="w-[20%] font-medium text-gray-900 text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedAdmins.map((admin) => {
-                        return (
-                          <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50">
-                            <TableCell className="w-[30%]">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <div className="font-medium text-gray-900">
-                                    {admin.full_name || 'No Name'}
-                                  </div>
-                                  <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
-                                    <Crown className="w-3 h-3 mr-1" />
-                                    Sub Admin
-                                  </Badge>
-                                </div>
-                                <div className="text-sm text-gray-500">{admin.email}</div>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs text-purple-700 border-purple-200 bg-purple-50"
-                                  >
-                                    {admin.modules?.length || 0} / 8 modules
-                                  </Badge>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[10%]">
-                              {admin.gender ? (
-                                <Badge
-                                  className={`text-xs ${
-                                    admin.gender.toLowerCase() === 'male'
-                                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                      : 'bg-pink-50 text-pink-700 border-pink-200'
-                                  }`}
-                                >
-                                  {admin.gender}
-                                </Badge>
-                              ) : (
-                                <span className="text-sm text-gray-400">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="w-[20%] text-gray-600">
-                              <div className="text-sm">{admin.phone_number || 'Not provided'}</div>
-                            </TableCell>
-                            <TableCell className="w-[20%] text-gray-600">
-                              <div className="text-sm">
-                                {new Date(admin.created_at).toLocaleDateString()}
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[20%] text-right">
-                              <div className="flex items-center justify-end gap-1 ml-auto">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDemoteToUser(admin.id)}
-                                  disabled={currentUserId === admin.id}
-                                  className="w-8 h-8 text-gray-600 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={
-                                    currentUserId === admin.id
-                                      ? 'Cannot demote your own account'
-                                      : 'Demote to user'
-                                  }
-                                >
-                                  <UserCheck className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditModal(admin)}
-                                  disabled={currentUserId === admin.id}
-                                  className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={
-                                    currentUserId === admin.id
-                                      ? 'Cannot edit your own account'
-                                      : 'Edit admin'
-                                  }
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openAdminSheet(admin)}
-                                  className="w-8 h-8 text-gray-600 hover:text-gray-900"
-                                  title="View details"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(admin.id)}
-                                  disabled={currentUserId === admin.id}
-                                  className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={
-                                    currentUserId === admin.id
-                                      ? 'Cannot delete your own account'
-                                      : 'Delete admin'
-                                  }
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="py-8 text-center text-gray-500">
-                    <Shield className="w-8 h-8 mx-auto mb-2" />
-                    <p>No admins found</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination */}
-              {filteredAdmins.length > itemsPerPage && (
-                <div className="p-4 border-t border-gray-200">
-                  <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                    totalItems={filteredAdmins.length}
-                    itemsPerPage={itemsPerPage}
-                  />
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-gray-500">
+                  <Shield className="w-8 h-8 mx-auto mb-2" />
+                  <p>No admins found</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Create/Edit Modal */}
-          <AdminModal
-            isOpen={isModalOpen}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingAdmin(null);
-            }}
-            admin={editingAdmin}
-            onSave={
-              editingAdmin
-                ? (data) => handleUpdate(editingAdmin.id, data as UserUpdate)
-                : (data) => handleCreate(data as UserInsert)
-            }
-            loading={modalLoading}
-          />
-
-          {/* Right-side Admin Details Sheet */}
-          <Sheet
-            open={isSheetOpen}
-            onOpenChange={(open) => {
-              setIsSheetOpen(open);
-              if (!open) setSelectedAdmin(null);
-            }}
-          >
-            <SheetContent className="sm:max-w-xl">
-              {selectedAdmin && (
-                <div className="flex flex-col h-full">
-                  <SheetHeader>
-                    <SheetTitle>Admin Details</SheetTitle>
-                    <SheetDescription>Administrator profile information.</SheetDescription>
-                  </SheetHeader>
-                  <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
-                    <div>
-                      <div className="text-xs text-gray-500">Full name</div>
-                      <div>{selectedAdmin.full_name || 'No Name'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Email</div>
-                      <div>{selectedAdmin.email}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Role</div>
-                      <div className="inline-flex items-center gap-2">
-                        <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
-                          <Crown className="w-3 h-3 mr-1" />
-                          Sub Admin
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Phone</div>
-                      <div>{selectedAdmin.phone_number || 'Not provided'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Gender</div>
-                      <div>
-                        {selectedAdmin.gender ? (
-                          <Badge
-                            className={`text-xs ${
-                              selectedAdmin.gender.toLowerCase() === 'male'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-pink-50 text-pink-700 border-pink-200'
-                            }`}
-                          >
-                            {selectedAdmin.gender}
-                          </Badge>
-                        ) : (
-                          'Not provided'
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Joined</div>
-                      <div>{new Date(selectedAdmin.created_at).toLocaleString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Module Access</div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {selectedAdmin.modules && selectedAdmin.modules.length > 0 ? (
-                          selectedAdmin.modules.map((module) => (
+          {/* Desktop View - Table */}
+          <div className="hidden md:block">
+            {paginatedAdmins.length > 0 ? (
+              <Table className="w-full table-fixed">
+                <TableHeader>
+                  <TableRow className="border-gray-200">
+                    <TableHead className="w-[30%] font-medium text-gray-900">Admin</TableHead>
+                    <TableHead className="w-[10%] font-medium text-gray-900">Gender</TableHead>
+                    <TableHead className="w-[20%] font-medium text-gray-900">Phone</TableHead>
+                    <TableHead className="w-[20%] font-medium text-gray-900">Joined</TableHead>
+                    <TableHead className="w-[20%] font-medium text-gray-900 text-right">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAdmins.map((admin) => {
+                    return (
+                      <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50">
+                        <TableCell className="w-[30%]">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-gray-900">
+                                {admin.full_name || 'No Name'}
+                              </div>
+                              <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
+                                <Crown className="w-3 h-3 mr-1" />
+                                Sub Admin
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-gray-500">{admin.email}</div>
+                            <div className="flex items-center gap-1 mt-1">
+                              <Badge
+                                variant="outline"
+                                className="text-xs text-purple-700 border-purple-200 bg-purple-50"
+                              >
+                                {admin.modules?.length || 0} / 8 modules
+                              </Badge>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-[10%]">
+                          {admin.gender ? (
                             <Badge
-                              key={module}
-                              variant="outline"
-                              className="text-xs text-blue-700 capitalize border-blue-200 bg-blue-50"
+                              className={`text-xs ${
+                                admin.gender.toLowerCase() === 'male'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-pink-50 text-pink-700 border-pink-200'
+                              }`}
                             >
-                              {module}
+                              {admin.gender}
                             </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-500">No modules assigned</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-[20%] text-gray-600">
+                          <div className="text-sm">{admin.phone_number || 'Not provided'}</div>
+                        </TableCell>
+                        <TableCell className="w-[20%] text-gray-600">
+                          <div className="text-sm">
+                            {new Date(admin.created_at).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-[20%] text-right">
+                          <div className="flex items-center justify-end gap-1 ml-auto">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDemoteToUser(admin.id)}
+                              disabled={currentUserId === admin.id}
+                              className="w-8 h-8 text-gray-600 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                currentUserId === admin.id
+                                  ? 'Cannot demote your own account'
+                                  : 'Demote to user'
+                              }
+                            >
+                              <UserCheck className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(admin)}
+                              disabled={currentUserId === admin.id}
+                              className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                currentUserId === admin.id
+                                  ? 'Cannot edit your own account'
+                                  : 'Edit admin'
+                              }
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openAdminSheet(admin)}
+                              className="w-8 h-8 text-gray-600 hover:text-gray-900"
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(admin.id)}
+                              disabled={currentUserId === admin.id}
+                              className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                currentUserId === admin.id
+                                  ? 'Cannot delete your own account'
+                                  : 'Delete admin'
+                              }
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                <Shield className="w-8 h-8 mx-auto mb-2" />
+                <p>No admins found</p>
+              </div>
+            )}
+          </div>
 
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
-                      Close
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsSheetOpen(false);
-                        openEditModal(selectedAdmin);
-                      }}
-                      disabled={currentUserId === selectedAdmin.id}
-                      title={
-                        currentUserId === selectedAdmin.id
-                          ? 'Cannot edit your own account'
-                          : 'Edit admin'
-                      }
-                    >
-                      Edit
-                    </Button>
+          {/* Pagination */}
+          {filteredAdmins.length > itemsPerPage && (
+            <div className="p-4 border-t border-gray-200">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredAdmins.length}
+                itemsPerPage={itemsPerPage}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Create/Edit Modal */}
+      <AdminModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingAdmin(null);
+        }}
+        admin={editingAdmin}
+        onSave={
+          editingAdmin
+            ? (data) => handleUpdate(editingAdmin.id, data as UserUpdate)
+            : (data) => handleCreate(data as UserInsert)
+        }
+        loading={modalLoading}
+      />
+
+      {/* Right-side Admin Details Sheet */}
+      <Sheet
+        open={isSheetOpen}
+        onOpenChange={(open) => {
+          setIsSheetOpen(open);
+          if (!open) setSelectedAdmin(null);
+        }}
+      >
+        <SheetContent className="sm:max-w-xl">
+          {selectedAdmin && (
+            <div className="flex flex-col h-full">
+              <SheetHeader>
+                <SheetTitle>Admin Details</SheetTitle>
+                <SheetDescription>Administrator profile information.</SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
+                <div>
+                  <div className="text-xs text-gray-500">Full name</div>
+                  <div>{selectedAdmin.full_name || 'No Name'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Email</div>
+                  <div>{selectedAdmin.email}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Role</div>
+                  <div className="inline-flex items-center gap-2">
+                    <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
+                      <Crown className="w-3 h-3 mr-1" />
+                      Sub Admin
+                    </Badge>
                   </div>
                 </div>
-              )}
-            </SheetContent>
-          </Sheet>
-        </div>
-      </ModuleGuard>
-    </AuthWrapper>
+                <div>
+                  <div className="text-xs text-gray-500">Phone</div>
+                  <div>{selectedAdmin.phone_number || 'Not provided'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Gender</div>
+                  <div>
+                    {selectedAdmin.gender ? (
+                      <Badge
+                        className={`text-xs ${
+                          selectedAdmin.gender.toLowerCase() === 'male'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-pink-50 text-pink-700 border-pink-200'
+                        }`}
+                      >
+                        {selectedAdmin.gender}
+                      </Badge>
+                    ) : (
+                      'Not provided'
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Joined</div>
+                  <div>{new Date(selectedAdmin.created_at).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Module Access</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedAdmin.modules && selectedAdmin.modules.length > 0 ? (
+                      selectedAdmin.modules.map((module) => (
+                        <Badge
+                          key={module}
+                          variant="outline"
+                          className="text-xs text-blue-700 capitalize border-blue-200 bg-blue-50"
+                        >
+                          {module}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500">No modules assigned</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsSheetOpen(false);
+                    openEditModal(selectedAdmin);
+                  }}
+                  disabled={currentUserId === selectedAdmin.id}
+                  title={
+                    currentUserId === selectedAdmin.id
+                      ? 'Cannot edit your own account'
+                      : 'Edit admin'
+                  }
+                >
+                  Edit
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }
 

@@ -145,7 +145,10 @@ export default function WordFiltersPage() {
           title="Word Filters"
           subtitle="Manage inappropriate words and content filters"
           action={
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
+              className="gap-2 bg-[#4988C4] cursor-pointer"
+            >
               <Plus className="w-4 h-4" />
               Add Filter Word
             </Button>
@@ -286,7 +289,7 @@ export default function WordFiltersPage() {
               </DialogDescription>
             </DialogHeader>
             {selectedFilter && (
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 rounded-lg bg-gray-50">
                 <p className="text-sm text-gray-600">Word to delete:</p>
                 <p className="mt-1 text-lg font-semibold text-red-600">{selectedFilter.word}</p>
               </div>

@@ -1,9 +1,9 @@
 'use client';
 
-import { supabase } from '@/app/client/supabase';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { supabase } from '../client/supabase';
 
 interface AuthWrapperProps {
   children: React.ReactNode;

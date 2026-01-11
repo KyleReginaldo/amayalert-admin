@@ -307,7 +307,7 @@ export default function EvacuationCentersMap({
         className={`bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg ${className}`}
       >
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
+          <MapPin className="w-4 h-4" />
           <p className="text-sm font-medium">{error}</p>
         </div>
       </div>
@@ -317,10 +317,10 @@ export default function EvacuationCentersMap({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Map Statistics - Hidden on mobile to save space */}
-      <div className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4">
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-500" />
+            <Building2 className="w-4 h-4 text-blue-500" />
             <div>
               <p className="text-lg font-bold">{centers.length}</p>
               <p className="text-xs text-gray-600">Total Centers</p>
@@ -354,7 +354,7 @@ export default function EvacuationCentersMap({
 
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-purple-500" />
+            <Users className="w-4 h-4 text-purple-500" />
             <div>
               <p className="text-lg font-bold">
                 {centers.reduce((sum, c) => sum + (c.capacity || 0), 0)}
@@ -366,35 +366,35 @@ export default function EvacuationCentersMap({
       </div>
 
       {/* Map Container */}
-      <div className="relative rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+      <div className="relative overflow-hidden border border-gray-200 rounded-lg shadow-sm">
         {isLoading && (
-          <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
-              <p className="text-sm text-gray-600 font-medium">Loading evacuation centers map...</p>
+              <div className="w-10 h-10 mx-auto mb-3 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+              <p className="text-sm font-medium text-gray-600">Loading evacuation centers map...</p>
             </div>
           </div>
         )}
         <div ref={mapRef} style={{ height }} className="w-full" />
 
         {/* Legend - Simplified for mobile */}
-        <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 bg-white rounded-lg shadow-md p-2 md:p-3 text-xs">
-          <h4 className="font-medium mb-1 md:mb-2 hidden md:block">Center Status</h4>
-          <div className="flex md:flex-col gap-2 md:gap-1">
+        <div className="absolute p-2 text-xs bg-white rounded-lg shadow-md bottom-2 left-2 md:bottom-4 md:left-4 md:p-3">
+          <h4 className="hidden mb-1 font-medium md:mb-2 md:block">Center Status</h4>
+          <div className="flex gap-2 md:flex-col md:gap-1">
             <div className="flex items-center gap-1 md:gap-2">
-              <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full md:w-3 md:h-3"></div>
               <span className="hidden md:inline">Open</span>
             </div>
             <div className="flex items-center gap-1 md:gap-2">
-              <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-red-500 rounded-full md:w-3 md:h-3"></div>
               <span className="hidden md:inline">Full</span>
             </div>
             <div className="flex items-center gap-1 md:gap-2">
-              <div className="w-2 h-2 md:w-3 md:h-3 bg-amber-500 rounded-full"></div>
+              <div className="w-2 h-2 rounded-full md:w-3 md:h-3 bg-amber-500"></div>
               <span className="hidden md:inline">Maintenance</span>
             </div>
             <div className="flex items-center gap-1 md:gap-2">
-              <div className="w-2 h-2 md:w-3 md:h-3 bg-gray-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-gray-500 rounded-full md:w-3 md:h-3"></div>
               <span className="hidden md:inline">Closed</span>
             </div>
           </div>
@@ -406,12 +406,12 @@ export default function EvacuationCentersMap({
         <Card className="md:block">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building2 className="w-5 h-5" />
                 <span className="truncate">{selectedCenter.name}</span>
               </CardTitle>
               <Button variant="ghost" size="sm" onClick={() => setSelectedCenter(null)}>
-                <X className="h-4 w-4" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
           </CardHeader>
@@ -422,7 +422,7 @@ export default function EvacuationCentersMap({
                 <p className="text-sm text-gray-600">{selectedCenter.address}</p>
               </div>
 
-              <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex flex-wrap items-center gap-4">
                 <Badge
                   variant={
                     selectedCenter.status === 'open'

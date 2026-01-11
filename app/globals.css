@@ -4,8 +4,6 @@
 @import 'tw-animate-css';
 @import 'leaflet/dist/leaflet.css';
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);

@@ -3,6 +3,15 @@
 import { supabase } from '@/app/client/supabase';
 import { useChat } from '@/app/providers/chat-provider';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Database } from '@/database.types';
 import {
   Ban,
@@ -10,6 +19,7 @@ import {
   Flag,
   LayoutDashboard,
   LifeBuoy,
+  LogOut,
   MapPinHouse,
   MessageCircle,
   Settings,
@@ -65,6 +75,7 @@ const Sidebar = () => {
   const [userModules, setUserModules] = useState<ModuleType[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   // Fetch user modules and role
   useEffect(() => {
@@ -94,7 +105,13 @@ const Sidebar = () => {
 
     fetchUserModules();
   }, []);
-
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      window.location.href = '/signin';
+    }
+  };
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -231,7 +248,7 @@ const Sidebar = () => {
       <div
         id="mobile-sidebar"
         className={`
-          bg-[#234C6A] h-screen w-64 flex flex-col text-white shadow-lg z-30
+          bg-[#0F172A] h-screen w-64 flex flex-col text-white shadow-lg z-30
           fixed left-0 top-0 transform transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0
@@ -239,14 +256,23 @@ const Sidebar = () => {
       >
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-6 border-b border-blue-400/20">
-          <h1 className="text-xl font-bold">Amayalert</h1>
-          <p
-            className={`text-blue-100 text-sm w-fit px-2 rounded-full py-0.5 mt-1 bg-white ${
-              userRole === 'admin' ? 'text-blue-800' : 'text-blue-400'
-            }`}
-          >
-            {userRole === 'admin' ? 'Admin' : userRole === 'sub_admin' ? 'Sub Admin' : 'User'}
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold text-white">Amayaler</h1>
+
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium border
+      ${
+        userRole === 'admin'
+          ? 'bg-purple-100 text-purple-700 border-purple-200'
+          : userRole === 'sub_admin'
+          ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+          : 'bg-slate-100 text-slate-600 border-slate-200'
+      }
+    `}
+            >
+              {userRole === 'admin' ? 'Admin' : userRole === 'sub_admin' ? 'Sub Admin' : 'User'}
+            </span>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -290,6 +316,15 @@ const Sidebar = () => {
                   </li>
                 );
               })}
+              <li key="sign-out">
+                <button
+                  onClick={() => setShowSignOutDialog(true)}
+                  className="flex w-full gap-3 px-4 py-3 transition-all duration-200 hover:bg-red-500/30 hover:translate-x-1"
+                >
+                  <LogOut size={20} className="text-red-500" />
+                  <span className="font-medium text-red-500">Sign Out</span>
+                </button>
+              </li>
             </ul>
           )}
         </nav>
@@ -297,6 +332,27 @@ const Sidebar = () => {
         {/* Footer (kept minimal; sign out moved to Settings) */}
         <div className="flex-shrink-0 px-4 py-4 border-t border-blue-400/20" />
       </div>
+
+      {/* Sign Out Confirmation Dialog */}
+      <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign Out</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to sign out? You will need to log in again to access the admin
+              panel.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSignOutDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
