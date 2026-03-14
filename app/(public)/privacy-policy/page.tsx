@@ -1,167 +1,248 @@
 'use client';
 
+import { AlertCircle, Database, Eye, Lock, Phone, Share2, Shield, UserCheck } from 'lucide-react';
+import { useState } from 'react';
+
 export default function PrivacyPolicyPage() {
+  const [activeSection, setActiveSection] = useState('introduction');
+
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const sections = [
+    { id: 'introduction', title: 'Introduction', icon: Shield },
+    { id: 'data-collection', title: 'Data We Collect', icon: Database },
+    { id: 'data-usage', title: 'How We Use Info', icon: Eye },
+    { id: 'data-sharing', title: 'Information Sharing', icon: Share2 },
+    { id: 'data-security', title: 'Data Security', icon: Lock },
+    { id: 'your-rights', title: 'Your Rights', icon: UserCheck },
+    { id: 'children', title: "Children's Privacy", icon: AlertCircle },
+    { id: 'contact', title: 'Contact Us', icon: Phone },
+  ];
+
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Privacy Policy</h1>
-          <p className="text-sm text-gray-600 mt-1">Last updated: October 9, 2025</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex justify-center">
+          {/* Main Content */}
+          <div className="flex-1 max-w-4xl">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12 space-y-16">
+              <section id="introduction" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Introduction</h2>
+                </div>
+                <div className="prose prose-blue max-w-none">
+                  <p className="text-gray-600 leading-relaxed text-lg mb-4">
+                    Welcome to Amayalert. We are committed to protecting your privacy and ensuring
+                    the security of your personal information while providing emergency services.
+                  </p>
+                  <p className="text-gray-600 leading-relaxed">
+                    This Privacy Policy explains how Amayalert collects, uses, discloses, and
+                    safeguards your information when you use our emergency alert and rescue
+                    coordination mobile application and administrative dashboard.
+                  </p>
+                </div>
+              </section>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded p-6 space-y-8">
-          <section id="introduction">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Introduction</h2>
-            <p className="text-gray-700 leading-relaxed mb-4">
-              Welcome to Amayalert. We are committed to protecting your privacy and ensuring the
-              security of your personal information while providing emergency services.
-            </p>
-            <p className="text-gray-700 leading-relaxed">
-              This Privacy Policy explains how Amayalert collects, uses, discloses, and safeguards
-              your information when you use our emergency alert and rescue coordination mobile
-              application and administrative dashboard.
-            </p>
-          </section>
+              <hr className="border-gray-100" />
 
-          <section id="data-collection">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Information We Collect</h2>
+              <section id="data-collection" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center">
+                    <Database className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Data We Collect</h2>
+                </div>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">Personal Information</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  <li>Full name and contact information</li>
-                  <li>Phone number for SMS alerts</li>
-                  <li>Email address for account management</li>
-                  <li>Profile picture (optional)</li>
-                  <li>Birth date and gender (for emergency response)</li>
-                </ul>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-100 transition-colors">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      Personal Information
+                    </h3>
+                    <ul className="space-y-3">
+                      {[
+                        'Full name and contact info',
+                        'Phone number for SMS alerts',
+                        'Email address for account',
+                        'Optional profile picture',
+                        'Birth date and gender (for EMS)',
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">Location Information</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  <li>GPS coordinates when reporting emergencies</li>
-                  <li>Location data for evacuation center recommendations</li>
-                  <li>Address information you provide</li>
-                </ul>
-              </div>
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-100 transition-colors">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      Location & Emergency
+                    </h3>
+                    <ul className="space-y-3">
+                      {[
+                        'GPS coordinates for reports',
+                        'Location for evacuation info',
+                        'Address information',
+                        'Rescue requests data',
+                        'Responder communications',
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
 
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">Emergency Data</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  <li>Emergency reports and rescue requests</li>
-                  <li>Communication with emergency responders</li>
-                  <li>Evacuation status and check-ins</li>
-                </ul>
-              </div>
-            </div>
-          </section>
+              <hr className="border-gray-100" />
 
-          <section id="data-usage">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">
-              How We Use Your Information
-            </h2>
-            <p className="text-gray-700 mb-4">
-              We use your information exclusively for emergency services and safety purposes:
-            </p>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              <li>Provide emergency alert notifications</li>
-              <li>Coordinate rescue and emergency response operations</li>
-              <li>Send SMS alerts for safety warnings</li>
-              <li>Direct you to nearest evacuation centers</li>
-              <li>Improve our emergency response services</li>
-              <li>Communicate with emergency responders on your behalf</li>
-            </ul>
-          </section>
-
-          <section id="data-sharing">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Information Sharing</h2>
-            <p className="text-gray-700 mb-4">
-              We may share your information only in these specific circumstances:
-            </p>
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-1">Emergency Responders</h3>
-                <p className="text-sm text-gray-700">
-                  Local authorities, rescue teams, and medical personnel during active emergencies
+              <section id="data-usage" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">How We Use Your Information</h2>
+                </div>
+                <p className="text-gray-600 mb-6 text-lg">
+                  We use your information exclusively for emergency services and safety purposes:
                 </p>
-              </div>
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-1">Government Agencies</h3>
-                <p className="text-sm text-gray-700">
-                  Disaster management offices and public safety departments
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {[
+                    'Provide emergency alert notifications',
+                    'Coordinate rescue and emergency operations',
+                    'Send SMS alerts for safety warnings',
+                    'Direct you to nearest evacuation centers',
+                    'Improve emergency response services',
+                    'Communicate with responders on your behalf',
+                  ].map((text, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="text-sm font-medium text-gray-700">{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <hr className="border-gray-100" />
+
+              <section id="data-sharing" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
+                    <Share2 className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Information Sharing</h2>
+                </div>
+                <p className="text-gray-600 mb-8 text-lg">
+                  We may share your information only in these specific circumstances:
                 </p>
-              </div>
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-1">Service Providers</h3>
-                <p className="text-sm text-gray-700">SMS gateway providers for alert delivery</p>
-              </div>
-              <div>
-                <h3 className="text-base font-medium text-gray-800 mb-1">Legal Requirements</h3>
-                <p className="text-sm text-gray-700">
-                  When required by law or to protect public safety
-                </p>
-              </div>
+                <div className="space-y-4">
+                  {[
+                    {
+                      title: 'Emergency Responders',
+                      desc: 'Local authorities, rescue teams, and medical personnel during active emergencies',
+                    },
+                    {
+                      title: 'Government Agencies',
+                      desc: 'Disaster management offices and public safety departments',
+                    },
+                    {
+                      title: 'Service Providers',
+                      desc: 'SMS gateway providers for alert delivery',
+                    },
+                    {
+                      title: 'Legal Requirements',
+                      desc: 'When required by law or to protect public safety',
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 p-5 rounded-xl border border-gray-100 hover:shadow-sm transition-shadow"
+                    >
+                      <h3 className="text-sm font-bold text-gray-900 sm:w-48 flex-shrink-0">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm text-gray-600">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <hr className="border-gray-100" />
+
+              <section id="data-security" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">
+                    <Lock className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Data Security</h2>
+                </div>
+                <div className="bg-purple-50/50 rounded-2xl p-8 border border-purple-100/50">
+                  <p className="text-gray-700 mb-6 font-medium">
+                    We implement comprehensive security measures to protect your personal
+                    information:
+                  </p>
+                  <ul className="space-y-4">
+                    {[
+                      'End-to-end encryption for all data transmission',
+                      'Restricted access controls for authorized personnel only',
+                      '24/7 security monitoring and threat detection',
+                    ].map((item, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-purple-100/30"
+                      >
+                        <Lock className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 font-medium">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
+              <hr className="border-gray-100" />
+
+              <section id="your-rights" className="scroll-mt-32">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 text-cyan-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Your Rights</h2>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {[
+                    'Access your personal information',
+                    'Correct inaccurate information',
+                    'Request deletion (subject to EMS laws)',
+                    'Opt-out of non-emergency comms',
+                  ].map((text, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-cyan-300 transition-colors shadow-sm"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-cyan-50 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-cyan-600">{i + 1}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
-          </section>
-
-          <section id="data-security">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Data Security</h2>
-            <p className="text-gray-700 mb-4">
-              We implement comprehensive security measures to protect your personal information:
-            </p>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              <li>End-to-end encryption for all data transmission</li>
-              <li>Restricted access controls for authorized personnel only</li>
-              <li>24/7 security monitoring and threat detection</li>
-            </ul>
-          </section>
-
-          <section id="your-rights">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your Rights</h2>
-            <p className="text-gray-700 mb-4">You have the right to:</p>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              <li>Access your personal information</li>
-              <li>Correct inaccurate information</li>
-              <li>
-                Request deletion of your information (subject to emergency service requirements)
-              </li>
-              <li>Opt-out of non-emergency communications</li>
-            </ul>
-          </section>
-
-          <section id="children">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Children&apos;s Privacy</h2>
-            <p className="text-gray-700 text-sm">
-              Our service may be used by minors in emergency situations. We collect only minimal
-              information necessary for emergency response and parental consent is obtained when
-              possible.
-            </p>
-          </section>
-
-          <section id="contact">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Contact Us</h2>
-            <p className="text-gray-700 mb-4">
-              If you have questions about this Privacy Policy, please contact us:
-            </p>
-            <div className="space-y-2 text-sm text-gray-700">
-              <div>
-                <span className="font-medium">Email:</span> privacy@amayalert.com
-              </div>
-              <div>
-                <span className="font-medium">Phone:</span> +63 46 123 4567
-              </div>
-              <div>
-                <span className="font-medium">Address:</span> Amayalert Privacy Office, Tanza,
-                Cavite
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
