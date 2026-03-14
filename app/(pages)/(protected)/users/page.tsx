@@ -16,6 +16,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -41,12 +47,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Ban,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Crown,
   Edit,
   Eye,
   Loader2,
+  MoreVertical,
   Plus,
   Save,
   Search,
@@ -324,6 +333,40 @@ export default function UsersPage() {
     }
   };
 
+  const handleSuspendToggle = async (user: User) => {
+    // Prevent suspending own account
+    if (currentUserId && user.id === currentUserId) {
+      toast.error('You cannot suspend your own account.');
+      return;
+    }
+
+    const action = user.suspended ? 'Activate' : 'suspend';
+    if (confirm(`Are you sure you want to ${action} this user?`)) {
+      try {
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
+        const userId = currentUser?.id;
+
+        const response = await usersAPI.updateUser(user.id, {
+          suspended: !user.suspended,
+          userId,
+        });
+
+        if (response.success && response.data) {
+          updateUser(user.id, response.data);
+          toast.success(`User ${action == 'suspend' ? 'suspended' : 'activated'} successfully!`);
+        } else {
+          toast.error(`Failed to ${action} user. Please try again.`);
+          console.error(`Failed to ${action} user:`, response.error);
+        }
+      } catch (error) {
+        toast.error(`An error occurred while ${action}ing the user.`);
+        console.error(`Failed to ${action} user:`, error);
+      }
+    }
+  };
+
   const openCreateModal = () => {
     setEditingUser(null);
     setIsModalOpen(true);
@@ -568,6 +611,11 @@ export default function UsersPage() {
                                         {user.gender}
                                       </Badge>
                                     )}
+                                    {user.suspended && (
+                                      <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
+                                        Suspended
+                                      </Badge>
+                                    )}
                                   </div>
                                   <p className="mb-1 text-xs text-gray-500">{user.email}</p>
                                   <div className="flex items-center gap-2">
@@ -582,45 +630,55 @@ export default function UsersPage() {
                                   </div>
                                 </div>
                                 <div className="flex gap-1 ml-2">
-                                  {user.full_name !== 'Guest User' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openEditModal(user)}
-                                      disabled={currentUserId === user.id}
-                                      className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title={
-                                        currentUserId === user.id
-                                          ? 'Cannot edit your own account'
-                                          : 'Edit user'
-                                      }
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => openUserSheet(user)}
-                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-gray-900"
-                                    title={'View details'}
-                                  >
-                                    <Eye className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(user.id)}
-                                    disabled={currentUserId === user.id}
-                                    className="w-8 h-8 text-gray-600 rounded-full hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={
-                                      currentUserId === user.id
-                                        ? 'Cannot delete your own account'
-                                        : 'Delete user'
-                                    }
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="w-8 h-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreVertical className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      {user.full_name !== 'Guest User' && (
+                                        <DropdownMenuItem
+                                          onClick={() => openEditModal(user)}
+                                          disabled={currentUserId === user.id}
+                                          className="cursor-pointer"
+                                        >
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem
+                                        onClick={() => openUserSheet(user)}
+                                        className="cursor-pointer"
+                                      >
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        View details
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleSuspendToggle(user)}
+                                        disabled={currentUserId === user.id}
+                                        className={`cursor-pointer ${
+                                          user.suspended ? 'text-green-600' : 'text-orange-600'
+                                        }`}
+                                      >
+                                        {user.suspended ? (
+                                          <CheckCircle className="w-4 h-4 mr-2" />
+                                        ) : (
+                                          <Ban className="w-4 h-4 mr-2" />
+                                        )}
+                                        {user.suspended ? 'Unsuspend' : 'Suspend'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleDelete(user.id)}
+                                        disabled={currentUserId === user.id}
+                                        className="text-red-600 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                             </div>
@@ -671,7 +729,14 @@ export default function UsersPage() {
                                     <div className="font-medium text-gray-900">
                                       {user.full_name || 'No Name'}
                                     </div>
-                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-gray-500">{user.email}</span>
+                                      {user.suspended && (
+                                        <Badge className="px-1 py-0 text-[10px] bg-red-100 text-red-800 border-red-300">
+                                          Suspended
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell className="w-[12%]">
@@ -707,45 +772,55 @@ export default function UsersPage() {
                                 </TableCell>
                                 <TableCell className="w-[18%] text-right">
                                   <div className="flex items-center justify-end gap-1 ml-auto">
-                                    {user.full_name !== 'Guest User' && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openEditModal(user)}
-                                        disabled={currentUserId === user.id}
-                                        className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        title={
-                                          currentUserId === user.id
-                                            ? 'Cannot edit your own account'
-                                            : 'Edit user'
-                                        }
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openUserSheet(user)}
-                                      className="w-8 h-8 text-gray-600 hover:text-gray-900"
-                                      title={'View details'}
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDelete(user.id)}
-                                      disabled={currentUserId === user.id}
-                                      className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title={
-                                        currentUserId === user.id
-                                          ? 'Cannot delete your own account'
-                                          : 'Delete user'
-                                      }
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="w-8 h-8 p-0">
+                                          <span className="sr-only">Open menu</span>
+                                          <MoreVertical className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        {user.full_name !== 'Guest User' && (
+                                          <DropdownMenuItem
+                                            onClick={() => openEditModal(user)}
+                                            disabled={currentUserId === user.id}
+                                            className="cursor-pointer"
+                                          >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem
+                                          onClick={() => openUserSheet(user)}
+                                          className="cursor-pointer"
+                                        >
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          View details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleSuspendToggle(user)}
+                                          disabled={currentUserId === user.id}
+                                          className={`cursor-pointer ${
+                                            user.suspended ? 'text-green-600' : 'text-orange-600'
+                                          }`}
+                                        >
+                                          {user.suspended ? (
+                                            <CheckCircle className="w-4 h-4 mr-2" />
+                                          ) : (
+                                            <Ban className="w-4 h-4 mr-2" />
+                                          )}
+                                          {user.suspended ? 'Activate' : 'Suspend'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleDelete(user.id)}
+                                          disabled={currentUserId === user.id}
+                                          className="text-red-600 cursor-pointer"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -847,6 +922,20 @@ export default function UsersPage() {
                       </Badge>
                     ) : (
                       'Not provided'
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Status</div>
+                  <div>
+                    {selectedUser.suspended ? (
+                      <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
+                        Suspended
+                      </Badge>
+                    ) : (
+                      <Badge className="text-xs bg-green-100 text-green-800 border-green-300">
+                        Active
+                      </Badge>
                     )}
                   </div>
                 </div>
