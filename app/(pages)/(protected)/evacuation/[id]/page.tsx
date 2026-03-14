@@ -2,6 +2,7 @@
 import { evacuationAPI, type EvacuationCenter } from '@/app/lib/evacuation-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Map, MapMarker, MarkerContent } from '@/components/ui/map';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Loader2, MapPin, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -187,22 +188,27 @@ export default function EvacuationDetailPage() {
                   <div>
                     <div className="text-sm">{center.address}</div>
                     <Link
-                      href={`https://www.google.com/maps/search/?api=1&query=${center.latitude},${center.longitude}`}
+                      href={`https://www.openstreetmap.org/?mlat=${center.latitude}&mlon=${center.longitude}#map=15/${center.latitude}/${center.longitude}`}
                       target="_blank"
                       className="text-sm text-blue-600 hover:underline"
                     >
-                      Open in Google Maps
+                      Open in OpenStreetMap
                     </Link>
                   </div>
                 </div>
               </div>
-              <iframe
-                title="Evacuation center map"
-                src={`https://www.google.com/maps?q=${center.latitude},${center.longitude}&z=15&output=embed`}
-                className="w-full h-56 md:h-64 border-t"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
+              <div className="h-56 w-full border-t md:h-64">
+                <Map center={[center.longitude, center.latitude]} zoom={15} theme="light">
+                  <MapMarker longitude={center.longitude} latitude={center.latitude}>
+                    <MarkerContent>
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute h-10 w-10 rounded-full bg-red-500/20" />
+                        <div className="h-3 w-3 rounded-full bg-red-500 shadow" />
+                      </div>
+                    </MarkerContent>
+                  </MapMarker>
+                </Map>
+              </div>
             </div>
           </div>
         </div>

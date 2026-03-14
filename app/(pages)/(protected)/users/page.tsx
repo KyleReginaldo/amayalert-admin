@@ -147,6 +147,7 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
+  const [fitSignal, setFitSignal] = useState(0);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -200,7 +201,10 @@ export default function UsersPage() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
   const usersWithLocation = filteredUsers.filter(
-    (u) => typeof u.latitude === 'number' && typeof u.longitude === 'number',
+    (u) =>
+      typeof u.latitude === 'number' &&
+      typeof u.longitude === 'number' &&
+      u.full_name !== 'Guest User',
   ) as Array<User & { latitude: number; longitude: number }>;
 
   // Reset to page 1 when filters change
@@ -509,25 +513,24 @@ export default function UsersPage() {
                     <div className="text-sm text-gray-600">
                       Showing {usersWithLocation.length} users with location
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refreshUsers()}
-                      className="gap-2"
-                      disabled={usersLoading}
-                      title="Refresh user locations"
-                    >
-                      {usersLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>Refresh</>
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFitSignal((value) => value + 1)}
+                        className="gap-2"
+                        disabled={usersWithLocation.length === 0}
+                        title="Center all users on the map"
+                      >
+                        Center all
+                      </Button>
+                    </div>
                   </div>
-                  <UsersLiveMap users={usersWithLocation} onUserClick={(u) => openUserSheet(u)} />
+                  <UsersLiveMap
+                    users={usersWithLocation}
+                    fitSignal={fitSignal}
+                    onUserClick={(u) => openUserSheet(u)}
+                  />
                   {usersWithLocation.length === 0 && (
                     <div className="mt-3 text-sm text-center text-gray-500">
                       No users with location data to display.

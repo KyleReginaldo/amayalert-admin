@@ -27,7 +27,7 @@ export interface EvacuationFilters {
   maxCapacity?: number;
 }
 
-export interface GoogleMapsLocation {
+export interface MapLocation {
   lat: number;
   lng: number;
   address: string;
@@ -180,15 +180,21 @@ class EvacuationAPI {
   }
 
   // Helper method for geocoding address to coordinates
-  async geocodeAddress(address: string): Promise<GoogleMapsLocation | null> {
+  async geocodeAddress(address: string): Promise<MapLocation | null> {
     try {
-      // This would use Google Maps Geocoding API
-      // For now, returning a placeholder - you'll need to implement actual geocoding
-      const response = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(address)}`);
       if (!response.ok) {
         throw new Error('Geocoding failed');
       }
-      return await response.json();
+      const result = await response.json();
+      if (!result?.success || !result?.data?.length) return null;
+      const top = result.data[0];
+      return {
+        lat: top.lat,
+        lng: top.lng,
+        address: top.display_name,
+        placeId: String(top.id),
+      };
     } catch (error) {
       console.error('Error geocoding address:', error);
       return null;
@@ -198,14 +204,13 @@ class EvacuationAPI {
   // Helper method for reverse geocoding coordinates to address
   async reverseGeocode(lat: number, lng: number): Promise<string | null> {
     try {
-      // This would use Google Maps Reverse Geocoding API
-      // For now, returning a placeholder - you'll need to implement actual reverse geocoding
       const response = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
       if (!response.ok) {
         throw new Error('Reverse geocoding failed');
       }
       const result = await response.json();
-      return result.address;
+      if (!result?.success) return null;
+      return result.data?.address || null;
     } catch (error) {
       console.error('Error reverse geocoding:', error);
       return null;

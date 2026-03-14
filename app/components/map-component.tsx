@@ -1,40 +1,19 @@
-/* 
-Since the map was loaded on client side, 
-we need to make this component client rendered as well else error occurs
-*/
 'use client';
 
 import { Button } from '@/components/ui/button';
-//Map component Component from library
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GoogleMap, Marker } from '@react-google-maps/api';
+import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map';
 import { MapPin, Search } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { MapMouseEvent } from 'maplibre-gl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-//Map's styling
-export const defaultMapContainerStyle = {
-  width: '100%',
-  height: '400px',
-  borderRadius: '8px',
-};
-
-const defaultMapCenter = {
-  lat: 14.5995, // Manila, Philippines
+const defaultCenter = {
+  lat: 14.5995,
   lng: 120.9842,
 };
 
-const defaultMapZoom = 13;
-
-const defaultMapOptions = {
-  zoomControl: true,
-  tilt: 0,
-  gestureHandling: 'auto',
-  mapTypeId: 'roadmap',
-  streetViewControl: false,
-  mapTypeControl: false,
-  fullscreenControl: false,
-};
+const defaultZoom = 13;
 
 interface MapComponentProps {
   initialLocation?: { lat: number; lng: number; address?: string };
@@ -43,280 +22,235 @@ interface MapComponentProps {
   className?: string;
 }
 
+type SearchResult = {
+  id: number | string;
+  display_name: string;
+  lat: number;
+  lng: number;
+};
+
+function MapClickHandler({
+  onSelect,
+}: {
+  onSelect: (coords: { lat: number; lng: number }) => void;
+}) {
+  const { map, isLoaded } = useMap();
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    const handler = (event: MapMouseEvent) => {
+      onSelect({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+    };
+
+    map.on('click', handler);
+    return () => {
+      map.off('click', handler);
+    };
+  }, [map, isLoaded, onSelect]);
+
+  return null;
+}
+
+function MapCenterController({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const { map, isLoaded } = useMap();
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    map.easeTo({ center, zoom, duration: 500 });
+  }, [map, isLoaded, center, zoom]);
+
+  return null;
+}
+
 const MapComponent = ({
   initialLocation,
   onLocationSelect,
   height = '400px',
   className = '',
 }: MapComponentProps) => {
-  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(
-    initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : null,
+  const [selectedLocation, setSelectedLocation] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(
+    initialLocation
+      ? {
+          lat: initialLocation.lat,
+          lng: initialLocation.lng,
+          address:
+            initialLocation.address ||
+            `${initialLocation.lat.toFixed(6)}, ${initialLocation.lng.toFixed(6)}`,
+        }
+      : null,
   );
-  const [mapCenter, setMapCenter] = useState(
-    initialLocation ? { lat: initialLocation.lat, lng: initialLocation.lng } : defaultMapCenter,
+  const [mapCenter, setMapCenter] = useState<[number, number]>(
+    initialLocation
+      ? [initialLocation.lng, initialLocation.lat]
+      : [defaultCenter.lng, defaultCenter.lat],
   );
   const [searchValue, setSearchValue] = useState(initialLocation?.address || '');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
-  // Removed hasUserSelected (unused)
+  const suppressSearchRef = useRef(false);
 
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const mapZoom = selectedLocation ? 15 : defaultZoom;
 
-  // Automatically get current location only once on mount if no initial location
-  const ranAutoLocate = useRef(false);
-  useEffect(() => {
-    if (ranAutoLocate.current) return;
-    if (initialLocation) return;
-    if (!navigator.geolocation) return;
-    ranAutoLocate.current = true;
+  const applyLocation = useCallback(
+    (location: { lat: number; lng: number; address: string }) => {
+      suppressSearchRef.current = true;
+      setSelectedLocation(location);
+      setMapCenter([location.lng, location.lat]);
+      setSearchValue(location.address);
+      onLocationSelect?.(location);
+    },
+    [onLocationSelect],
+  );
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+      if (!response.ok) {
+        throw new Error('Reverse geocode failed');
+      }
+      const result = await response.json();
+      return result?.data?.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+  }, []);
+
+  const handleMapSelect = useCallback(
+    async ({ lat, lng }: { lat: number; lng: number }) => {
+      const address = await reverseGeocode(lat, lng);
+      applyLocation({ lat, lng, address });
+      setSearchResults([]);
+    },
+    [applyLocation, reverseGeocode],
+  );
+
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation is not supported by this browser.');
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         setGeoError(null);
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-
-        setSelectedLocation({ lat, lng });
-        setMapCenter({ lat, lng });
-
-        // Wait for geocoder to be available, then reverse geocode
-        const reverseGeocode = async () => {
-          if (geocoderRef.current) {
-            try {
-              const response = await new Promise<google.maps.GeocoderResult[]>(
-                (resolve, reject) => {
-                  geocoderRef.current!.geocode({ location: { lat, lng } }, (results, status) => {
-                    if (status === 'OK' && results) {
-                      resolve(results);
-                    } else {
-                      reject(new Error(status));
-                    }
-                  });
-                },
-              );
-
-              if (response && response[0]) {
-                const address = response[0].formatted_address;
-                // Autofill the address field
-                setSearchValue((prev) => (prev ? prev : address));
-
-                if (onLocationSelect) {
-                  onLocationSelect({ lat, lng, address });
-                }
-              }
-            } catch (error) {
-              console.error('Reverse geocoding failed:', error);
-              if (onLocationSelect) {
-                onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
-              }
-            }
-          } else {
-            // If geocoder is not ready yet, try again after a short delay
-            setTimeout(reverseGeocode, 500);
-          }
-        };
-
-        reverseGeocode();
+        const address = await reverseGeocode(lat, lng);
+        applyLocation({ lat, lng, address });
       },
       (error) => {
         console.error('Error getting current location:', error);
-        setGeoError('Failed to get current location. Please allow location access or try again.');
+        setGeoError('Failed to get current location. Please check permissions.');
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000, // Cache for 1 minute
-      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
-  }, [initialLocation, onLocationSelect]);
+  }, [applyLocation, reverseGeocode]);
 
-  // Initialize geocoder when map loads
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    geocoderRef.current = new google.maps.Geocoder();
-    mapInstanceRef.current = map;
-  }, []);
+  const ranAutoLocate = useRef(false);
+  useEffect(() => {
+    if (ranAutoLocate.current) return;
+    if (initialLocation) return;
+    ranAutoLocate.current = true;
+    getCurrentLocation();
+  }, [getCurrentLocation, initialLocation]);
 
-  // Handle place selection from autocomplete
-  const selectPlace = useCallback(() => {
-    if (!autocompleteRef.current) return;
-    const place = autocompleteRef.current.getPlace();
-    if (!place || !place.geometry?.location) return;
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
-    const address = place.formatted_address || place.name || '';
-    const newLocation = { lat, lng };
-    setSelectedLocation(newLocation);
-    setMapCenter(newLocation);
-    setSearchValue(address);
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.panTo(newLocation);
-      mapInstanceRef.current.setZoom(16);
+  useEffect(() => {
+    if (suppressSearchRef.current) {
+      suppressSearchRef.current = false;
+      return;
     }
-    if (onLocationSelect) onLocationSelect({ lat, lng, address });
-    console.log('Place selected successfully (manual listener):', { lat, lng, address });
-  }, [onLocationSelect]);
 
-  // Initialize native Google Autocomplete manually to avoid Radix Dialog interference
-  useEffect(() => {
-    if (!inputRef.current) return;
-    if (autocompleteRef.current) return; // already initialized
-    if (!window.google?.maps?.places) return; // script not ready yet
-    const ac = new google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: ['ph'] },
-      types: ['establishment', 'geocode'],
-      fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-    });
-    autocompleteRef.current = ac;
-    ac.addListener('place_changed', () => {
-      // defer to allow internal state settle
-      setTimeout(selectPlace, 0);
-    });
-    console.log('Google Autocomplete initialized manually');
-  }, [selectPlace]);
+    const trimmed = searchValue.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setSearchResults([]);
+      setSearchError(null);
+      return;
+    }
 
-  // Fallback handler: sometimes inside modals the native place_changed doesn't fire on click.
-  // We listen for clicks on .pac-item and manually invoke the selection logic after a short delay.
-  // Extra fallback: intercept mousedown on suggestions if place_changed doesn't fire
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && el.closest('.pac-item')) {
-        setTimeout(selectPlace, 120);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        setSearchError(null);
+        const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('Search failed');
+        const result = await response.json();
+        if (!result?.success) throw new Error(result?.error || 'Search failed');
+        setSearchResults(result.data || []);
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') return;
+        console.error('Search error:', error);
+        setSearchError('Failed to search locations.');
+      } finally {
+        setSearchLoading(false);
       }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
     };
-    document.addEventListener('mousedown', handler, true);
-    return () => document.removeEventListener('mousedown', handler, true);
-  }, [selectPlace]);
+  }, [searchValue]);
 
-  // Prevent form submission or dialog close on Enter while selecting suggestions.
-  useEffect(() => {
-    const inputEl = document.getElementById('location-search');
-    if (!inputEl) return;
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        // Let autocomplete handle selection without submitting parent form
-        e.preventDefault();
-      }
-    };
-    inputEl.addEventListener('keydown', keyHandler);
-    return () => inputEl.removeEventListener('keydown', keyHandler);
-  }, []);
-  const onMapClick = useCallback(
-    async (event: google.maps.MapMouseEvent) => {
-      if (event.latLng) {
-        const lat = event.latLng.lat();
-        const lng = event.latLng.lng();
-
-        setSelectedLocation({ lat, lng });
-        // Mark user selection (no-op; state removed)
-
-        // Reverse geocode to get address
-        if (geocoderRef.current) {
-          try {
-            const response = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-              geocoderRef.current!.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results) {
-                  resolve(results);
-                } else {
-                  reject(new Error(status));
-                }
-              });
-            });
-
-            if (response && response[0]) {
-              const address = response[0].formatted_address;
-              setSearchValue(address);
-
-              if (onLocationSelect) {
-                onLocationSelect({ lat, lng, address });
-              }
-            }
-          } catch (error) {
-            console.error('Reverse geocoding failed:', error);
-            // Fallback: still call onLocationSelect with coordinates
-            if (onLocationSelect) {
-              onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
-            }
-          }
-        }
-      }
+  const handleSelectResult = useCallback(
+    (result: SearchResult) => {
+      applyLocation({ lat: result.lat, lng: result.lng, address: result.display_name });
+      setSearchResults([]);
     },
-    [onLocationSelect],
+    [applyLocation],
   );
 
-  // Handle current location
-  const getCurrentLocation = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          setGeoError(null);
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
+  const searchList = useMemo(() => {
+    if (!searchValue.trim() || searchValue.trim().length < 3) return null;
 
-          setSelectedLocation({ lat, lng });
-          setMapCenter({ lat, lng });
-          // Mark user selection (no-op)
-
-          // Reverse geocode to get address
-          if (geocoderRef.current) {
-            try {
-              const response = await new Promise<google.maps.GeocoderResult[]>(
-                (resolve, reject) => {
-                  geocoderRef.current!.geocode({ location: { lat, lng } }, (results, status) => {
-                    if (status === 'OK' && results) {
-                      resolve(results);
-                    } else {
-                      reject(new Error(status));
-                    }
-                  });
-                },
-              );
-
-              if (response && response[0]) {
-                const address = response[0].formatted_address;
-                setSearchValue(address);
-
-                if (onLocationSelect) {
-                  onLocationSelect({ lat, lng, address });
-                }
-              }
-            } catch (error) {
-              console.error('Reverse geocoding failed:', error);
-              if (onLocationSelect) {
-                onLocationSelect({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
-              }
-            }
-          }
-        },
-        (error) => {
-          console.error('Error getting current location:', error);
-          setGeoError('Failed to get current location. Please check permissions.');
-        },
-      );
-    }
-  }, [onLocationSelect]);
-
-  const mapContainerStyle = {
-    ...defaultMapContainerStyle,
-    height,
-  };
+    return (
+      <div className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-md border bg-white shadow-lg">
+        {searchLoading && <div className="px-3 py-2 text-xs text-slate-500">Searching...</div>}
+        {searchError && <div className="px-3 py-2 text-xs text-red-600">{searchError}</div>}
+        {!searchLoading && !searchError && searchResults.length === 0 && (
+          <div className="px-3 py-2 text-xs text-slate-500">No matches found.</div>
+        )}
+        {!searchLoading &&
+          !searchError &&
+          searchResults.map((result) => (
+            <button
+              key={result.id}
+              type="button"
+              onClick={() => handleSelectResult(result)}
+              className="flex w-full items-start gap-2 border-b px-3 py-2 text-left text-sm hover:bg-slate-50 last:border-b-0"
+            >
+              <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
+              <span className="text-slate-700">{result.display_name}</span>
+            </button>
+          ))}
+      </div>
+    );
+  }, [handleSelectResult, searchError, searchLoading, searchResults, searchValue]);
 
   return (
     <div className={`w-full space-y-4 ${className}`}>
       <div className="space-y-2">
         <div className="flex gap-4">
-          <Label htmlFor="location-search">Search Location</Label>{' '}
+          <Label htmlFor="location-search">Search Location</Label>
           <Button
-            size={'sm'}
+            size="sm"
             type="button"
             variant="default"
             onClick={getCurrentLocation}
             className="shrink-0"
           >
-            <MapPin className="w-2 h-2 mr-1" />
-            <p className="text-[12px]">Use Current</p>
+            <MapPin className="mr-1 h-3 w-3" />
+            <span className="text-[12px]">Use Current</span>
           </Button>
         </div>
         {geoError && (
@@ -334,68 +268,66 @@ const MapComponent = ({
             </button>
           </div>
         )}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute w-4 h-4 -translate-y-1/2 pointer-events-none left-3 top-1/2 text-muted-foreground" />
-
-            <Input
-              ref={inputRef}
-              id="location-search"
-              placeholder="Search for a place..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              autoComplete="true"
-              className="pl-10 pac-target-input" // removed z-index!
-            />
-
-            {searchValue && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                className="absolute z-0 -translate-y-1/2 right-2 top-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setSearchValue('');
-                  setSelectedLocation(null);
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="location-search"
+            placeholder="Search for a place..."
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && searchResults.length > 0) {
+                event.preventDefault();
+                handleSelectResult(searchResults[0]);
+              }
+            }}
+            autoComplete="off"
+            className="pl-10"
+          />
+          {searchValue && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setSearchValue('');
+                setSearchResults([]);
+              }}
+            >
+              ×
+            </button>
+          )}
+          {searchList}
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Search for a location above, click on dropdown suggestions, or click on the map to select
-          a point
+          Search for a location, choose a suggestion, or click on the map to select a point.
         </p>
-      </div>{' '}
-      <div className="overflow-hidden border rounded-lg map-container">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={mapCenter}
-          zoom={defaultMapZoom}
-          options={defaultMapOptions}
-          onClick={onMapClick}
-          onLoad={onMapLoad}
-        >
-          {selectedLocation && (
-            <Marker
-              position={selectedLocation}
-              icon={{
-                url:
-                  'data:image/svg+xml;base64,' +
-                  btoa(`
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444"/>
-                  </svg>
-                `),
-                scaledSize: new google.maps.Size(24, 24),
-                anchor: new google.maps.Point(12, 24),
-              }}
-            />
-          )}
-        </GoogleMap>
       </div>
+
+      <div className="overflow-hidden rounded-lg border" style={{ height }}>
+        <Map center={mapCenter} zoom={mapZoom} theme="light">
+          <MapCenterController center={mapCenter} zoom={mapZoom} />
+          <MapClickHandler onSelect={handleMapSelect} />
+          <MapControls position="bottom-right" showLocate={false} />
+          {selectedLocation && (
+            <MapMarker
+              longitude={selectedLocation.lng}
+              latitude={selectedLocation.lat}
+              draggable
+              onDragEnd={(lngLat) => handleMapSelect({ lat: lngLat.lat, lng: lngLat.lng })}
+            >
+              <MarkerContent>
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute h-10 w-10 rounded-full bg-red-500/20" />
+                  <div className="absolute h-4 w-4 rounded-full bg-red-500" />
+                </div>
+              </MarkerContent>
+            </MapMarker>
+          )}
+        </Map>
+      </div>
+
       {selectedLocation && (
         <div className="text-sm text-muted-foreground">
           Selected coordinates: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}

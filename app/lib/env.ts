@@ -1,17 +1,16 @@
 // Centralized environment accessors
 
-export function getGoogleMapsApiKey(): string {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAP || '';
-  return key;
+const DEFAULT_LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const DEFAULT_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+export function getMapStyleUrls() {
+  return {
+    light: process.env.NEXT_PUBLIC_MAP_STYLE_LIGHT_URL || DEFAULT_LIGHT_STYLE,
+    dark: process.env.NEXT_PUBLIC_MAP_STYLE_DARK_URL || DEFAULT_DARK_STYLE,
+  };
 }
 
-export function assertGoogleMapsApiKey(): string {
-  const key = getGoogleMapsApiKey();
-  if (!key) {
-    // Provide a clear runtime error to surface configuration issues quickly
-    throw new Error(
-      'Missing Google Maps API key. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your .env.local file.',
-    );
-  }
-  return key;
+export function getMapStyleUrl(theme: 'light' | 'dark' = 'light') {
+  const urls = getMapStyleUrls();
+  return theme === 'dark' ? urls.dark : urls.light;
 }

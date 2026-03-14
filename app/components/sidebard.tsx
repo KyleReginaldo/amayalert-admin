@@ -257,7 +257,7 @@ const Sidebar = () => {
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-6 border-b border-blue-400/20">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-white">Amayaler</h1>
+            <h1 className="text-lg font-semibold text-white">Amayalert</h1>
 
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium border
@@ -265,8 +265,8 @@ const Sidebar = () => {
         userRole === 'admin'
           ? 'bg-purple-100 text-purple-700 border-purple-200'
           : userRole === 'sub_admin'
-          ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-          : 'bg-slate-100 text-slate-600 border-slate-200'
+            ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+            : 'bg-slate-100 text-slate-600 border-slate-200'
       }
     `}
             >

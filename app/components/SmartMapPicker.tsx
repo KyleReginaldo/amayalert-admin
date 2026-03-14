@@ -3,7 +3,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
-import { MapProvider } from '../providers/map-provider';
 import { MapComponent } from './map-component';
 
 interface SmartMapPickerProps {
@@ -21,32 +20,29 @@ export default function SmartMapPicker({
 }: SmartMapPickerProps) {
   const [hasError] = useState(false);
 
-  // If Google Maps fails, show error and fallback to OpenStreetMap
+  // If map fails, show error and fallback to a text-only prompt
   if (hasError) {
     return (
       <div className={`space-y-4 ${className}`}>
         <Alert className="border-red-200 bg-red-50">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            Google Maps failed to load. This might be due to API key issues, network problems, or
-            billing restrictions. Using OpenStreetMap as fallback.
+            The map failed to load. This might be due to network problems or map tile availability.
+            Please try again or use manual entry.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // Use the MapProvider with the enhanced MapComponent
   return (
     <div className={className}>
-      <MapProvider>
-        <MapComponent
-          initialLocation={initialLocation}
-          onLocationSelect={onLocationSelect}
-          height={height}
-          className="w-full border-none"
-        />
-      </MapProvider>
+      <MapComponent
+        initialLocation={initialLocation}
+        onLocationSelect={onLocationSelect}
+        height={height}
+        className="w-full border-none"
+      />
     </div>
   );
 }
