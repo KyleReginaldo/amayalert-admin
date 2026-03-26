@@ -49,53 +49,53 @@ export default function ChatPage() {
     const lastMsgTimes: Record<string, string> = {};
     const lastMsgPreview: Record<string, string> = {};
 
-    // Get all users except current admin
-    const usersToCheck = users.filter((u) => u.id !== currentUserId);
+    // Fetch all unread messages sent TO admin in one query
+    const { data: unreadMessages } = await supabase
+      .from('messages')
+      .select('sender')
+      .eq('receiver', currentUserId)
+      .is('seen_at', null);
 
-    for (const user of usersToCheck) {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('id')
-        .eq('sender', user.id)
-        .eq('receiver', currentUserId)
-        .is('seen_at', null);
-
-      if (!error && data) {
-        unreadCountsMap[user.id] = data.length;
+    if (unreadMessages) {
+      for (const msg of unreadMessages) {
+        unreadCountsMap[msg.sender] = (unreadCountsMap[msg.sender] || 0) + 1;
       }
+    }
 
-      // Fetch last message for sorting and preview
-      const { data: lastMsg } = await supabase
-        .from('messages')
-        .select('created_at, content, sender, attachment_url')
-        .or(
-          `and(sender.eq.${currentUserId},receiver.eq.${user.id}),and(sender.eq.${user.id},receiver.eq.${currentUserId})`,
-        )
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+    // Fetch all messages involving admin, ordered by most recent, to get last message per user
+    const { data: allMessages } = await supabase
+      .from('messages')
+      .select('created_at, content, sender, receiver, attachment_url')
+      .or(`sender.eq.${currentUserId},receiver.eq.${currentUserId}`)
+      .order('created_at', { ascending: false });
 
-      if (lastMsg) {
-        lastMsgTimes[user.id] = lastMsg.created_at;
-        const isMe = lastMsg.sender === currentUserId;
+    if (allMessages) {
+      const seen = new Set<string>();
+      for (const msg of allMessages) {
+        const otherUserId = msg.sender === currentUserId ? msg.receiver : msg.sender;
+        if (seen.has(otherUserId)) continue;
+        seen.add(otherUserId);
+
+        lastMsgTimes[otherUserId] = msg.created_at;
+        const isMe = msg.sender === currentUserId;
         const prefix = isMe ? 'You: ' : '';
-        lastMsgPreview[user.id] = lastMsg.attachment_url
+        lastMsgPreview[otherUserId] = msg.attachment_url
           ? `${prefix}Sent an image`
-          : `${prefix}${lastMsg.content}`;
+          : `${prefix}${msg.content}`;
       }
     }
 
     setUnreadCounts(unreadCountsMap);
     setLastMessageTimes(lastMsgTimes);
     setLastMessagePreviews(lastMsgPreview);
-  }, [currentUserId, users]);
+  }, [currentUserId]);
 
-  // Fetch unread counts when current user is set or users change
+  // Fetch unread counts when current user is set
   useEffect(() => {
-    if (currentUserId && users.length > 0) {
+    if (currentUserId) {
       fetchUnreadCounts();
     }
-  }, [currentUserId, users, fetchUnreadCounts]);
+  }, [currentUserId, fetchUnreadCounts]);
 
   // Ensure users are loaded
   useEffect(() => {
@@ -183,7 +183,9 @@ export default function ChatPage() {
           const prefix = isMe ? 'You: ' : '';
           setLastMessagePreviews((prev) => ({
             ...prev,
-            [otherUserId]: row.attachment_url ? `${prefix}Sent an image` : `${prefix}${row.content}`,
+            [otherUserId]: row.attachment_url
+              ? `${prefix}Sent an image`
+              : `${prefix}${row.content}`,
           }));
 
           // If this is a new message to admin from a user
@@ -390,7 +392,9 @@ export default function ChatPage() {
 
         <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
           {/* Left: Users list — hidden on mobile when a conversation is open */}
-          <div className={`flex flex-col overflow-hidden bg-white border rounded-lg ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
+          <div
+            className={`flex flex-col overflow-hidden bg-white border rounded-lg ${selectedUser ? 'hidden md:flex' : 'flex'}`}
+          >
             <div className="p-3 border-b">
               <div className="relative">
                 <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
@@ -433,9 +437,7 @@ export default function ChatPage() {
                           type="button"
                           onClick={() => setSelectedUser(u)}
                           className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                            selectedUser?.id === u.id
-                              ? 'bg-blue-50'
-                              : 'hover:bg-gray-50'
+                            selectedUser?.id === u.id ? 'bg-blue-50' : 'hover:bg-gray-50'
                           }`}
                         >
                           <div className="relative flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full shrink-0">
@@ -454,17 +456,23 @@ export default function ChatPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}`}>
+                              <span
+                                className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}`}
+                              >
                                 {u.full_name}
                               </span>
                               {timeLabel && (
-                                <span className={`text-xs shrink-0 ${hasUnread ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}>
+                                <span
+                                  className={`text-xs shrink-0 ${hasUnread ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}
+                                >
                                   {timeLabel}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs truncate ${hasUnread ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
+                              <span
+                                className={`text-xs truncate ${hasUnread ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                              >
                                 {preview || u.email}
                               </span>
                               {hasUnread && (
@@ -484,7 +492,9 @@ export default function ChatPage() {
           </div>
 
           {/* Right: Conversation — hidden on mobile when no user is selected */}
-          <div className={`flex flex-col h-full overflow-hidden bg-white border rounded-lg md:col-span-2 ${selectedUser ? 'flex' : 'hidden md:flex'}`}>
+          <div
+            className={`flex flex-col h-full overflow-hidden bg-white border rounded-lg md:col-span-2 ${selectedUser ? 'flex' : 'hidden md:flex'}`}
+          >
             <ConversationHeader />
 
             {/* Messages */}
