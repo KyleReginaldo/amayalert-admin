@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Call OneSignal API from server (no CORS issues)
     const payload = {
-      app_id: '1811210d-e4b7-4304-8cd5-3de7a1da8e26',
+      app_id: process.env.ONESIGNAL_APP_ID,
       contents: {
         en: message,
       },
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.onesignal.com/notifications?c=push', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        Authorization: `Bearer Key ${process.env.ONESIGNAL_API_KEY}`,
+        'Content-Type': 'application/json',
+        Authorization: `Key ${process.env.ONESIGNAL_API_KEY}`,
       },
       body: JSON.stringify(payload),
     });

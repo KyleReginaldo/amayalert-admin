@@ -6,12 +6,14 @@ import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AlertProvider } from './components/alert-context';
+import { NotificationCenter } from './components/notification-center';
 import Sidebar, { SidebarProvider, useSidebar } from './components/sidebard';
 import './globals.css';
 import { AlertsProvider } from './providers/alerts-provider';
 import { ChatProvider } from './providers/chat-provider';
 import { DataProvider } from './providers/data-provider';
 import { EvacuationProvider } from './providers/evacuation-provider';
+import { NotificationProvider } from './providers/notification-provider';
 import { RescueProvider } from './providers/rescue-provider';
 
 // Global Mobile Header Component
@@ -40,6 +42,9 @@ function GlobalMobileHeader() {
             <Menu className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold text-gray-900">{getPageTitle(pathname || '')}</h1>
+          <div className="ml-auto">
+            <NotificationCenter />
+          </div>
         </div>
       </div>
     </div>
@@ -144,21 +149,28 @@ export default function RootLayout({
             <EvacuationProvider>
               <RescueProvider>
                 <ChatProvider>
-                  <AlertProvider>
-                    <SidebarProvider>
-                      {!shouldHideAdminLayout && <Sidebar />}
-                      <main
-                        className={`${
-                          shouldHideAdminLayout
-                            ? 'min-h-screen w-full'
-                            : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
-                        }`}
-                      >
-                        {!shouldHideAdminLayout && <GlobalMobileHeader />}
-                        {children}
-                      </main>
-                    </SidebarProvider>
-                  </AlertProvider>
+                  <NotificationProvider>
+                    <AlertProvider>
+                      <SidebarProvider>
+                        {!shouldHideAdminLayout && <Sidebar />}
+                        <main
+                          className={`${
+                            shouldHideAdminLayout
+                              ? 'min-h-screen w-full'
+                              : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
+                          }`}
+                        >
+                          {!shouldHideAdminLayout && <GlobalMobileHeader />}
+                          {!shouldHideAdminLayout && (
+                            <div className="sticky top-0 z-10 items-center justify-end hidden px-6 py-2 bg-white border-b shadow-sm md:flex">
+                              <NotificationCenter />
+                            </div>
+                          )}
+                          {children}
+                        </main>
+                      </SidebarProvider>
+                    </AlertProvider>
+                  </NotificationProvider>
                 </ChatProvider>
               </RescueProvider>
             </EvacuationProvider>

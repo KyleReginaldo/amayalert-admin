@@ -222,14 +222,22 @@ export default function AdminsPage() {
       if (response.success && response.data) {
         addUser(response.data);
         setIsModalOpen(false);
-        alert(
-          `✅ Admin created successfully!\n\n` +
-            `An email has been sent to ${userData.email} with:\n` +
-            `• Login credentials\n` +
-            `• Sign-in link\n` +
-            `• Module access details\n\n` +
-            `The new admin can now access the system.`,
-        );
+        if (response.emailSent === false) {
+          alert(
+            `⚠️ Admin created, but the welcome email failed to send.\n\n` +
+              `Please manually share the login credentials with ${userData.email}.\n` +
+              `Reason: ${response.message}`,
+          );
+        } else {
+          alert(
+            `✅ Admin created successfully!\n\n` +
+              `An email has been sent to ${userData.email} with:\n` +
+              `• Login credentials\n` +
+              `• Sign-in link\n` +
+              `• Module access details\n\n` +
+              `The new admin can now access the system.`,
+          );
+        }
       } else {
         console.error('Failed to create admin:', response.error);
         alert(`Failed to create admin: ${response.error}`);

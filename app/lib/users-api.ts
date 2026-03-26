@@ -16,6 +16,7 @@ export interface ApiResponse<T> {
   message?: string;
   error?: string;
   total?: number;
+  emailSent?: boolean;
 }
 
 export interface UserFilters {

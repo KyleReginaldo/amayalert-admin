@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Database } from '@/database.types';
-import { Loader2, Paperclip, Search, Send, User as UserIcon, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, Search, Send, User as UserIcon, X } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -25,6 +25,8 @@ export default function ChatPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, string>>({});
+  const [lastMessagePreviews, setLastMessagePreviews] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -39,11 +41,13 @@ export default function ChatPage() {
     getCurrentUser();
   }, []);
 
-  // Function to fetch unread message counts for all users
+  // Function to fetch unread message counts and last message times for all users
   const fetchUnreadCounts = useCallback(async () => {
     if (!currentUserId) return;
 
     const unreadCountsMap: Record<string, number> = {};
+    const lastMsgTimes: Record<string, string> = {};
+    const lastMsgPreview: Record<string, string> = {};
 
     // Get all users except current admin
     const usersToCheck = users.filter((u) => u.id !== currentUserId);
@@ -59,9 +63,31 @@ export default function ChatPage() {
       if (!error && data) {
         unreadCountsMap[user.id] = data.length;
       }
+
+      // Fetch last message for sorting and preview
+      const { data: lastMsg } = await supabase
+        .from('messages')
+        .select('created_at, content, sender, attachment_url')
+        .or(
+          `and(sender.eq.${currentUserId},receiver.eq.${user.id}),and(sender.eq.${user.id},receiver.eq.${currentUserId})`,
+        )
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (lastMsg) {
+        lastMsgTimes[user.id] = lastMsg.created_at;
+        const isMe = lastMsg.sender === currentUserId;
+        const prefix = isMe ? 'You: ' : '';
+        lastMsgPreview[user.id] = lastMsg.attachment_url
+          ? `${prefix}Sent an image`
+          : `${prefix}${lastMsg.content}`;
+      }
     }
 
     setUnreadCounts(unreadCountsMap);
+    setLastMessageTimes(lastMsgTimes);
+    setLastMessagePreviews(lastMsgPreview);
   }, [currentUserId, users]);
 
   // Fetch unread counts when current user is set or users change
@@ -88,8 +114,16 @@ export default function ChatPage() {
           (v) => v?.toLowerCase().includes(s) && !v?.toLowerCase().includes('guest'),
         ),
       )
-      .sort((a, b) => a.full_name.localeCompare(b.full_name));
-  }, [users, search, currentUserId]);
+      .sort((a, b) => {
+        const timeA = lastMessageTimes[a.id] || '';
+        const timeB = lastMessageTimes[b.id] || '';
+        // Users with messages first (most recent on top), then alphabetical for those without
+        if (timeA && timeB) return timeB.localeCompare(timeA);
+        if (timeA) return -1;
+        if (timeB) return 1;
+        return a.full_name.localeCompare(b.full_name);
+      });
+  }, [users, search, currentUserId, lastMessageTimes]);
 
   // Fetch conversation when selected user changes
   useEffect(() => {
@@ -111,7 +145,9 @@ export default function ChatPage() {
         await supabase
           .from('messages')
           .update({ seen_at: new Date().toISOString() })
-          .or(`and(sender.eq.${selectedUser.id},receiver.eq.${currentUserId},seen_at.is.null)`);
+          .eq('sender', selectedUser.id)
+          .eq('receiver', currentUserId)
+          .is('seen_at', null);
 
         // Update unread count for this user to 0
         setUnreadCounts((prev) => ({
@@ -137,6 +173,19 @@ export default function ChatPage() {
         const involvesAdmin = row.sender === currentUserId || row.receiver === currentUserId;
 
         if (payload.eventType === 'INSERT') {
+          // Update last message time and preview for sorting
+          const otherUserId = row.sender === currentUserId ? row.receiver : row.sender;
+          setLastMessageTimes((prev) => ({
+            ...prev,
+            [otherUserId]: row.created_at,
+          }));
+          const isMe = row.sender === currentUserId;
+          const prefix = isMe ? 'You: ' : '';
+          setLastMessagePreviews((prev) => ({
+            ...prev,
+            [otherUserId]: row.attachment_url ? `${prefix}Sent an image` : `${prefix}${row.content}`,
+          }));
+
           // If this is a new message to admin from a user
           if (row.receiver === currentUserId && row.sender !== currentUserId) {
             // Update unread count for this user
@@ -158,7 +207,8 @@ export default function ChatPage() {
               supabase
                 .from('messages')
                 .update({ seen_at: new Date().toISOString() })
-                .eq('id', row.id);
+                .eq('id', row.id)
+                .then();
 
               // Update unread count for this user to 0 since we're viewing the conversation
               setUnreadCounts((prev) => ({
@@ -300,6 +350,13 @@ export default function ChatPage() {
     <div className="px-4 py-3 bg-white border-b">
       {selectedUser ? (
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSelectedUser(null)}
+            className="p-1 rounded-md md:hidden hover:bg-gray-100"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
           <div className="flex items-center justify-center bg-blue-100 rounded-full h-9 w-9">
             {selectedUser.profile_picture ? (
               <img
@@ -326,14 +383,14 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
-      <div className="mx-auto max-w-7xl h-[calc(100vh-120px)]">
+    <div className="h-[calc(100vh-57px)] md:h-[calc(100vh-41px)] p-4 bg-gray-50 md:bg-background md:p-6 overflow-hidden">
+      <div className="mx-auto max-w-7xl h-full">
         {/* Header */}
         {/* <PageHeader title="Admin Chat" subtitle="Chat with users in real-time" /> */}
 
         <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Left: Users list */}
-          <div className="flex flex-col overflow-hidden bg-white border rounded-lg">
+          {/* Left: Users list — hidden on mobile when a conversation is open */}
+          <div className={`flex flex-col overflow-hidden bg-white border rounded-lg ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
             <div className="p-3 border-b">
               <div className="relative">
                 <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
@@ -346,62 +403,88 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="flex-none overflow-auto h-fit">
+            <div className="flex-1 overflow-auto min-h-0">
               {usersLoading ? (
                 <div className="p-4 text-sm text-gray-500">Loading users...</div>
               ) : filteredUsers.length === 0 ? (
                 <div className="p-4 text-sm text-gray-500">No users found</div>
               ) : (
-                <ul className="flex flex-row flex-wrap gap-2 p-3 md:flex-col md:divide-y md:gap-0 md:p-0">
-                  {filteredUsers.map((u) => (
-                    <li key={u.id} className="md:w-full">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUser(u)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors md:w-full md:rounded-none md:border-0 md:p-3 md:text-left ${
-                          selectedUser?.id === u.id
-                            ? 'bg-blue-100 border-blue-300 md:bg-blue-50'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100 md:bg-transparent md:hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="relative flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full md:h-9 md:w-9 shrink-0">
-                          {u.profile_picture ? (
-                            <img
-                              src={u.profile_picture}
-                              alt={u.full_name}
-                              className="w-8 h-8 rounded-full md:h-9 md:w-9"
-                            />
-                          ) : (
-                            <UserIcon className="w-4 h-4 text-gray-600 md:w-5 md:h-5" />
-                          )}
-                          {unreadCounts[u.id] > 0 && (
-                            <span className="absolute flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full -top-1 -right-1 md:hidden">
-                              {unreadCounts[u.id]}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 hidden min-w-0 md:block">
-                          <div className="font-medium text-gray-900 truncate">{u.full_name}</div>
-                          <div className="text-xs text-gray-500 truncate">{u.email}</div>
-                        </div>
-                        <span className="text-xs font-medium text-gray-700 md:hidden truncate max-w-[80px]">
-                          {u.full_name.split(' ')[0]}
-                        </span>
-                        {unreadCounts[u.id] > 0 && (
-                          <Badge className="hidden md:flex bg-red-500 text-white text-xs min-w-[20px] h-5 items-center justify-center rounded-full">
-                            {unreadCounts[u.id]}
-                          </Badge>
-                        )}
-                      </button>
-                    </li>
-                  ))}
+                <ul className="divide-y">
+                  {filteredUsers.map((u) => {
+                    const hasUnread = unreadCounts[u.id] > 0;
+                    const preview = lastMessagePreviews[u.id];
+                    const time = lastMessageTimes[u.id];
+                    const timeLabel = time
+                      ? (() => {
+                          const diff = Date.now() - new Date(time).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          if (mins < 1) return 'Now';
+                          if (mins < 60) return `${mins}m`;
+                          const hrs = Math.floor(mins / 60);
+                          if (hrs < 24) return `${hrs}h`;
+                          const days = Math.floor(hrs / 24);
+                          return `${days}d`;
+                        })()
+                      : '';
+
+                    return (
+                      <li key={u.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUser(u)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            selectedUser?.id === u.id
+                              ? 'bg-blue-50'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="relative flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full shrink-0">
+                            {u.profile_picture ? (
+                              <img
+                                src={u.profile_picture}
+                                alt={u.full_name}
+                                className="object-cover w-12 h-12 rounded-full"
+                              />
+                            ) : (
+                              <UserIcon className="w-6 h-6 text-gray-500" />
+                            )}
+                            {hasUnread && (
+                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 border-2 border-white rounded-full" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}`}>
+                                {u.full_name}
+                              </span>
+                              {timeLabel && (
+                                <span className={`text-xs shrink-0 ${hasUnread ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}>
+                                  {timeLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs truncate ${hasUnread ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
+                                {preview || u.email}
+                              </span>
+                              {hasUnread && (
+                                <Badge className="bg-blue-500 text-white text-[10px] min-w-[20px] h-5 flex items-center justify-center rounded-full shrink-0">
+                                  {unreadCounts[u.id]}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
           </div>
 
-          {/* Right: Conversation */}
-          <div className="flex flex-col h-full overflow-hidden bg-white border rounded-lg md:col-span-2">
+          {/* Right: Conversation — hidden on mobile when no user is selected */}
+          <div className={`flex flex-col h-full overflow-hidden bg-white border rounded-lg md:col-span-2 ${selectedUser ? 'flex' : 'hidden md:flex'}`}>
             <ConversationHeader />
 
             {/* Messages */}

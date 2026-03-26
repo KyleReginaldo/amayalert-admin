@@ -189,8 +189,10 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { userId: _userId, ...insertBody } = body;
     const userData: UserInsert = {
-      ...body,
+      ...insertBody,
       phone_number:
         body.phone_number && body.phone_number.trim() !== '' ? body.phone_number.trim() : '',
       // Ensure we have a valid UUID for the ID
@@ -233,8 +235,8 @@ export async function POST(request: NextRequest) {
             ${
               body.role === 'sub_admin' ? 'An administrator' : 'Your account'
             } has been created for you on the Amayalert ${
-      body.role === 'sub_admin' ? 'Admin' : ''
-    } platform. 
+              body.role === 'sub_admin' ? 'Admin' : ''
+            } platform. 
             Below are your login credentials:
           </p>
 
@@ -340,7 +342,7 @@ Please do not reply to this email.
 © ${new Date().getFullYear()} Amayalert. All rights reserved.
     `;
 
-    await emailService.sendEmail({
+    const emailResult = await emailService.sendEmail({
       to: body.email,
       subject:
         body.role === 'sub_admin'
@@ -360,7 +362,10 @@ Please do not reply to this email.
     return NextResponse.json({
       success: true,
       data: user,
-      message: 'User created successfully. Welcome email sent.',
+      emailSent: emailResult.success,
+      message: emailResult.success
+        ? 'User created successfully. Welcome email sent.'
+        : `User created successfully, but failed to send welcome email: ${emailResult.error}`,
     } as ApiResponse<User>);
   } catch (error) {
     console.error('Unexpected error in POST /api/users:', error);
