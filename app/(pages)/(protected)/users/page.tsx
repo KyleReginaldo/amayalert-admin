@@ -20,6 +20,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -49,11 +53,14 @@ import {
 import {
   Ban,
   CheckCircle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Crown,
   Edit,
   Eye,
+  ListFilter,
   Loader2,
   MoreVertical,
   Plus,
@@ -62,6 +69,7 @@ import {
   Trash2,
   UserCheck,
   Users as UsersIcon,
+  XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -164,6 +172,7 @@ export default function UsersPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [statusLoading, setStatusLoading] = useState<{ userId: string; status: string } | null>(null);
 
   // Load users on component mount
   useEffect(() => {
@@ -290,9 +299,7 @@ export default function UsersPage() {
         setEditingUser(null);
         toast.success('User updated successfully!');
       } else {
-        // Show user-friendly error message
-        const errorMsg = response.message || response.error || 'Failed to update user';
-        toast.error('Failed to update user');
+        toast.error(response.message || response.error || 'Failed to update user');
         console.error('Failed to update user:', response.error);
       }
     } catch (error) {
@@ -365,6 +372,45 @@ export default function UsersPage() {
         console.error(`Failed to ${action} user:`, error);
       }
     }
+  };
+
+  const handleStatusChange = async (user: User, status: 'pending' | 'approved' | 'rejected') => {
+    setStatusLoading({ userId: user.id, status });
+    try {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      const userId = currentUser?.id;
+
+      const response = await usersAPI.updateUser(user.id, { status, userId });
+
+      if (response.success && response.data) {
+        updateUser(user.id, response.data);
+        if (selectedUser?.id === user.id) setSelectedUser(response.data);
+        toast.success(`User status changed to ${status}.`);
+      } else {
+        toast.error('Failed to change user status. Please try again.');
+      }
+    } catch (error) {
+      toast.error('An error occurred while changing user status.');
+      console.error('Failed to change user status:', error);
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
+  const getStatusBadge = (status: 'pending' | 'approved' | 'rejected' | null | undefined) => {
+    if (!status) return null;
+    const styles = {
+      pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      approved: 'bg-green-50 text-green-700 border-green-200',
+      rejected: 'bg-red-50 text-red-700 border-red-200',
+    };
+    return (
+      <Badge className={`text-xs capitalize ${styles[status]}`}>
+        {status}
+      </Badge>
+    );
   };
 
   const openCreateModal = () => {
@@ -616,6 +662,7 @@ export default function UsersPage() {
                                         Suspended
                                       </Badge>
                                     )}
+                                    {getStatusBadge(user.status)}
                                   </div>
                                   <p className="mb-1 text-xs text-gray-500">{user.email}</p>
                                   <div className="flex items-center gap-2">
@@ -669,6 +716,58 @@ export default function UsersPage() {
                                         )}
                                         {user.suspended ? 'Unsuspend' : 'Suspend'}
                                       </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger className="cursor-pointer">
+                                          <ListFilter className="w-4 h-4 mr-2" />
+                                          Change Status
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent>
+                                          {user.status !== 'pending' && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleStatusChange(user, 'pending')}
+                                              disabled={statusLoading !== null}
+                                              className="cursor-pointer text-yellow-600"
+                                            >
+                                              {statusLoading?.userId === user.id && statusLoading?.status === 'pending' ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <Clock className="w-4 h-4 mr-2" />
+                                              )}
+                                              Pending
+                                            </DropdownMenuItem>
+                                          )}
+                                          {user.status !== 'approved' && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleStatusChange(user, 'approved')}
+                                              disabled={statusLoading !== null}
+                                              className="cursor-pointer text-green-600"
+                                            >
+                                              {statusLoading?.userId === user.id && statusLoading?.status === 'approved' ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                              )}
+                                              Approved
+                                            </DropdownMenuItem>
+                                          )}
+                                          {user.status !== 'rejected' && user.status !== 'approved' && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleStatusChange(user, 'rejected')}
+                                              disabled={statusLoading !== null}
+                                              className="cursor-pointer text-red-600"
+                                            >
+                                              {statusLoading?.userId === user.id && statusLoading?.status === 'rejected' ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <XCircle className="w-4 h-4 mr-2" />
+                                              )}
+                                              Rejected
+                                            </DropdownMenuItem>
+                                          )}
+                                        </DropdownMenuSubContent>
+                                      </DropdownMenuSub>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         onClick={() => handleDelete(user.id)}
                                         disabled={currentUserId === user.id}
@@ -699,20 +798,23 @@ export default function UsersPage() {
                       <Table className="w-full table-fixed">
                         <TableHeader>
                           <TableRow className="bg-gray-50 border-b border-gray-100">
-                            <TableHead className="w-[28%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[24%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               User
                             </TableHead>
-                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[11%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Role
                             </TableHead>
-                            <TableHead className="w-[10%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[9%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Gender
                             </TableHead>
-                            <TableHead className="w-[16%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[14%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Phone
                             </TableHead>
-                            <TableHead className="w-[16%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Joined
+                            </TableHead>
+                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              Status
                             </TableHead>
                             <TableHead className="w-[18%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
                               Actions
@@ -724,7 +826,7 @@ export default function UsersPage() {
                             const RoleIcon = getRoleIcon(user.role);
                             return (
                               <TableRow key={user.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
-                                <TableCell className="w-[28%]">
+                                <TableCell className="w-[24%]">
                                   <div>
                                     <div className="font-medium text-gray-900">
                                       {user.full_name || 'No Name'}
@@ -739,13 +841,13 @@ export default function UsersPage() {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="w-[12%]">
+                                <TableCell className="w-[11%]">
                                   <Badge className={`${getRoleColor(user.role)} text-xs`}>
                                     <RoleIcon className="w-3 h-3 mr-1" />
                                     {user.role || 'user'}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="w-[10%]">
+                                <TableCell className="w-[9%]">
                                   {user.gender ? (
                                     <Badge
                                       className={`text-xs ${
@@ -760,15 +862,20 @@ export default function UsersPage() {
                                     <span className="text-sm text-gray-400">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="w-[16%] text-gray-600">
+                                <TableCell className="w-[14%] text-gray-600">
                                   <div className="text-sm">
                                     {user.phone_number || 'Not provided'}
                                   </div>
                                 </TableCell>
-                                <TableCell className="w-[16%] text-gray-600">
+                                <TableCell className="w-[12%] text-gray-600">
                                   <div className="text-sm">
                                     {new Date(user.created_at).toLocaleDateString()}
                                   </div>
+                                </TableCell>
+                                <TableCell className="w-[12%]">
+                                  {getStatusBadge(user.status) ?? (
+                                    <span className="text-sm text-gray-400">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="w-[18%] text-right">
                                   <div className="flex items-center justify-end gap-1 ml-auto">
@@ -811,6 +918,58 @@ export default function UsersPage() {
                                           )}
                                           {user.suspended ? 'Activate' : 'Suspend'}
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuSub>
+                                          <DropdownMenuSubTrigger className="cursor-pointer">
+                                            <ListFilter className="w-4 h-4 mr-2" />
+                                            Change Status
+                                          </DropdownMenuSubTrigger>
+                                          <DropdownMenuSubContent>
+                                            {user.status !== 'pending' && (
+                                              <DropdownMenuItem
+                                                onClick={() => handleStatusChange(user, 'pending')}
+                                                disabled={statusLoading !== null}
+                                                className="cursor-pointer text-yellow-600"
+                                              >
+                                                {statusLoading?.userId === user.id && statusLoading?.status === 'pending' ? (
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                  <Clock className="w-4 h-4 mr-2" />
+                                                )}
+                                                Pending
+                                              </DropdownMenuItem>
+                                            )}
+                                            {user.status !== 'approved' && (
+                                              <DropdownMenuItem
+                                                onClick={() => handleStatusChange(user, 'approved')}
+                                                disabled={statusLoading !== null}
+                                                className="cursor-pointer text-green-600"
+                                              >
+                                                {statusLoading?.userId === user.id && statusLoading?.status === 'approved' ? (
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                )}
+                                                Approved
+                                              </DropdownMenuItem>
+                                            )}
+                                            {user.status !== 'rejected' && user.status !== 'approved' && (
+                                              <DropdownMenuItem
+                                                onClick={() => handleStatusChange(user, 'rejected')}
+                                                disabled={statusLoading !== null}
+                                                className="cursor-pointer text-red-600"
+                                              >
+                                                {statusLoading?.userId === user.id && statusLoading?.status === 'rejected' ? (
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                  <XCircle className="w-4 h-4 mr-2" />
+                                                )}
+                                                Rejected
+                                              </DropdownMenuItem>
+                                            )}
+                                          </DropdownMenuSubContent>
+                                        </DropdownMenuSub>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                           onClick={() => handleDelete(user.id)}
                                           disabled={currentUserId === user.id}
@@ -927,7 +1086,7 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Status</div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     {selectedUser.suspended ? (
                       <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
                         Suspended
@@ -937,15 +1096,26 @@ export default function UsersPage() {
                         Active
                       </Badge>
                     )}
+                    {getStatusBadge(selectedUser.status)}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Joined</div>
                   <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
                 </div>
+                {selectedUser.id_picture && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">ID Picture</div>
+                    <img
+                      src={selectedUser.id_picture}
+                      alt="User ID"
+                      className="w-full rounded-lg border border-gray-200 object-cover max-h-64"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="flex justify-end gap-2 mt-4 flex-wrap">
                 <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
                   Close
                 </Button>
@@ -963,6 +1133,34 @@ export default function UsersPage() {
                     }
                   >
                     Edit
+                  </Button>
+                )}
+                {selectedUser.status !== 'approved' && (
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => handleStatusChange(selectedUser, 'approved')}
+                    disabled={statusLoading !== null}
+                  >
+                    {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'approved' ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                    )}
+                    Approve
+                  </Button>
+                )}
+                {selectedUser.status !== 'rejected' && selectedUser.status !== 'approved' && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleStatusChange(selectedUser, 'rejected')}
+                    disabled={statusLoading !== null}
+                  >
+                    {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'rejected' ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <XCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Reject
                   </Button>
                 )}
               </div>
