@@ -297,7 +297,7 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+    <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
       <div className="mx-auto space-y-6 max-w-7xl">
         <PageHeader
           title="Activity Logs"
@@ -406,17 +406,17 @@ export default function LogsPage() {
         </div>
 
         {/* Logs Table */}
-        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {filteredLogs.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[80px]">ID</TableHead>
-                    <TableHead className="w-[180px]">Date & Time</TableHead>
-                    <TableHead className="w-[150px]">User</TableHead>
-                    <TableHead className="w-[100px]">Role</TableHead>
-                    <TableHead>Activity</TableHead>
+                  <TableRow className="bg-gray-50 border-b border-gray-100">
+                    <TableHead className="w-[80px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</TableHead>
+                    <TableHead className="w-[180px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date & Time</TableHead>
+                    <TableHead className="w-[150px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">User</TableHead>
+                    <TableHead className="w-[100px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Activity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -428,7 +428,7 @@ export default function LogsPage() {
 
                     return (
                       <>
-                        <TableRow key={log.id}>
+                        <TableRow key={log.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
                           <TableCell className="font-medium text-gray-600">#{log.id}</TableCell>
                           <TableCell className="text-sm text-gray-600">
                             <div className="flex flex-col">

@@ -139,7 +139,7 @@ export default function WordFiltersPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+    <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
       <div className="mx-auto space-y-6 max-w-7xl">
         <PageHeader
           title="Word Filters"
@@ -173,20 +173,20 @@ export default function WordFiltersPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {filteredWords.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">ID</TableHead>
-                  <TableHead>Filtered Word</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="w-[100px] text-right">Actions</TableHead>
+                <TableRow className="bg-gray-50 border-b border-gray-100">
+                  <TableHead className="w-[80px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</TableHead>
+                  <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtered Word</TableHead>
+                  <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Created At</TableHead>
+                  <TableHead className="w-[100px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredWords.map((filter) => (
-                  <TableRow key={filter.id}>
+                  <TableRow key={filter.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
                     <TableCell className="font-medium">#{filter.id}</TableCell>
                     <TableCell>
                       <span className="px-2 py-1 text-sm font-medium text-red-700 bg-red-100 rounded">

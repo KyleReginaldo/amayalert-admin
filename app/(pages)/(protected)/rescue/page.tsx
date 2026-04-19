@@ -1048,7 +1048,7 @@ export default function RescuePage() {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden min-h-screen p-4 md:block bg-background sm:p-6">
+      <div className="hidden min-h-screen p-4 md:block bg-[#f8fafc] sm:p-6">
         <div className="mx-auto space-y-4 max-w-7xl sm:space-y-6">
           <PageHeader
             title="Rescue Requests"
@@ -1158,25 +1158,25 @@ export default function RescuePage() {
           </div>
 
           {/* Table View */}
-          <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-gray-200">
-                    <TableHead className="font-medium text-gray-900">Request Details</TableHead>
-                    <TableHead className="font-medium text-gray-900">Status</TableHead>
-                    <TableHead className="font-medium text-gray-900">Priority</TableHead>
-                    <TableHead className="font-medium text-gray-900">Emergency Type</TableHead>
-                    <TableHead className="font-medium text-gray-900">People</TableHead>
-                    <TableHead className="font-medium text-gray-900">Reported</TableHead>
-                    <TableHead className="font-medium text-gray-900">Reporter</TableHead>
-                    <TableHead className="font-medium text-gray-900">Location</TableHead>
-                    <TableHead className="font-medium text-gray-900">Actions</TableHead>
+                  <TableRow className="bg-gray-50 border-b border-gray-100">
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Details</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Emergency Type</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">People</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reported</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reporter</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</TableHead>
+                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRescues.slice(startIndex, startIndex + entriesPerPage).map((rescue) => (
-                    <TableRow key={rescue.id} className="border-gray-200 hover:bg-gray-50">
+                    <TableRow key={rescue.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
                       <TableCell>
                         <div>
                           <div className="font-medium text-gray-900">{rescue.title}</div>
@@ -1312,7 +1312,7 @@ export default function RescuePage() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+          <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{' '}

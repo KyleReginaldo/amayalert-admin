@@ -428,7 +428,7 @@ export default function AdminsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+    <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
       <div className="mx-auto space-y-6 max-w-7xl">
         {/* Header */}
         <PageHeader
@@ -476,7 +476,7 @@ export default function AdminsPage() {
         </div>
 
         {/* Admins Table */}
-        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Mobile View - Stack Cards */}
           <div className="block md:hidden">
             <div className="divide-y divide-gray-200">
@@ -578,12 +578,12 @@ export default function AdminsPage() {
             {paginatedAdmins.length > 0 ? (
               <Table className="w-full table-fixed">
                 <TableHeader>
-                  <TableRow className="border-gray-200">
-                    <TableHead className="w-[30%] font-medium text-gray-900">Admin</TableHead>
-                    <TableHead className="w-[10%] font-medium text-gray-900">Gender</TableHead>
-                    <TableHead className="w-[20%] font-medium text-gray-900">Phone</TableHead>
-                    <TableHead className="w-[20%] font-medium text-gray-900">Joined</TableHead>
-                    <TableHead className="w-[20%] font-medium text-gray-900 text-right">
+                  <TableRow className="bg-gray-50 border-b border-gray-100">
+                    <TableHead className="w-[30%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admin</TableHead>
+                    <TableHead className="w-[10%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Gender</TableHead>
+                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</TableHead>
+                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</TableHead>
+                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -591,7 +591,7 @@ export default function AdminsPage() {
                 <TableBody>
                   {paginatedAdmins.map((admin) => {
                     return (
-                      <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50">
+                      <TableRow key={admin.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
                         <TableCell className="w-[30%]">
                           <div>
                             <div className="flex items-center gap-2">

@@ -9,11 +9,56 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { AlertTriangle, Building2, CalendarIcon, Download, Loader2, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  CalendarIcon,
+  Clock,
+  Download,
+  Loader2,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+const SeverityBadge = ({ severity }: { severity: string }) => {
+  const config: Record<string, string> = {
+    critical: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+    high: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
+    medium: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    low: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  };
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+        config[severity] ?? 'bg-gray-100 text-gray-600',
+      )}
+    >
+      {severity}
+    </span>
+  );
+};
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const config: Record<string, string> = {
+    open: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    full: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+    closed: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
+  };
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+        config[status] ?? 'bg-gray-100 text-gray-600',
+      )}
+    >
+      {status}
+    </span>
+  );
+};
+
 const Dashboard = () => {
-  // Get data from separate providers
   const { alerts, alertsLoading, refreshAlerts } = useAlerts();
   const { evacuationCenters, evacuationLoading, refreshEvacuationCenters } = useEvacuation();
   const { users, userStats, usersLoading, refreshUsers } = useData();
@@ -23,7 +68,6 @@ const Dashboard = () => {
   const [startDate, setStartDate] = useState<Date>(today);
   const [endDate, setEndDate] = useState<Date>(today);
 
-  // Helper function to format dates for display
   const formatDateDisplay = (date: Date) => {
     try {
       return format(date, 'MMMM d, yyyy');
@@ -32,10 +76,13 @@ const Dashboard = () => {
     }
   };
 
-  // Overall loading state
+  const periodLabel =
+    startDate.toDateString() === endDate.toDateString()
+      ? formatDateDisplay(startDate)
+      : `${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`;
+
   const loading = alertsLoading || evacuationLoading || usersLoading;
 
-  // Refresh all data function
   const refreshAll = useCallback(async () => {
     await Promise.all([refreshAlerts(), refreshEvacuationCenters(), refreshUsers()]);
   }, [refreshAlerts, refreshEvacuationCenters, refreshUsers]);
@@ -48,23 +95,10 @@ const Dashboard = () => {
       const endDateObj = endDate;
       const periodName =
         startDate.toDateString() === endDate.toDateString()
-          ? startDateObj.toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          : `${startDateObj.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })} - ${endDateObj.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}`;
+          ? startDateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : `${startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
       const timestamp = new Date().toLocaleString();
 
-      // Filter data by date range
       const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
       const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
 
@@ -140,125 +174,39 @@ const Dashboard = () => {
             <p>Report Period: ${periodName}</p>
             <p>Generated on: ${timestamp}</p>
           </div>
-
           <div class="section">
             <h2>Overview Statistics</h2>
             <div class="stats">
-              <div class="stat">
-                <div class="stat-value">${dayStats.totalUsers.toLocaleString()}</div>
-                <div class="stat-label">New Users</div>
-              </div>
-              <div class="stat">
-                <div class="stat-value">${dayStats.activeAlerts}</div>
-                <div class="stat-label">Active Alerts</div>
-              </div>
-              <div class="stat">
-                <div class="stat-value">${dayStats.evacuationCenters}</div>
-                <div class="stat-label">Evacuation Centers</div>
-              </div>
-              <div class="stat">
-                <div class="stat-value">${dayStats.criticalAlerts}</div>
-                <div class="stat-label">Critical Alerts</div>
-              </div>
+              <div class="stat"><div class="stat-value">${dayStats.totalUsers.toLocaleString()}</div><div class="stat-label">New Users</div></div>
+              <div class="stat"><div class="stat-value">${dayStats.activeAlerts}</div><div class="stat-label">Active Alerts</div></div>
+              <div class="stat"><div class="stat-value">${dayStats.evacuationCenters}</div><div class="stat-label">Evacuation Centers</div></div>
+              <div class="stat"><div class="stat-value">${dayStats.criticalAlerts}</div><div class="stat-label">Critical Alerts</div></div>
             </div>
           </div>
-
           <div class="section">
             <h2>Alerts for ${periodName}</h2>
             <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Level</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
+              <thead><tr><th>ID</th><th>Title</th><th>Level</th><th>Time</th><th>Status</th></tr></thead>
               <tbody>
-                ${
-                  dayAlerts.length > 0
-                    ? dayAlerts
-                        .map(
-                          (alert) => `
-                  <tr>
-                    <td>#${alert.id}</td>
-                    <td>${alert.title}</td>
-                    <td>${alert.severity}</td>
-                    <td>${alert.time}</td>
-                    <td>${alert.status}</td>
-                  </tr>
-                `,
-                        )
-                        .join('')
-                    : '<tr><td colspan="5" style="text-align: center; color: #666;">No alerts for this period</td></tr>'
-                }
+                ${dayAlerts.length > 0 ? dayAlerts.map((alert) => `<tr><td>#${alert.id}</td><td>${alert.title}</td><td>${alert.severity}</td><td>${alert.time}</td><td>${alert.status}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align: center; color: #666;">No alerts for this period</td></tr>'}
               </tbody>
             </table>
           </div>
-
           <div class="section">
             <h2>New Users in ${periodName}</h2>
             <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Join Date</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Join Date</th></tr></thead>
               <tbody>
-                ${
-                  dayUsers.length > 0
-                    ? dayUsers
-                        .map(
-                          (user) => `
-                  <tr>
-                    <td>${user.name}</td>
-                    <td>${user.email}</td>
-                    <td>${user.role}</td>
-                    <td>${new Date(user.joinDate).toLocaleDateString()}</td>
-                  </tr>
-                `,
-                        )
-                        .join('')
-                    : '<tr><td colspan="4" style="text-align: center; color: #666;">No new users for this period</td></tr>'
-                }
+                ${dayUsers.length > 0 ? dayUsers.map((user) => `<tr><td>${user.name}</td><td>${user.email}</td><td>${user.role}</td><td>${new Date(user.joinDate).toLocaleDateString()}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align: center; color: #666;">No new users for this period</td></tr>'}
               </tbody>
             </table>
           </div>
-
           <div class="section">
             <h2>Evacuation Centers</h2>
             <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Status</th>
-                  <th>Occupancy</th>
-                  <th>Capacity</th>
-                  <th>Address</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Name</th><th>Status</th><th>Occupancy</th><th>Capacity</th><th>Address</th></tr></thead>
               <tbody>
-                ${
-                  filteredEvacuationCenters.length > 0
-                    ? filteredEvacuationCenters
-                        .map(
-                          (center) => `
-                  <tr>
-                    <td>${center.name}</td>
-                    <td>${(center.status || 'closed').toUpperCase()}</td>
-                    <td>${center.current_occupancy || 0}</td>
-                    <td>${center.capacity || 0}</td>
-                    <td>${center.address}</td>
-                  </tr>
-                `,
-                        )
-                        .join('')
-                    : '<tr><td colspan="5" style="text-align: center; color: #666;">No evacuation center updates for this period</td></tr>'
-                }
+                ${filteredEvacuationCenters.length > 0 ? filteredEvacuationCenters.map((center) => `<tr><td>${center.name}</td><td>${(center.status || 'closed').toUpperCase()}</td><td>${center.current_occupancy || 0}</td><td>${center.capacity || 0}</td><td>${center.address}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align: center; color: #666;">No evacuation center updates for this period</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -271,9 +219,7 @@ const Dashboard = () => {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
+        setTimeout(() => { printWindow.print(); }, 500);
       }
     } catch (error) {
       console.error('Export failed:', error);
@@ -281,10 +227,6 @@ const Dashboard = () => {
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const handleExport = () => {
-    exportToPDF();
   };
 
   useEffect(() => {
@@ -297,7 +239,6 @@ const Dashboard = () => {
     const startTimestamp = startDate.getTime();
     const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
 
-    // Filter alerts/users for selected date range
     const dayAlerts = alerts.filter((a) => {
       if (!a.created_at) return false;
       const time = new Date(a.created_at).getTime();
@@ -318,17 +259,16 @@ const Dashboard = () => {
     });
 
     return {
-      totalUsers: dayUsers.length, // show new users in selected day
+      totalUsers: dayUsers.length,
       activeAlerts: dayAlerts.filter((a) => !a.deleted_at).length,
       evacuationCenters: dayEvacuations.length,
       criticalAlerts: dayAlerts.filter((a) => a.alert_level === 'critical').length,
-      userGrowth: dayUsers.length, // for selected day
+      userGrowth: dayUsers.length,
       alertsToday: dayAlerts.filter((a) => {
         if (!a.created_at) return false;
-        const ad = new Date(a.created_at).toDateString();
-        return ad === new Date().toDateString();
+        return new Date(a.created_at).toDateString() === new Date().toDateString();
       }).length,
-      availableCenters: dayEvacuations.filter((center) => center.status === 'open').length,
+      availableCenters: dayEvacuations.filter((c) => c.status === 'open').length,
       responseTime: '4.2 min',
       dayAlerts,
       dayUsers,
@@ -365,150 +305,194 @@ const Dashboard = () => {
           email: user.email,
           role: user.role || 'user',
           joinDate: user.created_at,
-          status: 'active',
         })),
     [stats.dayUsers],
   );
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Loading dashboard data...</span>
+      <div className="flex items-center justify-center min-h-screen bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
+          <p className="text-sm text-gray-500 font-medium">Loading dashboard…</p>
         </div>
       </div>
     );
   }
 
+  const metricCards = [
+    {
+      label: 'Total Users',
+      value: stats.totalUsers.toLocaleString(),
+      sub: `${stats.userGrowth} in period`,
+      icon: Users,
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      trend: '+12%',
+      trendUp: true,
+    },
+    {
+      label: 'Active Alerts',
+      value: stats.activeAlerts,
+      sub: `${stats.criticalAlerts} critical`,
+      icon: AlertTriangle,
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      trend: stats.criticalAlerts > 0 ? `${stats.criticalAlerts} critical` : 'No critical',
+      trendUp: false,
+    },
+    {
+      label: 'Evacuation Centers',
+      value: stats.evacuationCenters,
+      sub: `${stats.availableCenters} available`,
+      icon: Building2,
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      trend: `${stats.availableCenters} open`,
+      trendUp: true,
+    },
+    {
+      label: 'Avg Response Time',
+      value: stats.responseTime,
+      sub: 'Past 30 days',
+      icon: Clock,
+      iconBg: 'bg-violet-50',
+      iconColor: 'text-violet-600',
+      trend: '▲ 12% better',
+      trendUp: true,
+    },
+  ];
+
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-6">
       <div className="mx-auto space-y-6 max-w-7xl">
+
         {/* Header */}
         <PageHeader
           title="Dashboard"
           subtitle="Overview of alerts, users, and evacuation centers"
           action={
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'justify-start text-left font-normal bg-blue-50 border-gray-300',
-                          !startDate && 'text-muted-foreground',
-                        )}
-                      >
-                        <CalendarIcon className="w-4 h-4 mr-2" />
-                        {startDate ? format(startDate, 'PPP') : <span>Pick start date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={(date) => date && setStartDate(date)}
-                        disabled={(date) => date > new Date() || date > endDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <span className="text-gray-500">-</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'justify-start text-left font-normal bg-blue-50 border-gray-300',
-                          !endDate && 'text-muted-foreground',
-                        )}
-                      >
-                        <CalendarIcon className="w-4 h-4 mr-2" />
-                        {endDate ? format(endDate, 'PPP') : <span>Pick end date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={(date) => date && setEndDate(date)}
-                        disabled={(date) => date > new Date() || date < startDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <Button
-                  onClick={handleExport}
-                  disabled={isExporting}
-                  variant="default"
-                  className="gap-2 bg-[#4988C4] cursor-pointer"
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  Export Report
-                </Button>
-              </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-9 gap-2 border-gray-200 bg-white text-gray-700 text-sm font-normal shadow-none hover:bg-gray-50',
+                      !startDate && 'text-gray-400',
+                    )}
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Start date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => date && setStartDate(date)}
+                    disabled={(date) => date > new Date() || date > endDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <span className="text-gray-300 text-sm">→</span>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-9 gap-2 border-gray-200 bg-white text-gray-700 text-sm font-normal shadow-none hover:bg-gray-50',
+                      !endDate && 'text-gray-400',
+                    )}
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                    {endDate ? format(endDate, 'MMM d, yyyy') : 'End date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={(date) => date && setEndDate(date)}
+                    disabled={(date) => date > new Date() || date < startDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Button
+                onClick={exportToPDF}
+                disabled={isExporting}
+                size="sm"
+                className="h-9 gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-none cursor-pointer"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                Export Report
+              </Button>
             </div>
           }
         />
 
-        {/* Minimal Stats */}
+        {/* Metric Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="p-4 bg-[#E0F2FE] border border-[#0284C7] text-[#0369A1] rounded-lg">
-            <div className="text-2xl font-bold text-[#0369A1]">
-              {stats.totalUsers.toLocaleString()}
-            </div>
-            <div className="te.toDateString() === endDate.toDateString()ray-600">Total Users</div>
-          </div>
-          <div className="p-4 bg-[#FEF3C7] border border-[#F59E0B] text-[#B45309] rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{stats.activeAlerts}</div>
-            <div className="text-sm text-[#B45309]">Active Alerts</div>
-            <div className="mt-1 text-xs text-gray-500">{stats.criticalAlerts} critical</div>
-          </div>
-          <div className="p-4 bg-[#ECFDF5] border border-[#10B981] text-[#047857] rounded-lg">
-            <div className="text-2xl font-bold">{stats.evacuationCenters}</div>
-            <div className="text-sm ">Evacuation Centers</div>
-            <div className="mt-1 text-xs text-gray-500">{stats.availableCenters} available</div>
-          </div>
-          <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-            <div className="text-2xl font-semibold text-blue-700">{stats.responseTime}</div>
-
-            <div className="text-sm text-blue-800/80">Avg Response</div>
-
-            <div className="mt-1 text-xs font-medium text-blue-600">▲ 12% better</div>
-          </div>
+          {metricCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.label}
+                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                  <div className={cn('p-2 rounded-lg', card.iconBg)}>
+                    <Icon className={cn('w-4 h-4', card.iconColor)} />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 tabular-nums">{card.value}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-xs text-gray-400">{card.sub}</p>
+                  <span
+                    className={cn(
+                      'text-xs font-medium',
+                      card.trendUp ? 'text-emerald-600' : 'text-amber-600',
+                    )}
+                  >
+                    {card.trend}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Chart Analytics */}
+        {/* Charts Row */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
           {/* Alert Severity Distribution */}
-          <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="font-medium text-gray-900 text-md">
-                  Alert Severity (
-                  <span className="text-gray-600">
-                    {startDate.toDateString() === endDate.toDateString()
-                      ? formatDateDisplay(startDate)
-                      : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
-                  </span>
-                  )
-                </h2>
-                <span className="text-sm text-gray-500">{recentAlerts.length} in period</span>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Alert Severity Distribution</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{periodLabel}</p>
               </div>
+              <span className="text-xs font-medium text-gray-400 bg-gray-50 rounded-full px-3 py-1 border border-gray-100">
+                {recentAlerts.length} alerts
+              </span>
             </div>
             <div className="p-6">
               {recentAlerts.length > 0 ? (
-                <div className="space-y-4">
-                  {/* Doughnut Chart Representation */}
+                <div className="space-y-5">
                   <div className="flex items-center justify-center">
-                    <div className="relative w-48 h-48">
+                    <div className="relative w-44 h-44">
                       {(() => {
                         const severityCounts = recentAlerts.reduce((acc, alert) => {
                           acc[alert.severity] = (acc[alert.severity] || 0) + 1;
@@ -517,17 +501,12 @@ const Dashboard = () => {
 
                         const total = recentAlerts.length;
                         const segments = [
-                          {
-                            label: 'critical',
-                            count: severityCounts.critical || 0,
-                            color: '#ef4444',
-                          },
+                          { label: 'critical', count: severityCounts.critical || 0, color: '#ef4444' },
                           { label: 'high', count: severityCounts.high || 0, color: '#f97316' },
-                          { label: 'medium', count: severityCounts.medium || 0, color: '#eab308' },
-                          { label: 'low', count: severityCounts.low || 0, color: '#22c55e' },
-                        ].filter((segment) => segment.count > 0);
+                          { label: 'medium', count: severityCounts.medium || 0, color: '#f59e0b' },
+                          { label: 'low', count: severityCounts.low || 0, color: '#10b981' },
+                        ].filter((s) => s.count > 0);
 
-                        // Calculate angles for each segment
                         let currentAngle = 0;
                         const segmentsWithAngles = segments.map((segment) => {
                           const angle = (segment.count / total) * 360;
@@ -538,57 +517,37 @@ const Dashboard = () => {
 
                         return (
                           <div className="relative w-full h-full">
-                            {/* SVG Chart */}
-                            <svg
-                              className="w-full h-full transform -rotate-90"
-                              viewBox="0 0 200 200"
-                            >
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
                               {segmentsWithAngles.map((segment, index) => {
-                                const radius = 80;
-                                const innerRadius = 50;
-                                const centerX = 100;
-                                const centerY = 100;
-
-                                const startAngleRad = (segment.startAngle * Math.PI) / 180;
-                                const endAngleRad =
-                                  ((segment.startAngle + segment.angle) * Math.PI) / 180;
-
-                                const x1 = centerX + radius * Math.cos(startAngleRad);
-                                const y1 = centerY + radius * Math.sin(startAngleRad);
-                                const x2 = centerX + radius * Math.cos(endAngleRad);
-                                const y2 = centerY + radius * Math.sin(endAngleRad);
-
-                                const ix1 = centerX + innerRadius * Math.cos(startAngleRad);
-                                const iy1 = centerY + innerRadius * Math.sin(startAngleRad);
-                                const ix2 = centerX + innerRadius * Math.cos(endAngleRad);
-                                const iy2 = centerY + innerRadius * Math.sin(endAngleRad);
-
-                                const largeArcFlag = segment.angle > 180 ? 1 : 0;
-
-                                const pathData = [
-                                  `M ${x1} ${y1}`,
-                                  `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-                                  `L ${ix2} ${iy2}`,
-                                  `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${ix1} ${iy1}`,
-                                  'Z',
-                                ].join(' ');
-
+                                const radius = 82;
+                                const innerRadius = 54;
+                                const cx = 100, cy = 100;
+                                const startRad = (segment.startAngle * Math.PI) / 180;
+                                const endRad = ((segment.startAngle + segment.angle) * Math.PI) / 180;
+                                const x1 = cx + radius * Math.cos(startRad);
+                                const y1 = cy + radius * Math.sin(startRad);
+                                const x2 = cx + radius * Math.cos(endRad);
+                                const y2 = cy + radius * Math.sin(endRad);
+                                const ix1 = cx + innerRadius * Math.cos(startRad);
+                                const iy1 = cy + innerRadius * Math.sin(startRad);
+                                const ix2 = cx + innerRadius * Math.cos(endRad);
+                                const iy2 = cy + innerRadius * Math.sin(endRad);
+                                const largeArc = segment.angle > 180 ? 1 : 0;
+                                const d = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix1} ${iy1} Z`;
                                 return (
                                   <path
                                     key={index}
-                                    d={pathData}
+                                    d={d}
                                     fill={segment.color}
-                                    className="transition-opacity hover:opacity-80"
+                                    className="transition-opacity hover:opacity-75"
                                   />
                                 );
                               })}
                             </svg>
-
-                            {/* Center content */}
                             <div className="absolute inset-0 flex items-center justify-center">
                               <div className="text-center">
-                                <div className="text-2xl font-bold text-gray-900">{total}</div>
-                                <div className="text-xs text-gray-500">Alerts</div>
+                                <p className="text-2xl font-bold text-gray-900">{total}</p>
+                                <p className="text-xs text-gray-400">Total</p>
                               </div>
                             </div>
                           </div>
@@ -597,36 +556,30 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Legend */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {(() => {
                       const severityCounts = recentAlerts.reduce((acc, alert) => {
                         acc[alert.severity] = (acc[alert.severity] || 0) + 1;
                         return acc;
                       }, {} as Record<string, number>);
 
-                      const severityColors = {
-                        critical: 'bg-red-500',
-                        high: 'bg-orange-500',
-                        medium: 'bg-yellow-500',
-                        low: 'bg-green-500',
+                      const config: Record<string, { dot: string; label: string }> = {
+                        critical: { dot: 'bg-red-500', label: 'Critical' },
+                        high: { dot: 'bg-orange-500', label: 'High' },
+                        medium: { dot: 'bg-amber-400', label: 'Medium' },
+                        low: { dot: 'bg-emerald-500', label: 'Low' },
                       };
 
                       return Object.entries(severityCounts).map(([severity, count]) => (
-                        <div key={severity} className="flex items-center gap-2">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              severityColors[severity as keyof typeof severityColors]
-                            }`}
-                          ></div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium capitalize">{severity}</span>
-                              <span className="text-sm text-gray-600">{count}</span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {((count / recentAlerts.length) * 100).toFixed(1)}%
-                            </div>
+                        <div key={severity} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-gray-50">
+                          <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', config[severity]?.dot ?? 'bg-gray-400')} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-700">
+                              {config[severity]?.label ?? severity}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {count} · {((count / recentAlerts.length) * 100).toFixed(0)}%
+                            </p>
                           </div>
                         </div>
                       ));
@@ -634,442 +587,302 @@ const Dashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-gray-500">
-                  <AlertTriangle className="w-12 h-12 mx-auto mb-3" />
-                  <p>No alert data available</p>
+                <div className="py-14 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <AlertTriangle className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">No alerts in this period</p>
+                  <p className="text-xs text-gray-400 mt-1">Try adjusting the date range</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* User Growth Chart */}
-          <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="font-medium text-gray-900 text-md">
-                  User Growth (
-                  <span className="text-gray-600">
-                    {startDate.toDateString() === endDate.toDateString()
-                      ? formatDateDisplay(startDate)
-                      : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
-                  </span>
-                  )
-                </h2>
-                <span className="text-sm text-gray-500">{recentUsers.length} new users</span>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">User Growth Chart</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{periodLabel}</p>
               </div>
+              <span className="text-xs font-medium text-gray-400 bg-gray-50 rounded-full px-3 py-1 border border-gray-100">
+                {recentUsers.length} new
+              </span>
             </div>
             <div className="p-6">
               {recentUsers.length > 0 ? (
-                <div className="space-y-4">
-                  {/* Clean Line Chart */}
-                  <div className="h-48">
+                <div className="space-y-5">
+                  <div className="h-44">
                     {(() => {
-                      // Group users by month for the last 6 months
-                      // Base end month on endDate instead of current real-time month
                       const endDateObj = endDate;
                       const months = [];
                       for (let i = 5; i >= 0; i--) {
-                        const date = new Date(
-                          endDateObj.getFullYear(),
-                          endDateObj.getMonth() - i,
-                          1,
-                        );
+                        const date = new Date(endDateObj.getFullYear(), endDateObj.getMonth() - i, 1);
                         months.push({
                           name: date.toLocaleDateString('en-US', { month: 'short' }),
                           users: users.filter((user) => {
-                            const userDate = new Date(user.created_at);
-                            return (
-                              userDate.getMonth() === date.getMonth() &&
-                              userDate.getFullYear() === date.getFullYear()
-                            );
+                            const d = new Date(user.created_at);
+                            return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
                           }).length,
                         });
                       }
 
                       const maxUsers = Math.max(...months.map((m) => m.users), 1);
-                      const chartWidth = 400;
-                      const chartHeight = 160;
-                      const padding = 40;
+                      const W = 400, H = 160, PAD = 40;
 
-                      // Calculate points for straight lines
-                      const points = months.map((month, index) => {
-                        const x =
-                          padding + (index * (chartWidth - 2 * padding)) / (months.length - 1);
-                        const y =
-                          chartHeight -
-                          padding -
-                          (month.users / maxUsers) * (chartHeight - 2 * padding);
-                        return { x, y, users: month.users, name: month.name };
-                      });
+                      const points = months.map((month, i) => ({
+                        x: PAD + (i * (W - 2 * PAD)) / (months.length - 1),
+                        y: H - PAD - (month.users / maxUsers) * (H - 2 * PAD),
+                        users: month.users,
+                        name: month.name,
+                      }));
 
-                      // Create straight line path
-                      const linePath = points.reduce((path, point, index) => {
-                        return index === 0
-                          ? `M ${point.x} ${point.y}`
-                          : `${path} L ${point.x} ${point.y}`;
-                      }, '');
-
-                      // Create area path for gradient fill
-                      const areaPath = `${linePath} L ${points[points.length - 1].x} ${
-                        chartHeight - padding
-                      } L ${points[0].x} ${chartHeight - padding} Z`;
+                      const linePath = points.reduce(
+                        (p, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${p} L ${pt.x} ${pt.y}`),
+                        '',
+                      );
+                      const areaPath = `${linePath} L ${points[points.length - 1].x} ${H - PAD} L ${points[0].x} ${H - PAD} Z`;
 
                       return (
-                        <div className="relative w-full h-full">
-                          <svg
-                            className="w-full h-full"
-                            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                          >
-                            <defs>
-                              <linearGradient
-                                id="userGrowthGradient"
-                                x1="0%"
-                                y1="0%"
-                                x2="0%"
-                                y2="100%"
-                              >
-                                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
-                                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
-                              </linearGradient>
-                            </defs>
-
-                            {/* Background grid */}
-                            {[...Array(4)].map((_, i) => {
-                              const y = padding + (i * (chartHeight - 2 * padding)) / 3;
-                              return (
-                                <line
-                                  key={i}
-                                  x1={padding}
-                                  y1={y}
-                                  x2={chartWidth - padding}
-                                  y2={y}
-                                  stroke="#f1f5f9"
-                                  strokeWidth="1"
-                                  strokeDasharray="2,2"
-                                />
-                              );
-                            })}
-
-                            {/* Area fill */}
-                            <path d={areaPath} fill="url(#userGrowthGradient)" />
-
-                            {/* Main line */}
-                            <path
-                              d={linePath}
-                              fill="none"
-                              stroke="#3b82f6"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-
-                            {/* Data points */}
-                            {points.map((point, index) => (
-                              <circle
-                                key={index}
-                                cx={point.x}
-                                cy={point.y}
-                                r="4"
-                                fill="#3b82f6"
-                                className="transition-all cursor-pointer hover:r-6"
-                              />
-                            ))}
-
-                            {/* Month labels */}
-                            {points.map((point, index) => (
-                              <text
-                                key={index}
-                                x={point.x}
-                                y={chartHeight - 15}
-                                textAnchor="middle"
-                                className="text-xs fill-gray-500"
-                                fontSize="11"
-                              >
-                                {point.name}
-                              </text>
-                            ))}
-
-                            {/* Value labels */}
-                            {points.map((point, index) => (
-                              <text
-                                key={index}
-                                x={point.x}
-                                y={point.y - 10}
-                                textAnchor="middle"
-                                className="text-xs font-medium fill-blue-600"
-                                fontSize="11"
-                              >
-                                {point.users}
-                              </text>
-                            ))}
-                          </svg>
-                        </div>
+                        <svg className="w-full h-full" viewBox={`0 0 ${W} ${H}`}>
+                          <defs>
+                            <linearGradient id="growthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.15" />
+                              <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          {[...Array(4)].map((_, i) => {
+                            const y = PAD + (i * (H - 2 * PAD)) / 3;
+                            return (
+                              <line key={i} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#f1f5f9" strokeWidth="1" />
+                            );
+                          })}
+                          <path d={areaPath} fill="url(#growthGrad)" />
+                          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          {points.map((pt, i) => (
+                            <circle key={i} cx={pt.x} cy={pt.y} r="3.5" fill="#6366f1" stroke="white" strokeWidth="1.5" />
+                          ))}
+                          {points.map((pt, i) => (
+                            <text key={i} x={pt.x} y={H - 12} textAnchor="middle" fill="#9ca3af" fontSize="10">{pt.name}</text>
+                          ))}
+                          {points.map((pt, i) => (
+                            <text key={i} x={pt.x} y={pt.y - 10} textAnchor="middle" fill="#6366f1" fontSize="10" fontWeight="600">{pt.users}</text>
+                          ))}
+                        </svg>
                       );
                     })()}
                   </div>
 
-                  {/* Growth Metrics */}
-                  <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-200">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-green-600">
-                        +{userStats.usersThisMonth}
+                  <div className="grid grid-cols-4 gap-3 pt-4 border-t border-gray-100">
+                    {[
+                      { label: 'This Month', value: `+${userStats.usersThisMonth}`, color: 'text-emerald-600' },
+                      { label: 'Last Month', value: userStats.usersLastMonth, color: 'text-blue-600' },
+                      { label: 'This Year', value: userStats.usersThisYear, color: 'text-violet-600' },
+                      { label: 'Last Year', value: userStats.usersLastYear, color: 'text-gray-600' },
+                    ].map((item) => (
+                      <div key={item.label} className="text-center">
+                        <p className={cn('text-base font-bold tabular-nums', item.color)}>{item.value}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{item.label}</p>
                       </div>
-                      <div className="text-xs text-gray-500">This Month</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600">
-                        {userStats.usersLastMonth}
-                      </div>
-                      <div className="text-xs text-gray-500">Last Month</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-purple-600">
-                        {userStats.usersThisYear}
-                      </div>
-                      <div className="text-xs text-gray-500">This Year</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-orange-600">
-                        {userStats.usersLastYear}
-                      </div>
-                      <div className="text-xs text-gray-500">Last Year</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-3" />
-                  <p>No user data available</p>
+                <div className="py-14 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <TrendingUp className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">No user data in this period</p>
+                  <p className="text-xs text-gray-400 mt-1">Try adjusting the date range</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* User Sign-Up History */}
-        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium text-gray-900 text-md">
-                History (
-                <span className="text-gray-600">
-                  {startDate.toDateString() === endDate.toDateString()
-                    ? formatDateDisplay(startDate)
-                    : `${formatDateDisplay(startDate)} to ${formatDateDisplay(endDate)}`}
-                </span>
-                )
-              </h2>
-              <span className="text-sm text-gray-500">{stats.dayUsers.length} total</span>
+        {/* User Sign-Up History Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">History</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{periodLabel}</p>
             </div>
+            <span className="text-xs font-medium text-gray-400 bg-gray-50 rounded-full px-3 py-1 border border-gray-100">
+              {stats.dayUsers.length} users
+            </span>
           </div>
-          <div className="p-6">
-            {stats.dayUsers.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left border-b">
-                      <th className="py-2 pr-4 font-medium text-gray-700">Name</th>
-                      <th className="py-2 pr-4 font-medium text-gray-700">Email</th>
-                      <th className="py-2 pr-4 font-medium text-gray-700">Role</th>
-                      <th className="py-2 pr-4 font-medium text-gray-700">Signed Up</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.dayUsers
-                      .slice()
-                      .sort(
-                        (a, b) =>
-                          new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime(),
-                      )
-                      .map((user) => (
-                        <tr key={user.id} className="border-b last:border-b-0">
-                          <td className="py-2 pr-4 whitespace-nowrap max-w-[200px] truncate">
-                            {user.full_name || 'Unknown User'}
-                          </td>
-                          <td className="py-2 pr-4 whitespace-nowrap max-w-[220px] truncate">
-                            {user.email || '—'}
-                          </td>
-                          <td className="py-2 pr-4 capitalize">{user.role || 'user'}</td>
-                          <td className="py-2 pr-4 text-gray-600">
-                            {new Date(user.created_at!).toLocaleDateString()}{' '}
-                            {new Date(user.created_at!).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+
+          {stats.dayUsers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Signed Up</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {stats.dayUsers
+                    .slice()
+                    .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
+                    .map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-5 py-3.5 font-medium text-gray-900 max-w-[200px] truncate whitespace-nowrap">
+                          {user.full_name || 'Unknown User'}
+                        </td>
+                        <td className="px-5 py-3.5 text-gray-500 max-w-[220px] truncate whitespace-nowrap">
+                          {user.email || '—'}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 capitalize">
+                            {user.role || 'user'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-gray-500 tabular-nums whitespace-nowrap">
+                          {new Date(user.created_at!).toLocaleDateString()}{' '}
+                          <span className="text-gray-400">
+                            {new Date(user.created_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-14 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <Users className="w-5 h-5 text-gray-400" />
               </div>
-            ) : (
-              <div className="py-12 text-center text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-3" />
-                <p>No users signed up in this period</p>
-              </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-gray-500">No sign-ups in this period</p>
+              <p className="text-xs text-gray-400 mt-1">Try adjusting the date range</p>
+            </div>
+          )}
         </div>
 
         {/* Evacuation Centers Overview */}
-        <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium text-gray-900 text-md">Evacuation Centers Overview</h2>
-              <span className="text-sm text-gray-500">{stats.dayEvacuations.length} total</span>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Evacuation Centers</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Capacity and status overview</p>
             </div>
+            <span className="text-xs font-medium text-gray-400 bg-gray-50 rounded-full px-3 py-1 border border-gray-100">
+              {stats.dayEvacuations.length} centers
+            </span>
           </div>
-          <div className="p-6">
-            {stats.dayEvacuations.length > 0 ? (
-              <div className="space-y-6">
-                {/* Status Distribution */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {(() => {
-                    const statusCounts = stats.dayEvacuations.reduce((acc, center) => {
-                      const status = center.status || 'closed';
-                      acc[status] = (acc[status] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>);
 
-                    const statusConfig = {
-                      open: { color: 'bg-green-500', label: 'Open', textColor: 'text-green-600' },
-                      full: { color: 'bg-red-500', label: 'Full', textColor: 'text-red-600' },
-                      closed: { color: 'bg-gray-500', label: 'Closed', textColor: 'text-gray-600' },
-                    };
+          {stats.dayEvacuations.length > 0 ? (
+            <div className="p-5 space-y-6">
 
-                    return Object.entries(statusConfig).map(([status, config]) => {
-                      const count = statusCounts[status] || 0;
-                      const percentage =
-                        stats.dayEvacuations.length > 0
-                          ? (count / stats.dayEvacuations.length) * 100
-                          : 0;
+              {/* Status Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {(() => {
+                  const statusCounts = stats.dayEvacuations.reduce((acc, center) => {
+                    const s = center.status || 'closed';
+                    acc[s] = (acc[s] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>);
 
-                      return (
-                        <div
-                          key={status}
-                          className="p-4 text-center border border-gray-200 rounded-lg"
-                        >
-                          <div
-                            className={`w-16 h-16 ${config.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
-                          >
-                            <Building2 className="w-8 h-8 text-white" />
-                          </div>
-                          <div className={`text-2xl font-bold ${config.textColor}`}>{count}</div>
-                          <div className="text-sm text-gray-600">{config.label}</div>
-                          <div className="mt-1 text-xs text-gray-500">{percentage.toFixed(1)}%</div>
+                  const statusConfig = [
+                    { key: 'open', label: 'Open', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', valueColor: 'text-emerald-600' },
+                    { key: 'full', label: 'Full', iconBg: 'bg-red-50', iconColor: 'text-red-600', valueColor: 'text-red-600' },
+                    { key: 'closed', label: 'Closed', iconBg: 'bg-gray-100', iconColor: 'text-gray-500', valueColor: 'text-gray-600' },
+                  ];
+
+                  return statusConfig.map(({ key, label, iconBg, iconColor, valueColor }) => {
+                    const count = statusCounts[key] || 0;
+                    const pct = stats.dayEvacuations.length > 0 ? ((count / stats.dayEvacuations.length) * 100).toFixed(0) : '0';
+                    return (
+                      <div key={key} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-xl bg-gray-50/50">
+                        <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', iconBg)}>
+                          <Building2 className={cn('w-4.5 h-4.5', iconColor)} />
                         </div>
-                      );
-                    });
-                  })()}
-                </div>
+                        <div>
+                          <p className={cn('text-2xl font-bold tabular-nums', valueColor)}>{count}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{label} · {pct}%</p>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
 
-                {/* Capacity Analysis */}
-                <div className="pt-6 border-t border-gray-200">
-                  <h3 className="mb-4 text-sm font-medium text-gray-900">Capacity Analysis</h3>
-                  <div className="space-y-3">
-                    {stats.dayEvacuations.slice(0, 8).map((center) => {
-                      const capacity = center.capacity || 0;
-                      const occupancy = center.current_occupancy || 0;
-                      const occupancyRate = capacity > 0 ? (occupancy / capacity) * 100 : 0;
+              {/* Capacity Bars */}
+              <div className="border-t border-gray-100 pt-5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Capacity Analysis</p>
+                <div className="space-y-3">
+                  {stats.dayEvacuations.slice(0, 8).map((center) => {
+                    const capacity = center.capacity || 0;
+                    const occupancy = center.current_occupancy || 0;
+                    const rate = capacity > 0 ? (occupancy / capacity) * 100 : 0;
+                    const barColor = rate >= 90 ? 'bg-red-500' : rate >= 70 ? 'bg-amber-400' : 'bg-emerald-500';
 
-                      const getStatusColor = (rate: number) => {
-                        if (rate >= 90) return 'bg-red-500';
-                        if (rate >= 70) return 'bg-yellow-500';
-                        return 'bg-green-500';
-                      };
-
-                      return (
-                        <div key={center.id} className="flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {center.name}
-                              </p>
-                              <span className="text-xs text-gray-500">
-                                {occupancy}/{capacity}
-                              </span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-200 rounded-full">
-                              <div
-                                className={`h-2 rounded-full transition-all duration-300 ${getStatusColor(
-                                  occupancyRate,
-                                )}`}
-                                style={{ width: `${Math.min(occupancyRate, 100)}%` }}
-                              ></div>
+                    return (
+                      <div key={center.id} className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-sm font-medium text-gray-800 truncate">{center.name}</p>
+                            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                              <StatusBadge status={center.status || 'closed'} />
+                              <span className="text-xs tabular-nums text-gray-400">{occupancy}/{capacity}</span>
                             </div>
                           </div>
-                          <div className="text-xs text-gray-600 min-w-[40px] text-right">
-                            {occupancyRate.toFixed(0)}%
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full transition-all duration-300', barColor)}
+                              style={{ width: `${Math.min(rate, 100)}%` }}
+                            />
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-
+                        <span className="text-xs tabular-nums font-medium text-gray-500 w-9 text-right flex-shrink-0">
+                          {rate.toFixed(0)}%
+                        </span>
+                      </div>
+                    );
+                  })}
                   {stats.dayEvacuations.length > 8 && (
-                    <div className="mt-4 text-center">
-                      <span className="text-sm text-gray-500">
-                        +{stats.dayEvacuations.length - 8} more centers
-                      </span>
-                    </div>
+                    <p className="text-xs text-gray-400 pt-1">
+                      +{stats.dayEvacuations.length - 8} more centers
+                    </p>
                   )}
                 </div>
+              </div>
 
-                {/* Summary Stats */}
-                <div className="pt-6 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600">
-                        {stats.dayEvacuations
-                          .reduce((sum, center) => sum + (center.capacity || 0), 0)
-                          .toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">Total Capacity</div>
+              {/* Summary Row */}
+              <div className="border-t border-gray-100 pt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+                {(() => {
+                  const totalCap = stats.dayEvacuations.reduce((s, c) => s + (c.capacity || 0), 0);
+                  const totalOcc = stats.dayEvacuations.reduce((s, c) => s + (c.current_occupancy || 0), 0);
+                  const availableNow = stats.dayEvacuations.filter((c) => c.status === 'open').length;
+                  const usage = totalCap > 0 ? ((totalOcc / totalCap) * 100).toFixed(1) : '0';
+                  return [
+                    { label: 'Total Capacity', value: totalCap.toLocaleString(), color: 'text-blue-600' },
+                    { label: 'Current Occupancy', value: totalOcc.toLocaleString(), color: 'text-emerald-600' },
+                    { label: 'Available Now', value: availableNow, color: 'text-violet-600' },
+                    { label: 'Overall Usage', value: `${usage}%`, color: 'text-amber-600' },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center p-3 rounded-lg bg-gray-50">
+                      <p className={cn('text-lg font-bold tabular-nums', item.color)}>{item.value}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.label}</p>
                     </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-green-600">
-                        {stats.dayEvacuations
-                          .reduce((sum, center) => sum + (center.current_occupancy || 0), 0)
-                          .toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">Current Occupancy</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-purple-600">
-                        {stats.dayEvacuations.filter((center) => center.status === 'open').length}
-                      </div>
-                      <div className="text-xs text-gray-500">Available Now</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-orange-600">
-                        {(() => {
-                          const totalCapacity = stats.dayEvacuations.reduce(
-                            (sum, center) => sum + (center.capacity || 0),
-                            0,
-                          );
-                          const totalOccupancy = stats.dayEvacuations.reduce(
-                            (sum, center) => sum + (center.current_occupancy || 0),
-                            0,
-                          );
-                          return totalCapacity > 0
-                            ? ((totalOccupancy / totalCapacity) * 100).toFixed(1)
-                            : '0';
-                        })()}
-                        %
-                      </div>
-                      <div className="text-xs text-gray-500">Overall Usage</div>
-                    </div>
-                  </div>
-                </div>
+                  ));
+                })()}
               </div>
-            ) : (
-              <div className="py-12 text-center text-gray-500">
-                <Building2 className="w-12 h-12 mx-auto mb-3" />
-                <p>No evacuation centers data available</p>
+            </div>
+          ) : (
+            <div className="py-14 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <Building2 className="w-5 h-5 text-gray-400" />
               </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-gray-500">No evacuation center data</p>
+              <p className="text-xs text-gray-400 mt-1">Try adjusting the date range</p>
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );

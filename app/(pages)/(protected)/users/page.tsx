@@ -455,7 +455,7 @@ export default function UsersPage() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+        <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
           <div className="mx-auto space-y-6 max-w-7xl">
             {/* Header */}
             <PageHeader
@@ -549,7 +549,7 @@ export default function UsersPage() {
             </div>
 
             {/* Users Table or Map */}
-            <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               {viewMode === 'map' ? (
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -698,23 +698,23 @@ export default function UsersPage() {
                     {paginatedUsers.length > 0 ? (
                       <Table className="w-full table-fixed">
                         <TableHeader>
-                          <TableRow className="border-gray-200">
-                            <TableHead className="w-[28%] font-medium text-gray-900">
+                          <TableRow className="bg-gray-50 border-b border-gray-100">
+                            <TableHead className="w-[28%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               User
                             </TableHead>
-                            <TableHead className="w-[12%] font-medium text-gray-900">
+                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Role
                             </TableHead>
-                            <TableHead className="w-[10%] font-medium text-gray-900">
+                            <TableHead className="w-[10%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Gender
                             </TableHead>
-                            <TableHead className="w-[16%] font-medium text-gray-900">
+                            <TableHead className="w-[16%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Phone
                             </TableHead>
-                            <TableHead className="w-[16%] font-medium text-gray-900">
+                            <TableHead className="w-[16%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               Joined
                             </TableHead>
-                            <TableHead className="w-[18%] font-medium text-gray-900 text-right">
+                            <TableHead className="w-[18%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
                               Actions
                             </TableHead>
                           </TableRow>
@@ -723,7 +723,7 @@ export default function UsersPage() {
                           {paginatedUsers.map((user) => {
                             const RoleIcon = getRoleIcon(user.role);
                             return (
-                              <TableRow key={user.id} className="border-gray-200 hover:bg-gray-50">
+                              <TableRow key={user.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
                                 <TableCell className="w-[28%]">
                                   <div>
                                     <div className="font-medium text-gray-900">

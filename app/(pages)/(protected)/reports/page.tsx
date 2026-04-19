@@ -275,7 +275,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 min-h-screen bg-[#f8fafc]">
       {/* Header */}
       <div className="flex flex-col gap-4 mx-auto space-y-6 max-w-7xl sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
@@ -371,33 +371,32 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+              <TableRow className="bg-gray-50 border-b border-gray-100">
+                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   REPORTER
                 </TableHead>
-                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   REASON
                 </TableHead>
-                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   POST CONTENT
                 </TableHead>
-                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   REPORTED
                 </TableHead>
-                <TableHead className="px-4 py-3 text-xs font-semibold tracking-wider text-right uppercase text-muted-foreground">
+                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
                   ACTIONS
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedReports.map((report, index) => (
+              {paginatedReports.map((report) => (
                 <TableRow
                   key={report.id}
-                  className={`hover:bg-muted/30 transition-colors border-none ${
-                    index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                  }`}
+                  className="hover:bg-gray-50/60 transition-colors border-gray-100"
                 >
                   <TableCell className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -468,6 +467,7 @@ export default function ReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (

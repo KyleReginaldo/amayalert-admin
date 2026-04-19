@@ -353,7 +353,7 @@ export default function AlertPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 md:bg-background md:p-6">
+    <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
       <div className="mx-auto space-y-6 max-w-7xl">
         <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
         <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5 md:gap-4">
@@ -487,7 +487,7 @@ export default function AlertPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden border rounded-lg shadow-sm bg-card border-border">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Mobile View */}
           <div className="block divide-y md:hidden divide-border">
             {paginatedAlerts.length === 0 ? (
@@ -632,11 +632,11 @@ export default function AlertPage() {
                 </div>
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="w-8">
+                    <TableRow className="bg-gray-50 border-b border-gray-100">
+                      <TableHead className="w-8 px-5 py-3">
                         <button
                           onClick={toggleSelectAll}
-                          className="h-4 w-4 rounded border border-border flex items-center justify-center text-[10px] bg-background hover:bg-muted"
+                          className="h-4 w-4 rounded border border-gray-300 flex items-center justify-center text-[10px] bg-white hover:bg-gray-100"
                           aria-label="Select all"
                         >
                           {selectedIds.size === paginatedAlerts.length && paginatedAlerts.length > 0
@@ -644,12 +644,12 @@ export default function AlertPage() {
                             : ''}
                         </button>
                       </TableHead>
-                      <TableHead className="font-semibold text-foreground">Title</TableHead>
-                      <TableHead className="font-semibold text-foreground">Content</TableHead>
-                      <TableHead className="font-semibold text-foreground">Level</TableHead>
-                      <TableHead className="font-semibold text-foreground">Created</TableHead>
-                      <TableHead className="font-semibold text-foreground">Status</TableHead>
-                      <TableHead className="font-semibold text-end ">Actions</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Content</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Level</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Created</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</TableHead>
+                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -660,7 +660,7 @@ export default function AlertPage() {
                       return (
                         <TableRow
                           key={alert.id}
-                          className="transition-colors duration-200 border-border hover:bg-muted/50"
+                          className="hover:bg-gray-50/60 transition-colors border-gray-100"
                         >
                           <TableCell className="w-8">
                             <button
