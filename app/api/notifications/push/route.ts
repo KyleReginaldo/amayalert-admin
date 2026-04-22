@@ -3,24 +3,22 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, userId, deviceToken, attachment_url } = body;
+    const { message, userId, deviceToken, attachment_url, userIds, deviceTokens } = body;
 
-    if (!message || (!userId && !deviceToken)) {
+    const isBatch = Array.isArray(userIds) || Array.isArray(deviceTokens);
+
+    if (!message || (!isBatch && !userId && !deviceToken)) {
       return NextResponse.json(
-        { success: false, error: 'Message and either userId or deviceToken are required' },
+        { success: false, error: 'Message and either userId/deviceToken (or userIds/deviceTokens arrays) are required' },
         { status: 400 },
       );
     }
 
-    // Target by device token (subscription ID) if available — more reliable than external_id
-    // because external_id requires the mobile app to call OneSignal.login(userId) explicitly.
-    // Fallback to external_id alias when no device token is stored.
-    const targeting = deviceToken
-      ? { include_subscription_ids: [deviceToken] }
-      : { include_aliases: { external_id: [userId] } };
+    const appId = process.env.ONESIGNAL_APP_ID;
+    const apiKey = process.env.ONESIGNAL_API_KEY;
 
-    const payload = {
-      app_id: process.env.ONESIGNAL_APP_ID,
+    const basePayload = {
+      app_id: appId,
       contents: { en: message },
       headings: { en: 'AmayAlert' },
       target_channel: 'push',
@@ -29,16 +27,58 @@ export async function POST(request: NextRequest) {
       ios_badgeType: 'None',
       ttl: 259200,
       ...(attachment_url ? { big_picture: attachment_url } : {}),
-      ...targeting,
     };
+
+    if (isBatch) {
+      // Batch mode: one call per targeting strategy
+      const allTokens: string[] = Array.isArray(deviceTokens) ? deviceTokens : [];
+      const allExternalIds: string[] = Array.isArray(userIds) ? userIds : [];
+
+      const calls: Promise<Response>[] = [];
+      if (allTokens.length > 0) {
+        calls.push(fetch('https://api.onesignal.com/notifications?c=push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
+          body: JSON.stringify({ ...basePayload, include_subscription_ids: allTokens }),
+          signal: AbortSignal.timeout(12000),
+        }));
+      }
+      if (allExternalIds.length > 0) {
+        calls.push(fetch('https://api.onesignal.com/notifications?c=push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
+          body: JSON.stringify({ ...basePayload, include_aliases: { external_id: allExternalIds } }),
+          signal: AbortSignal.timeout(12000),
+        }));
+      }
+
+      const results = await Promise.allSettled(calls);
+      let totalRecipients = 0;
+      const errors: string[] = [];
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          const d = await r.value.json().catch(() => ({})) as { recipients?: number; errors?: string[] };
+          totalRecipients += d.recipients ?? 0;
+          if (!r.value.ok && d.errors?.[0]) errors.push(d.errors[0]);
+        } else {
+          errors.push(r.reason instanceof Error ? r.reason.message : 'Network error');
+        }
+      }
+      return NextResponse.json({ success: true, recipients: totalRecipients, errors });
+    }
+
+    // Single-user mode (unchanged behaviour)
+    const targeting = deviceToken
+      ? { include_subscription_ids: [deviceToken] }
+      : { include_aliases: { external_id: [userId] } };
 
     const response = await fetch('https://api.onesignal.com/notifications?c=push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Key ${process.env.ONESIGNAL_API_KEY}`,
+        Authorization: `Key ${apiKey}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...basePayload, ...targeting }),
     });
 
     const data = await response.json() as { id?: string; recipients?: number; errors?: unknown };
@@ -51,7 +91,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // OneSignal returns 200 OK even when recipients=0 (no device matched the target)
     if (data.recipients === 0) {
       const reason = deviceToken
         ? 'device token not registered in OneSignal'

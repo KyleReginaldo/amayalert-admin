@@ -32,6 +32,9 @@ class EmailService {
       tls: {
         rejectUnauthorized: false,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     };
 
     console.log('📧 Email Service Configuration:', {
@@ -48,7 +51,7 @@ class EmailService {
   /**
    * Send a single email
    */
-  async sendEmail(options: EmailOptions): Promise<EmailResponse> {
+  async sendEmail(options: EmailOptions, retries = 2): Promise<EmailResponse> {
     try {
       const mailOptions = {
         from: options.from || `"Amayalert Support" <amayalert.site@gmail.com>`,
@@ -67,6 +70,11 @@ class EmailService {
         message: 'Email sent successfully',
       };
     } catch (error) {
+      const responseCode = (error as { responseCode?: number }).responseCode;
+      if (retries > 0 && responseCode === 421) {
+        await new Promise((r) => setTimeout(r, 2000));
+        return this.sendEmail(options, retries - 1);
+      }
       console.error('Email sending failed:', error);
       return {
         success: false,
@@ -83,11 +91,12 @@ class EmailService {
     subject: string,
     text?: string,
     html?: string,
+    retries = 2,
   ): Promise<EmailResponse> {
     try {
       const mailOptions = {
         from: `"Amayalert Support" <amayalert.site@gmail.com>`,
-        bcc: recipients, // Use BCC to hide recipients from each other
+        bcc: recipients,
         subject: subject,
         text: text,
         html: html,
@@ -101,6 +110,11 @@ class EmailService {
         message: `Bulk email sent to ${recipients.length} recipients`,
       };
     } catch (error) {
+      const responseCode = (error as { responseCode?: number }).responseCode;
+      if (retries > 0 && responseCode === 421) {
+        await new Promise((r) => setTimeout(r, 2000));
+        return this.sendBulkEmails(recipients, subject, text, html, retries - 1);
+      }
       console.error('Bulk email sending failed:', error);
       return {
         success: false,

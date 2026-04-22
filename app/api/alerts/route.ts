@@ -54,35 +54,95 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper to call internal SMS API (TextBee-backed)
-async function sendViaInternalSMSAPI(
-  to: string,
-  message: string,
-): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const origin =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    process.env.BASE_URL ||
-    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-    'http://localhost:3000';
-  const url = `${origin.replace(/\/$/, '')}/api/sms`;
+const origin =
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  process.env.BASE_URL ||
+  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+  'http://localhost:3000';
+
+// Send one SMS API call for all phone numbers at once
+async function sendBatchSMS(phones: string[], message: string): Promise<{ sent: number; error?: string }> {
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(`${origin.replace(/\/$/, '')}/api/sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipients: [to], message }),
+      body: JSON.stringify({ recipients: phones, message }),
+      signal: AbortSignal.timeout(12000),
     });
     if (!resp.ok) {
       type SMSAPIError = { error?: string; details?: string };
       const data: SMSAPIError = await resp.json().catch(() => ({} as SMSAPIError));
-      return { success: false, error: data.error || data.details || `HTTP ${resp.status}` };
+      return { sent: 0, error: data.error || data.details || `HTTP ${resp.status}` };
     }
-    return { success: true };
+    return { sent: phones.length };
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Network error' };
+    return { sent: 0, error: e instanceof Error ? e.message : 'Network error' };
   }
+}
+
+// Send push to all device tokens and/or external user IDs in 1-2 OneSignal calls
+async function sendBatchPush(
+  tokens: string[],
+  externalIds: string[],
+  title: string,
+  content: string,
+): Promise<{ sent: number; errors: string[] }> {
+  const appId = process.env.ONESIGNAL_APP_ID;
+  const apiKey = process.env.ONESIGNAL_API_KEY;
+  if (!appId || !apiKey) return { sent: 0, errors: ['OneSignal not configured'] };
+
+  const basePayload = {
+    app_id: appId,
+    contents: { en: `${title}\n\n${content}` },
+    headings: { en: 'AmayAlert' },
+    target_channel: 'push',
+    priority: 10,
+    ios_interruption_level: 'active',
+    ttl: 259200,
+  };
+
+  const calls: Promise<{ ok: boolean; recipients?: number; error?: string }>[] = [];
+
+  if (tokens.length > 0) {
+    calls.push(
+      fetch('https://api.onesignal.com/notifications?c=push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
+        body: JSON.stringify({ ...basePayload, include_subscription_ids: tokens }),
+        signal: AbortSignal.timeout(12000),
+      })
+        .then(async (r) => {
+          const d = await r.json().catch(() => ({})) as { recipients?: number; errors?: string[] };
+          return { ok: r.ok, recipients: d.recipients ?? 0, error: d.errors?.[0] };
+        })
+        .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : 'Network error' })),
+    );
+  }
+
+  if (externalIds.length > 0) {
+    calls.push(
+      fetch('https://api.onesignal.com/notifications?c=push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
+        body: JSON.stringify({ ...basePayload, include_aliases: { external_id: externalIds } }),
+        signal: AbortSignal.timeout(12000),
+      })
+        .then(async (r) => {
+          const d = await r.json().catch(() => ({})) as { recipients?: number; errors?: string[] };
+          return { ok: r.ok, recipients: d.recipients ?? 0, error: d.errors?.[0] };
+        })
+        .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : 'Network error' })),
+    );
+  }
+
+  const results = await Promise.all(calls);
+  let sent = 0;
+  const errors: string[] = [];
+  for (const r of results) {
+    if (r.ok) sent += r.recipients ?? 0;
+    else if (r.error) errors.push(r.error);
+  }
+  return { sent, errors };
 }
 
 // POST /api/alerts - Create a new alert
@@ -160,57 +220,57 @@ export async function POST(request: NextRequest) {
           return candidate.length <= 150 ? candidate : baseDefault;
         })();
 
-        const results = await Promise.all(
-          users.map(async (user) => {
-            const result = { push: 0, email: 0, sms: 0, pushErrors: [] as string[], emailErrors: [] as string[], smsErrors: [] as string[] };
-            const { id: uid, email: userEmail, phone_number: phone, device_token: deviceToken } = user;
-            if (!userEmail && !phone && !uid) return result;
+        // Collect all targets upfront — then send 3 batch calls instead of N×3 individual calls
+        const needsEmail = notificationMethod === 'app' || notificationMethod === 'app_push' || notificationMethod === 'both';
+        const needsSms = notificationMethod === 'sms' || notificationMethod === 'both';
+        const needsPush = notificationMethod === 'app_push' || notificationMethod === 'both';
 
-            await Promise.all([
-              // Push
-              uid && (notificationMethod === 'app_push' || notificationMethod === 'both')
-                ? fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/notifications/push`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: `${title}\n\n${content}`, userId: uid, deviceToken: deviceToken ?? undefined }),
-                  }).then(async (r) => {
-                    if (r.ok) { result.push++; }
-                    else {
-                      const e = await r.json().catch(() => ({})) as { error?: string; details?: string };
-                      result.pushErrors.push(`${uid}: ${r.status === 503 ? 'Service temporarily unavailable (OneSignal outage)' : (e.error || e.details || `HTTP ${r.status}`)}`);
-                    }
-                  }).catch((err: unknown) => {
-                    result.pushErrors.push(`${uid}: Network error - ${err instanceof Error ? err.message : String(err)}`);
-                  })
-                : Promise.resolve(),
+        const emailRecipients: string[] = [];
+        const smsRecipients: string[] = [];
+        const pushTokens: string[] = [];
+        const pushExternalIds: string[] = [];
 
-              // Email
-              userEmail && (notificationMethod === 'app' || notificationMethod === 'app_push' || notificationMethod === 'both')
-                ? emailService.sendEmail({ to: userEmail, from: 'amayalert.site@gmail.com', subject: `[ALERT] ${title}`, text, html, replyTo: 'amayalert.site@gmail.com' })
-                    .then(() => { result.email++; })
-                    .catch((err: unknown) => { result.emailErrors.push(`${userEmail}: ${err instanceof Error ? err.message : String(err)}`); })
-                : Promise.resolve(),
+        for (const user of users) {
+          const { id: uid, email: userEmail, phone_number: phone, device_token: deviceToken } = user;
+          if (needsEmail && userEmail) emailRecipients.push(userEmail);
+          if (needsSms && phone) smsRecipients.push(phone);
+          if (needsPush && uid) {
+            if (deviceToken) pushTokens.push(deviceToken);
+            else pushExternalIds.push(uid);
+          }
+        }
 
-              // SMS
-              phone && (notificationMethod === 'sms' || notificationMethod === 'both')
-                ? sendViaInternalSMSAPI(phone, smsMessage).then((r) => {
-                    if (r.success) result.sms++;
-                    else result.smsErrors.push(`${phone}: ${r.error}`);
-                  }).catch((err: unknown) => { result.smsErrors.push(`${phone}: ${err instanceof Error ? err.message : String(err)}`); })
-                : Promise.resolve(),
-            ]);
+        const [emailResult, smsResult, pushResult] = await Promise.allSettled([
+          emailRecipients.length > 0
+            ? emailService.sendBulkEmails(emailRecipients, `[ALERT] ${title}`, text, html)
+            : Promise.resolve({ success: true, error: undefined } as { success: boolean; error?: string }),
+          smsRecipients.length > 0
+            ? sendBatchSMS(smsRecipients, smsMessage)
+            : Promise.resolve({ sent: 0, error: undefined } as { sent: number; error?: string }),
+          pushTokens.length > 0 || pushExternalIds.length > 0
+            ? sendBatchPush(pushTokens, pushExternalIds, title, content)
+            : Promise.resolve({ sent: 0, errors: [] }),
+        ]);
 
-            return result;
-          }),
-        );
+        if (emailResult.status === 'fulfilled') {
+          emailCount = emailResult.value.success ? emailRecipients.length : 0;
+          if (!emailResult.value.success && emailResult.value.error) emailErrors.push(emailResult.value.error);
+        } else {
+          emailErrors.push(emailResult.reason instanceof Error ? emailResult.reason.message : 'Email batch failed');
+        }
 
-        for (const r of results) {
-          pushCount += r.push;
-          emailCount += r.email;
-          smsCount += r.sms;
-          pushErrors.push(...r.pushErrors);
-          emailErrors.push(...r.emailErrors);
-          smsErrors.push(...r.smsErrors);
+        if (smsResult.status === 'fulfilled') {
+          smsCount = smsResult.value?.sent ?? 0;
+          if (smsResult.value?.error) smsErrors.push(smsResult.value.error);
+        } else {
+          smsErrors.push(smsResult.reason instanceof Error ? smsResult.reason.message : 'SMS batch failed');
+        }
+
+        if (pushResult.status === 'fulfilled') {
+          pushCount = pushResult.value?.sent ?? 0;
+          pushErrors.push(...(pushResult.value?.errors ?? []));
+        } else {
+          pushErrors.push(pushResult.reason instanceof Error ? pushResult.reason.message : 'Push batch failed');
         }
       }
     }
