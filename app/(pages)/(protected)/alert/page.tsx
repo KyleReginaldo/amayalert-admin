@@ -939,7 +939,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
     title: '',
     content: '',
     alert_level: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-    notification_method: 'app_push' as 'app_push' | 'app' | 'sms' | 'both',
+    notification_method: 'app_push' as 'app_push' | 'app' | 'sms' | 'both' | 'none',
   });
 
   useEffect(() => {
@@ -962,14 +962,14 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
         title: alert.title || '',
         content: alert.content || '',
         alert_level: (alert.alert_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        notification_method: 'app_push', // Default for existing alerts
+        notification_method: 'app_push',
       });
     } else {
       setFormData({
         title: '',
         content: '',
         alert_level: 'medium',
-        notification_method: 'app_push', // Default for new alerts
+        notification_method: 'app_push',
       });
     }
   }, [alert, isOpen]);
@@ -1071,9 +1071,11 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
                 { value: 'app', label: 'Email', icon: Mail },
                 { value: 'sms', label: 'SMS', icon: Phone },
                 { value: 'both', label: 'All', icon: Megaphone },
+                { value: 'none', label: 'None', icon: Save },
               ].map((m) => {
                 const active = formData.notification_method === m.value;
                 const Icon = m.icon;
+                const isNone = m.value === 'none';
                 return (
                   <button
                     key={m.value}
@@ -1082,16 +1084,18 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
                     onClick={() =>
                       setFormData((prev) => ({
                         ...prev,
-                        notification_method: m.value as 'app_push' | 'app' | 'sms' | 'both',
+                        notification_method: m.value as 'app_push' | 'app' | 'sms' | 'both' | 'none',
                       }))
                     }
                     className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 ${
                       active
-                        ? 'bg-primary text-white border-primary shadow-sm'
+                        ? isNone
+                          ? 'bg-gray-500 text-white border-gray-500 shadow-sm'
+                          : 'bg-primary text-white border-primary shadow-sm'
                         : 'bg-muted text-foreground/70 border-border hover:bg-primary/10'
                     } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <Icon className={`h-3.5 w-3.5 ${active ? 'text-white' : 'text-primary'}`} />
+                    <Icon className={`h-3.5 w-3.5 ${active ? 'text-white' : isNone ? 'text-gray-500' : 'text-primary'}`} />
                     {m.label}
                   </button>
                 );
@@ -1109,6 +1113,9 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
               )}
               {formData.notification_method === 'both' && (
                 <span>All methods: maximum reach (push, email, SMS) for critical events.</span>
+              )}
+              {formData.notification_method === 'none' && (
+                <span>No notifications sent — alert is saved to the database only.</span>
               )}
             </div>
             <p className="text-[10px] mt-2 text-muted-foreground italic">

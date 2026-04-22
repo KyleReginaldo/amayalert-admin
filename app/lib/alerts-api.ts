@@ -10,7 +10,7 @@ export type AlertUpdate = Database['public']['Tables']['alert']['Update'] & {
 
 // Extended type for alert creation with notification preferences
 export interface AlertCreateRequest extends AlertInsert {
-  notification_method?: 'app_push' | 'app' | 'sms' | 'both';
+  notification_method?: 'app_push' | 'app' | 'sms' | 'both' | 'none';
   userId?: string;
 }
 

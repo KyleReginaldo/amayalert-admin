@@ -38,9 +38,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
 } from '@/components/ui/sheet';
 import {
   Table,
@@ -52,6 +49,7 @@ import {
 } from '@/components/ui/table';
 import {
   Ban,
+  Calendar,
   CheckCircle,
   CheckCircle2,
   ChevronLeft,
@@ -62,11 +60,15 @@ import {
   Eye,
   ListFilter,
   Loader2,
+  Mail,
+  MapPin,
   MoreVertical,
+  Phone,
   Plus,
   Save,
   Search,
   Trash2,
+  User as UserIcon,
   UserCheck,
   Users as UsersIcon,
   XCircle,
@@ -597,35 +599,13 @@ export default function UsersPage() {
             {/* Users Table or Map */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               {viewMode === 'map' ? (
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm text-gray-600">
-                      Showing {usersWithLocation.length} users with location
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setFitSignal((value) => value + 1)}
-                        className="gap-2"
-                        disabled={usersWithLocation.length === 0}
-                        title="Center all users on the map"
-                      >
-                        Center all
-                      </Button>
-                    </div>
-                  </div>
-                  <UsersLiveMap
-                    users={usersWithLocation}
-                    fitSignal={fitSignal}
-                    onUserClick={(u) => openUserSheet(u)}
-                  />
-                  {usersWithLocation.length === 0 && (
-                    <div className="mt-3 text-sm text-center text-gray-500">
-                      No users with location data to display.
-                    </div>
-                  )}
-                </div>
+                <UsersLiveMap
+                  users={usersWithLocation}
+                  height="560px"
+                  fitSignal={fitSignal}
+                  onUserClick={(u) => openUserSheet(u)}
+                  onCenterAll={() => setFitSignal((v) => v + 1)}
+                />
               ) : (
                 <>
                   {/* Mobile View - Stack Cards */}
@@ -1038,133 +1018,240 @@ export default function UsersPage() {
           if (!open) setSelectedUser(null);
         }}
       >
-        <SheetContent className="sm:max-w-xl">
+        <SheetContent className="sm:max-w-lg p-0 flex flex-col gap-0">
           {selectedUser && (
-            <div className="flex flex-col h-full">
-              <SheetHeader>
-                <SheetTitle>User Details</SheetTitle>
-                <SheetDescription>Read-only profile snapshot.</SheetDescription>
-              </SheetHeader>
-              <div className="flex-1 space-y-3 overflow-auto text-sm text-gray-700">
-                <div>
-                  <div className="text-xs text-gray-500">Full name</div>
-                  <div>{selectedUser.full_name || 'No Name'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Email</div>
-                  <div>{selectedUser.email}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Role</div>
-                  <div className="inline-flex items-center gap-2">
-                    <Badge className={`${getRoleColor(selectedUser.role)} text-xs`}>
-                      {selectedUser.role || 'user'}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Phone</div>
-                  <div>{selectedUser.phone_number || 'Not provided'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Gender</div>
-                  <div>
-                    {selectedUser.gender ? (
-                      <Badge
-                        className={`text-xs ${
-                          selectedUser.gender.toLowerCase() === 'male'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-pink-50 text-pink-700 border-pink-200'
-                        }`}
+            <>
+              {/* Hero */}
+              <div className="relative bg-gradient-to-br from-[#4988C4] to-[#2d6fa8] px-6 pt-10 pb-6">
+                <div className="flex flex-col items-center text-center gap-3">
+                  {/* Avatar */}
+                  <div className="relative">
+                    <div className="h-20 w-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/20 flex items-center justify-center">
+                      {selectedUser.profile_picture ? (
+                        <img
+                          src={selectedUser.profile_picture}
+                          alt={selectedUser.full_name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            (e.currentTarget.nextSibling as HTMLElement).style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <span
+                        className="text-white text-2xl font-bold select-none"
+                        style={{ display: selectedUser.profile_picture ? 'none' : 'flex' }}
                       >
-                        {selectedUser.gender}
-                      </Badge>
-                    ) : (
-                      'Not provided'
+                        {(selectedUser.full_name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    {/* Online dot based on having location */}
+                    {selectedUser.latitude && selectedUser.longitude && (
+                      <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white" />
                     )}
                   </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Status</div>
-                  <div className="flex items-center gap-2">
+
+                  <div>
+                    <h2 className="text-xl font-bold text-white leading-tight">
+                      {selectedUser.full_name || 'No Name'}
+                    </h2>
+                    <p className="text-blue-100 text-sm mt-0.5">{selectedUser.email || '—'}</p>
+                  </div>
+
+                  {/* Badges row */}
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <Badge className={`${getRoleColor(selectedUser.role)} text-xs border`}>
+                      {selectedUser.role === 'admin' ? (
+                        <Crown className="w-3 h-3 mr-1" />
+                      ) : (
+                        <UserCheck className="w-3 h-3 mr-1" />
+                      )}
+                      {selectedUser.role || 'user'}
+                    </Badge>
                     {selectedUser.suspended ? (
-                      <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
+                      <Badge className="text-xs bg-red-100 text-red-700 border-red-200">
+                        <Ban className="w-3 h-3 mr-1" />
                         Suspended
                       </Badge>
                     ) : (
-                      <Badge className="text-xs bg-green-100 text-green-800 border-green-300">
+                      <Badge className="text-xs bg-green-100 text-green-700 border-green-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
                         Active
                       </Badge>
                     )}
                     {getStatusBadge(selectedUser.status)}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-500">Joined</div>
-                  <div>{new Date(selectedUser.created_at).toLocaleString()}</div>
-                </div>
-                {selectedUser.id_picture && (
-                  <div>
-                    <div className="text-xs text-gray-500 mb-2">ID Picture</div>
-                    <img
-                      src={selectedUser.id_picture}
-                      alt="User ID"
-                      className="w-full rounded-lg border border-gray-200 object-cover max-h-64"
-                    />
-                  </div>
-                )}
               </div>
 
-              <div className="flex justify-end gap-2 mt-4 flex-wrap">
-                <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Contact Info */}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Contact</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <Mail className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400">Email</p>
+                        <p className="text-sm text-gray-800 truncate">{selectedUser.email || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                        <Phone className="h-4 w-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">Phone</p>
+                        <p className="text-sm text-gray-800">{selectedUser.phone_number || '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100" />
+
+                {/* Personal Info */}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Personal</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+                        <UserIcon className="h-4 w-4 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">Gender</p>
+                        {selectedUser.gender ? (
+                          <Badge
+                            className={`text-xs mt-0.5 ${
+                              selectedUser.gender.toLowerCase() === 'male'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-pink-50 text-pink-700 border-pink-200'
+                            }`}
+                          >
+                            {selectedUser.gender}
+                          </Badge>
+                        ) : (
+                          <p className="text-sm text-gray-400">—</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                        <Calendar className="h-4 w-4 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">Birthday</p>
+                        <p className="text-sm text-gray-800">
+                          {selectedUser.birth_date
+                            ? new Date(selectedUser.birth_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                        <Clock className="h-4 w-4 text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">Joined</p>
+                        <p className="text-sm text-gray-800">
+                          {new Date(selectedUser.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    {(selectedUser.latitude && selectedUser.longitude) ? (
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+                          <MapPin className="h-4 w-4 text-teal-500" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400">Location</p>
+                          <p className="text-xs text-gray-800 font-mono">
+                            {selectedUser.latitude.toFixed(4)}, {selectedUser.longitude.toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* ID Picture */}
+                {selectedUser.id_picture && (
+                  <>
+                    <div className="border-t border-gray-100" />
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Government ID</p>
+                      <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                        <img
+                          src={selectedUser.id_picture}
+                          alt="Government ID"
+                          className="w-full object-cover max-h-52"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* User ID */}
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[10px] text-gray-400">User ID</p>
+                  <p className="text-xs text-gray-500 font-mono break-all mt-0.5">{selectedUser.id}</p>
+                </div>
+              </div>
+
+              {/* Footer actions */}
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => setIsSheetOpen(false)} className="mr-auto">
                   Close
                 </Button>
                 {selectedUser.full_name !== 'Guest User' && (
                   <Button
-                    onClick={() => {
-                      setIsSheetOpen(false);
-                      openEditModal(selectedUser);
-                    }}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setIsSheetOpen(false); openEditModal(selectedUser); }}
                     disabled={currentUserId === selectedUser.id}
-                    title={
-                      currentUserId === selectedUser.id
-                        ? 'Cannot edit your own account'
-                        : 'Edit user'
-                    }
+                    className="gap-1.5"
                   >
+                    <Edit className="w-3.5 h-3.5" />
                     Edit
                   </Button>
                 )}
                 {selectedUser.status !== 'approved' && (
                   <Button
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
                     onClick={() => handleStatusChange(selectedUser, 'approved')}
                     disabled={statusLoading !== null}
                   >
                     {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'approved' ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                     )}
                     Approve
                   </Button>
                 )}
                 {selectedUser.status !== 'rejected' && selectedUser.status !== 'approved' && (
                   <Button
+                    size="sm"
                     variant="destructive"
                     onClick={() => handleStatusChange(selectedUser, 'rejected')}
                     disabled={statusLoading !== null}
+                    className="gap-1.5"
                   >
                     {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'rejected' ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <XCircle className="w-4 h-4 mr-2" />
+                      <XCircle className="w-3.5 h-3.5" />
                     )}
                     Reject
                   </Button>
                 )}
               </div>
-            </div>
+            </>
           )}
         </SheetContent>
       </Sheet>

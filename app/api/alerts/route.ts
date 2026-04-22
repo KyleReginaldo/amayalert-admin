@@ -127,13 +127,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send notifications to users based on selected method
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, phone_number, email, role')
-      .eq('role', 'user');
-    console.log('users', users);
-
     let smsCount = 0;
     let emailCount = 0;
     let pushCount = 0;
@@ -141,128 +134,85 @@ export async function POST(request: NextRequest) {
     const emailErrors: string[] = [];
     const pushErrors: string[] = [];
 
-    if (users && users.length > 0) {
-      console.log(`Sending notifications to ${users.length} users via ${notificationMethod}`);
+    if (notificationMethod !== 'none') {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, phone_number, email, role, device_token')
+        .eq('role', 'user');
 
-      // Send notifications based on selected method
-      for (const user of users) {
-        const email = user.email;
-        const phone = user.phone_number;
-        const userId = user.id;
-
-        if (!email && !phone && !userId) continue;
-
+      if (users && users.length > 0) {
         const title = newAlert?.title ?? 'Emergency Alert';
         const content = newAlert?.content ?? '';
         const base = process.env.NEXT_PUBLIC_BASE_URL || '';
         const alertUrl = `${base}/alert`;
-
         const html = `<!doctype html><html><body><h2>${title}</h2><p>${content}</p><p><a href="${alertUrl}" style="display:inline-block;padding:10px 14px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none">View Alert</a></p><hr/><p style="color:#6b7280;font-size:13px">This is an official notification from AmayAlert.</p></body></html>`;
         const text = `${title}\n\n${content}\n\nView: ${alertUrl}`;
 
-        // Send push notification first (most reliable and free)
-        if (userId && (notificationMethod === 'app_push' || notificationMethod === 'both')) {
-          try {
-            const pushResponse = await fetch(
-              `${
-                process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-              }/api/notifications/push`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  message: `${title}\n\n${content}`,
-                  userId: userId,
-                }),
-              },
-            );
-
-            if (pushResponse.ok) {
-              pushCount++;
-              console.log(`✅ Push notification sent to user ${userId}`);
-            } else {
-              const errorData = await pushResponse.json();
-              const errorMessage = errorData.error || errorData.details || 'Unknown error';
-              console.error(`❌ Push notification failed for user ${userId}:`, errorMessage);
-
-              // For service unavailable errors, add more context
-              if (pushResponse.status === 503) {
-                pushErrors.push(`${userId}: Service temporarily unavailable (OneSignal outage)`);
-              } else {
-                pushErrors.push(`${userId}: ${errorMessage}`);
-              }
-            }
-          } catch (err) {
-            console.error('Error sending push notification to', userId, err);
-            pushErrors.push(
-              `${userId}: Network error - ${err instanceof Error ? err.message : String(err)}`,
-            );
+        const smsMessage = (() => {
+          const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
+          const extras: string[] = [];
+          if (content) {
+            const trimmed = content.replace(/\s+/g, ' ').trim();
+            if (trimmed) extras.push(trimmed.length > 90 ? trimmed.slice(0, 87) + '…' : trimmed);
           }
-        }
+          if (process.env.NEXT_PUBLIC_BASE_URL) extras.push(`View: ${process.env.NEXT_PUBLIC_BASE_URL}/alert`);
+          const candidate = `${baseDefault} ${extras.join(' | ')}`;
+          return candidate.length <= 150 ? candidate : baseDefault;
+        })();
 
-        // Send email if method includes app notifications
-        if (
-          (notificationMethod === 'app' ||
-            notificationMethod === 'app_push' ||
-            notificationMethod === 'both') &&
-          email
-        ) {
-          try {
-            await emailService.sendEmail({
-              to: email,
-              from: 'amayalert.site@gmail.com',
-              subject: `[ALERT] ${title}`,
-              text,
-              html,
-              replyTo: 'amayalert.site@gmail.com',
-            });
-            emailCount++;
-            console.log(`✅ Email sent to ${email}`);
-          } catch (err) {
-            console.error('Error sending email to', email, err);
-            emailErrors.push(`${email}: ${err instanceof Error ? err.message : String(err)}`);
-          }
-        }
+        const results = await Promise.all(
+          users.map(async (user) => {
+            const result = { push: 0, email: 0, sms: 0, pushErrors: [] as string[], emailErrors: [] as string[], smsErrors: [] as string[] };
+            const { id: uid, email: userEmail, phone_number: phone, device_token: deviceToken } = user;
+            if (!userEmail && !phone && !uid) return result;
 
-        // Send SMS if method includes SMS notifications (use internal TextBee-backed API)
-        if ((notificationMethod === 'sms' || notificationMethod === 'both') && phone) {
-          try {
-            const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
-            const extras: string[] = [];
-            if (content) {
-              const trimmed = content.replace(/\s+/g, ' ').trim();
-              if (trimmed) {
-                const short = trimmed.length > 90 ? trimmed.slice(0, 87) + '…' : trimmed;
-                extras.push(short);
-              }
-            }
-            if (process.env.NEXT_PUBLIC_BASE_URL) {
-              extras.push(`View: ${process.env.NEXT_PUBLIC_BASE_URL}/alert`);
-            }
-            let finalMessage = baseDefault;
-            if (extras.length) {
-              const tail = extras.join(' | ');
-              const candidate = `${baseDefault} ${tail}`;
-              finalMessage = candidate.length <= 150 ? candidate : baseDefault;
-            }
-            const smsResult = await sendViaInternalSMSAPI(phone, finalMessage);
-            if (smsResult.success) {
-              smsCount++;
-              console.log(`✅ SMS sent to ${phone}`);
-            } else {
-              console.error(`❌ SMS failed for ${phone}:`, smsResult.error);
-              smsErrors.push(`${phone}: ${smsResult.error}`);
-            }
-          } catch (err) {
-            console.error('Error sending SMS to', phone, err);
-            smsErrors.push(`${phone}: ${err instanceof Error ? err.message : String(err)}`);
-          }
+            await Promise.all([
+              // Push
+              uid && (notificationMethod === 'app_push' || notificationMethod === 'both')
+                ? fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/notifications/push`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `${title}\n\n${content}`, userId: uid, deviceToken: deviceToken ?? undefined }),
+                  }).then(async (r) => {
+                    if (r.ok) { result.push++; }
+                    else {
+                      const e = await r.json().catch(() => ({})) as { error?: string; details?: string };
+                      result.pushErrors.push(`${uid}: ${r.status === 503 ? 'Service temporarily unavailable (OneSignal outage)' : (e.error || e.details || `HTTP ${r.status}`)}`);
+                    }
+                  }).catch((err: unknown) => {
+                    result.pushErrors.push(`${uid}: Network error - ${err instanceof Error ? err.message : String(err)}`);
+                  })
+                : Promise.resolve(),
+
+              // Email
+              userEmail && (notificationMethod === 'app' || notificationMethod === 'app_push' || notificationMethod === 'both')
+                ? emailService.sendEmail({ to: userEmail, from: 'amayalert.site@gmail.com', subject: `[ALERT] ${title}`, text, html, replyTo: 'amayalert.site@gmail.com' })
+                    .then(() => { result.email++; })
+                    .catch((err: unknown) => { result.emailErrors.push(`${userEmail}: ${err instanceof Error ? err.message : String(err)}`); })
+                : Promise.resolve(),
+
+              // SMS
+              phone && (notificationMethod === 'sms' || notificationMethod === 'both')
+                ? sendViaInternalSMSAPI(phone, smsMessage).then((r) => {
+                    if (r.success) result.sms++;
+                    else result.smsErrors.push(`${phone}: ${r.error}`);
+                  }).catch((err: unknown) => { result.smsErrors.push(`${phone}: ${err instanceof Error ? err.message : String(err)}`); })
+                : Promise.resolve(),
+            ]);
+
+            return result;
+          }),
+        );
+
+        for (const r of results) {
+          pushCount += r.push;
+          emailCount += r.email;
+          smsCount += r.sms;
+          pushErrors.push(...r.pushErrors);
+          emailErrors.push(...r.emailErrors);
+          smsErrors.push(...r.smsErrors);
         }
       }
-    } else {
-      console.log('No users found for notifications');
     }
 
     // Prepare response with notification summary
@@ -288,14 +238,14 @@ export async function POST(request: NextRequest) {
       console.warn('Some notifications failed:', { smsErrors, emailErrors, pushErrors });
     }
 
-    // Log the activity
-    await logAlertAction(
+    // Fire-and-forget — don't block the response on logging
+    logAlertAction(
       'create',
       alertData.alert_level,
       alertData.title,
       `Sent ${pushCount + smsCount + emailCount} notifications via ${notificationMethod}`,
       userId,
-    );
+    ).catch((err) => console.error('Failed to log alert action:', err));
 
     return NextResponse.json(
       {
