@@ -1,7 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import { getAdminStatColor } from '@/app/core/utils/utils';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
@@ -24,6 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Sheet,
   SheetContent,
@@ -48,6 +54,7 @@ import {
   Edit,
   Eye,
   Loader2,
+  MoreVertical,
   Plus,
   Save,
   Search,
@@ -429,49 +436,36 @@ export default function AdminsPage() {
 
   return (
     <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
-      <div className="mx-auto space-y-6 max-w-7xl">
-        {/* Header */}
-        <PageHeader
-          title="Admin Management"
-          subtitle="Manage administrator accounts and permissions"
-          action={
-            <Button onClick={openCreateModal} className="gap-2 bg-[#4988C4] cursor-pointer">
-              <Plus className="w-4 h-4" />
+      <div className="mx-auto space-y-4 max-w-7xl">
+        {/* Stat cards + search */}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            {[
+              { label: 'Total', count: stats.total },
+              { label: 'With Phone', count: stats.withPhone },
+              { label: 'Male', count: stats.male },
+              { label: 'Female', count: stats.female },
+            ].map((stat) => (
+              <div key={stat.label} className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white">
+                <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+                <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{stat.count}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+              <Input
+                placeholder="Search admins..."
+                className="h-8 pl-8 text-sm w-52 border-gray-200 bg-white"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+            <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+              <Plus className="w-3.5 h-3.5" />
               Add Admin
             </Button>
-          }
-        />
-
-        {/* Minimal Stats */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className={`p-4 rounded-lg ${getAdminStatColor('total')}`}>
-            <div className="text-2xl font-bold ">{stats.total}</div>
-            <div className="text-sm text-gray-600">Total Admins</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getAdminStatColor('with-phone')}`}>
-            <div className="text-2xl font-bold ">{stats.withPhone}</div>
-            <div className="text-sm text-gray-600">With Phone</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getAdminStatColor('male')}`}>
-            <div className="text-2xl font-bold ">{stats.male}</div>
-            <div className="text-sm text-gray-600">Male</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getAdminStatColor('female')}`}>
-            <div className="text-2xl font-bold ">{stats.female}</div>
-            <div className="text-sm text-gray-600">Female</div>
-          </div>
-        </div>
-
-        {/* Search Filter */}
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-            <Input
-              placeholder="Search admins..."
-              className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
           </div>
         </div>
 
@@ -578,12 +572,12 @@ export default function AdminsPage() {
             {paginatedAdmins.length > 0 ? (
               <Table className="w-full table-fixed">
                 <TableHeader>
-                  <TableRow className="bg-gray-50 border-b border-gray-100">
-                    <TableHead className="w-[30%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admin</TableHead>
-                    <TableHead className="w-[10%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Gender</TableHead>
-                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</TableHead>
-                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</TableHead>
-                    <TableHead className="w-[20%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                  <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                    <TableHead className="w-[30%] px-4 py-2 text-xs font-medium text-gray-500">Admin</TableHead>
+                    <TableHead className="w-[10%] px-4 py-2 text-xs font-medium text-gray-500">Gender</TableHead>
+                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">Phone</TableHead>
+                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">Joined</TableHead>
+                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500 text-right">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -591,11 +585,11 @@ export default function AdminsPage() {
                 <TableBody>
                   {paginatedAdmins.map((admin) => {
                     return (
-                      <TableRow key={admin.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
-                        <TableCell className="w-[30%]">
+                      <TableRow key={admin.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                        <TableCell className="w-[30%] px-4 py-2.5">
                           <div>
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-gray-900">
+                            <div className="flex items-center gap-1.5">
+                              <div className="font-medium text-gray-900 text-sm">
                                 {admin.full_name || 'No Name'}
                               </div>
                               <Badge className="text-xs text-red-700 border-red-200 bg-red-50">
@@ -603,18 +597,18 @@ export default function AdminsPage() {
                                 Sub Admin
                               </Badge>
                             </div>
-                            <div className="text-sm text-gray-500">{admin.email}</div>
-                            <div className="flex items-center gap-1 mt-1">
+                            <div className="text-xs text-gray-500">{admin.email}</div>
+                            <div className="flex items-center gap-1 mt-0.5">
                               <Badge
                                 variant="outline"
                                 className="text-xs text-purple-700 border-purple-200 bg-purple-50"
                               >
-                                {admin.modules?.length || 0} / 8 modules
+                                {admin.modules?.length || 0}/8 modules
                               </Badge>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[10%]">
+                        <TableCell className="w-[10%] px-4 py-2.5">
                           {admin.gender ? (
                             <Badge
                               className={`text-xs ${
@@ -626,71 +620,59 @@ export default function AdminsPage() {
                               {admin.gender}
                             </Badge>
                           ) : (
-                            <span className="text-sm text-gray-400">-</span>
+                            <span className="text-xs text-gray-400">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="w-[20%] text-gray-600">
-                          <div className="text-sm">{admin.phone_number || 'Not provided'}</div>
+                        <TableCell className="w-[20%] px-4 py-2.5 text-gray-600">
+                          <div className="text-sm">{admin.phone_number || <span className="text-gray-400">—</span>}</div>
                         </TableCell>
-                        <TableCell className="w-[20%] text-gray-600">
+                        <TableCell className="w-[20%] px-4 py-2.5 text-gray-600">
                           <div className="text-sm">
                             {new Date(admin.created_at).toLocaleDateString()}
                           </div>
                         </TableCell>
-                        <TableCell className="w-[20%] text-right">
-                          <div className="flex items-center justify-end gap-1 ml-auto">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDemoteToUser(admin.id)}
-                              disabled={currentUserId === admin.id}
-                              className="w-8 h-8 text-gray-600 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === admin.id
-                                  ? 'Cannot demote your own account'
-                                  : 'Demote to user'
-                              }
-                            >
-                              <UserCheck className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(admin)}
-                              disabled={currentUserId === admin.id}
-                              className="w-8 h-8 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === admin.id
-                                  ? 'Cannot edit your own account'
-                                  : 'Edit admin'
-                              }
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openAdminSheet(admin)}
-                              className="w-8 h-8 text-gray-600 hover:text-gray-900"
-                              title="View details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(admin.id)}
-                              disabled={currentUserId === admin.id}
-                              className="w-8 h-8 text-gray-600 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={
-                                currentUserId === admin.id
-                                  ? 'Cannot delete your own account'
-                                  : 'Delete admin'
-                              }
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                        <TableCell className="w-[20%] px-4 py-2.5 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="w-7 h-7 p-0">
+                                <MoreVertical className="w-4 h-4 text-gray-500" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openAdminSheet(admin)}
+                                className="cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => openEditModal(admin)}
+                                disabled={currentUserId === admin.id}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDemoteToUser(admin.id)}
+                                disabled={currentUserId === admin.id}
+                                className="cursor-pointer text-orange-600"
+                              >
+                                <UserCheck className="w-4 h-4 mr-2" />
+                                Demote to User
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(admin.id)}
+                                disabled={currentUserId === admin.id}
+                                className="cursor-pointer text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );

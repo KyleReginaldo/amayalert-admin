@@ -3,7 +3,6 @@
 import type React from 'react';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import alertsAPI, { Alert, AlertCreateRequest, AlertUpdate } from '@/app/lib/alerts-api';
 import { useAlerts } from '@/app/providers/alerts-provider';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 // HeroUI Select for modal alert level selector
-import { getAlertLevelColor, getAlertLevelTextColor } from '@/app/core/utils/utils';
+import { getAlertLevelColor } from '@/app/core/utils/utils';
 import {
   Sheet,
   SheetContent,
@@ -47,13 +46,9 @@ import {
   AlertCircle,
   AlertTriangle,
   Bell,
-  Building,
   ChevronLeft,
   ChevronRight,
-  ChevronsDown,
-  ChevronsUp,
   Clock,
-  CloudAlert,
   Edit,
   Eye,
   Info,
@@ -65,7 +60,6 @@ import {
   Save,
   Search,
   Trash2,
-  UsersRound,
   Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -354,136 +348,52 @@ export default function AlertPage() {
 
   return (
     <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
-      <div className="mx-auto space-y-6 max-w-7xl">
-        <PageHeader title="Alert Management" subtitle="Monitor and manage emergency alerts" />
-        <div className="grid grid-cols-2 gap-3 mb-8 md:grid-cols-5 md:gap-4">
-          {[
-            {
-              key: 'total',
-              label: 'Total',
-              value: stats.total,
-              color:
-                'from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-700 dark:text-slate-200',
-              icon: Building,
-            },
-            {
-              key: 'low',
-              label: 'Low',
-              value: stats.low,
-              color:
-                'from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 text-blue-700 dark:text-blue-200',
-              icon: ChevronsDown,
-            },
-            {
-              key: 'medium',
-              label: 'Medium',
-              value: stats.medium,
-              color:
-                'from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 text-amber-700 dark:text-amber-200',
-              icon: UsersRound,
-            },
-            {
-              key: 'high',
-              label: 'High',
-              value: stats.high,
-              color:
-                'from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 text-orange-700 dark:text-orange-200',
-              icon: ChevronsUp,
-            },
-            {
-              key: 'critical',
-              label: 'Critical',
-              value: stats.critical,
-              color:
-                'from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 text-red-700 dark:text-red-200',
-              icon: CloudAlert,
-            },
-          ].map((stat) => (
-            <div
-              key={stat.key}
-              className={`bg-linear-to-br ${getAlertLevelColor(
-                stat.key,
-              )} rounded-lg p-4 md:p-6 border border-white/50 dark:border-white/10 transition-transform duration-200 hover:scale-105`}
-            >
-              <div className="mb-1 text-xl font-bold md:text-2xl">{stat.value}</div>
-              <div className="text-xs font-medium md:text-sm opacity-80">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {/* Search Bar */}
-            <div className="relative flex-1 md:max-w-sm">
-              <Search className="absolute w-4 h-4 -translate-y-1/2 left-4 top-1/2 text-muted-foreground" />
+      <div className="mx-auto space-y-4 max-w-7xl">
+        {/* Stripe-style filter tabs (replaces both stat cards and level filter) */}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            {[
+              { key: 'all', label: 'All', count: stats.total },
+              { key: 'low', label: 'Low', count: stats.low },
+              { key: 'medium', label: 'Medium', count: stats.medium },
+              { key: 'high', label: 'High', count: stats.high },
+              { key: 'critical', label: 'Critical', count: stats.critical },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleFilterChange(tab.key)}
+                className={`flex-1 min-w-[80px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  alertLevelFilter === tab.key
+                    ? 'border-[#4988C4] bg-[#4988C4]/5 ring-1 ring-[#4988C4]'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <p className="text-xs font-medium text-gray-500">{tab.label}</p>
+                <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                  alertLevelFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                }`}>{tab.count}</p>
+              </button>
+            ))}
+          </div>
+          {/* Search + action bar */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
               <Input
-                placeholder="Search alerts by title or content..."
-                className="h-10 pl-10 border rounded-lg bg-card border-input"
+                placeholder="Search alerts..."
+                className="h-8 pl-8 text-sm w-52 border-gray-200 bg-white"
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
-
-            {/* Filter and Create Button */}
-            <div className="flex items-center gap-3">
-              <Select value={alertLevelFilter} onValueChange={handleFilterChange}>
-                <SelectTrigger
-                  className={`w-[140px] md:w-40 bg-card border border-input rounded-lg h-10 ${getAlertLevelTextColor(
-                    alertLevelFilter,
-                  )}`}
-                >
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className={`${getAlertLevelTextColor('all')}`}>
-                    <div className="flex items-center gap-2">
-                      <Building className={`w-4 h-4 ${getAlertLevelTextColor('all')}`} />
-                      <span>All Levels</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="low" className={`${getAlertLevelTextColor('low')}`}>
-                    <div className="flex items-center gap-2">
-                      <Info className={`w-4 h-4 ${getAlertLevelTextColor('low')}`} />
-                      <span>Low</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="medium" className={`${getAlertLevelTextColor('medium')}`}>
-                    <div className="flex items-center gap-2">
-                      <Clock className={`w-4 h-4 ${getAlertLevelTextColor('medium')}`} />
-                      <span>Medium</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="high" className={`${getAlertLevelTextColor('high')}`}>
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className={`w-4 h-4 ${getAlertLevelTextColor('high')}`} />
-                      <span>High</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="critical" className={`${getAlertLevelTextColor('critical')}`}>
-                    <div className="flex items-center gap-2">
-                      <Zap className={`w-4 h-4 ${getAlertLevelTextColor('critical')}`} />
-                      <span>Critical</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button
-                onClick={openCreateModal}
-                className="gap-2 bg-[#4988C4] cursor-pointer"
-                size="default"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Create Alert</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Results Info */}
-          <div className="text-sm text-muted-foreground">
-            Showing {startIndex + 1}-{Math.min(endIndex, filteredAlerts.length)} of{' '}
-            {filteredAlerts.length} {filteredAlerts.length === 1 ? 'alert' : 'alerts'}
+            <Button
+              onClick={openCreateModal}
+              className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Create Alert
+            </Button>
           </div>
         </div>
 
@@ -595,45 +505,19 @@ export default function AlertPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    {selectedIds.size > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearSelection}
-                        disabled={bulkDeleting}
-                        className="h-8"
-                      >
-                        Clear
-                      </Button>
-                    )}
-                    {selectedIds.size > 0 && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDelete}
-                        disabled={selectedIds.size === 0 || bulkDeleting}
-                        className="h-8 m-2"
-                      >
-                        {bulkDeleting ? (
-                          <span className="flex items-center gap-2">
-                            <div className="w-3 h-3 border-2 border-current rounded-full border-t-transparent animate-spin" />
-                            Deleting...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1">
-                            <Trash2 className="h-3.5 w-3.5" /> Delete Selected
-                          </span>
-                        )}
-                      </Button>
-                    )}
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100">
+                    <span className="text-xs text-blue-700">{selectedIds.size} selected</span>
+                    <Button variant="ghost" size="sm" onClick={clearSelection} disabled={bulkDeleting} className="h-6 text-xs text-blue-600 px-2">Clear</Button>
+                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="h-6 text-xs px-2">
+                      {bulkDeleting ? 'Deleting...' : <><Trash2 className="h-3 w-3 mr-1" />Delete</>}
+                    </Button>
                   </div>
-                </div>
+                )}
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 border-b border-gray-100">
-                      <TableHead className="w-8 px-5 py-3">
+                    <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                      <TableHead className="w-8 px-4 py-2">
                         <button
                           onClick={toggleSelectAll}
                           className="h-4 w-4 rounded border border-gray-300 flex items-center justify-center text-[10px] bg-white hover:bg-gray-100"
@@ -644,12 +528,12 @@ export default function AlertPage() {
                             : ''}
                         </button>
                       </TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Content</TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Level</TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Created</TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</TableHead>
-                      <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Title</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Content</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Level</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Created</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Status</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -660,9 +544,9 @@ export default function AlertPage() {
                       return (
                         <TableRow
                           key={alert.id}
-                          className="hover:bg-gray-50/60 transition-colors border-gray-100"
+                          className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
                         >
-                          <TableCell className="w-8">
+                          <TableCell className="w-8 px-4 py-2.5">
                             <button
                               onClick={() => toggleSelect(alert.id)}
                               className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${

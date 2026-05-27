@@ -1,6 +1,5 @@
 'use client';
 
-import { PageHeader } from '@/app/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -140,35 +139,37 @@ export default function WordFiltersPage() {
 
   return (
     <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
-      <div className="mx-auto space-y-6 max-w-7xl">
-        <PageHeader
-          title="Word Filters"
-          subtitle="Manage inappropriate words and content filters"
-          action={
+      <div className="mx-auto space-y-4 max-w-7xl">
+        {/* Toolbar */}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            <div className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white">
+              <p className="text-xs font-medium text-gray-500">Total</p>
+              <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{filters.length}</p>
+            </div>
+            <div className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white">
+              <p className="text-xs font-medium text-gray-500">Matching</p>
+              <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{filteredWords.length}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search filter words..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 w-52 text-sm"
+              />
+            </div>
             <Button
               onClick={() => setIsAddDialogOpen(true)}
-              className="gap-2 bg-[#4988C4] cursor-pointer"
+              className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              Add Filter Word
+              <Plus className="w-3.5 h-3.5" />
+              Add Word
             </Button>
-          }
-        />
-
-        {/* Search Bar */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
-            <Input
-              type="text"
-              placeholder="Search filter words..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="text-sm text-gray-500">
-            {filteredWords.length} {filteredWords.length === 1 ? 'word' : 'words'}
           </div>
         </div>
 
@@ -177,32 +178,32 @@ export default function WordFiltersPage() {
           {filteredWords.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 border-b border-gray-100">
-                  <TableHead className="w-[80px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</TableHead>
-                  <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtered Word</TableHead>
-                  <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Created At</TableHead>
-                  <TableHead className="w-[100px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</TableHead>
+                <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                  <TableHead className="w-[80px] px-4 py-2 text-xs font-medium text-gray-500">ID</TableHead>
+                  <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Filtered Word</TableHead>
+                  <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Created At</TableHead>
+                  <TableHead className="w-[100px] px-4 py-2 text-xs font-medium text-gray-500 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredWords.map((filter) => (
-                  <TableRow key={filter.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
-                    <TableCell className="font-medium">#{filter.id}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 text-sm font-medium text-red-700 bg-red-100 rounded">
+                  <TableRow key={filter.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                    <TableCell className="px-4 py-2.5 font-medium text-gray-700 text-sm">#{filter.id}</TableCell>
+                    <TableCell className="px-4 py-2.5">
+                      <span className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-50 border border-red-100 rounded">
                         {filter.word}
                       </span>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="px-4 py-2.5 text-sm text-gray-500">
                       {new Date(filter.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="px-4 py-2.5 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -210,9 +211,9 @@ export default function WordFiltersPage() {
                           setSelectedFilter(filter);
                           setIsDeleteDialogOpen(true);
                         }}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-7 w-7 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -1,9 +1,7 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import UsersLiveMap from '@/app/components/UsersLiveMap';
-import { getUserStatColor } from '@/app/core/utils/utils';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -35,10 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   Table,
   TableBody,
@@ -68,8 +63,8 @@ import {
   Save,
   Search,
   Trash2,
-  User as UserIcon,
   UserCheck,
+  User as UserIcon,
   Users as UsersIcon,
   XCircle,
 } from 'lucide-react';
@@ -162,7 +157,7 @@ export default function UsersPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
@@ -174,7 +169,9 @@ export default function UsersPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [statusLoading, setStatusLoading] = useState<{ userId: string; status: string } | null>(null);
+  const [statusLoading, setStatusLoading] = useState<{ userId: string; status: string } | null>(
+    null,
+  );
 
   // Load users on component mount
   useEffect(() => {
@@ -200,19 +197,18 @@ export default function UsersPage() {
     getCurrentUser();
   }, []);
 
-  // Filter and paginate users (excluding current user)
+  // Filter and paginate users — only role === 'user', no guests
   const filteredUsers = users.filter((user) => {
-    // Exclude current user from the list
-    if (currentUserId && user.id === currentUserId) {
-      return false;
-    }
-
+    if (currentUserId && user.id === currentUserId) return false;
+    if (user.role !== 'user') return false;
+    if (user.full_name === 'Guest User') return false;
     const matchesSearch =
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-
-    return matchesSearch && matchesRole;
+    let matchesTab = true;
+    if (activeTab === 'male') matchesTab = (user.gender || '').toLowerCase() === 'male';
+    else if (activeTab === 'female') matchesTab = (user.gender || '').toLowerCase() === 'female';
+    return matchesSearch && matchesTab;
   });
 
   // Pagination calculations
@@ -221,10 +217,7 @@ export default function UsersPage() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
   const usersWithLocation = filteredUsers.filter(
-    (u) =>
-      typeof u.latitude === 'number' &&
-      typeof u.longitude === 'number' &&
-      u.full_name !== 'Guest User',
+    (u) => typeof u.latitude === 'number' && typeof u.longitude === 'number',
   ) as Array<User & { latitude: number; longitude: number }>;
 
   // Reset to page 1 when filters change
@@ -233,8 +226,8 @@ export default function UsersPage() {
     setCurrentPage(1);
   };
 
-  const handleRoleFilterChange = (value: string) => {
-    setRoleFilter(value);
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
     setCurrentPage(1);
   };
 
@@ -408,11 +401,7 @@ export default function UsersPage() {
       approved: 'bg-green-50 text-green-700 border-green-200',
       rejected: 'bg-red-50 text-red-700 border-red-200',
     };
-    return (
-      <Badge className={`text-xs capitalize ${styles[status]}`}>
-        {status}
-      </Badge>
-    );
+    return <Badge className={`text-xs capitalize ${styles[status]}`}>{status}</Badge>;
   };
 
   const openCreateModal = () => {
@@ -452,17 +441,17 @@ export default function UsersPage() {
     }
   };
 
-  // Calculate statistics (excluding current user)
-  const filteredUsersForStats = users.filter((user) => currentUserId && user.id !== currentUserId);
-  const stats = {
-    total: filteredUsersForStats.length,
-    active: filteredUsersForStats.filter((u) => u.phone_number && u.phone_number.length > 0).length,
-    admins: filteredUsersForStats.filter((u) => u.role === 'admin').length,
-    regular: filteredUsersForStats.filter((u) => u.role === 'user').length,
-  };
+  // Stats — only role === 'user', no guests
+  const filteredUsersForStats = users.filter(
+    (user) =>
+      currentUserId &&
+      user.id !== currentUserId &&
+      user.role === 'user' &&
+      user.full_name !== 'Guest User',
+  );
   const genderStats = {
-    male: users.filter((u) => (u.gender || '').toLowerCase() === 'male').length,
-    female: users.filter((u) => (u.gender || '').toLowerCase() === 'female').length,
+    male: filteredUsersForStats.filter((u) => (u.gender || '').toLowerCase() === 'male').length,
+    female: filteredUsersForStats.filter((u) => (u.gender || '').toLowerCase() === 'female').length,
   };
 
   if (usersLoading && users.length === 0) {
@@ -504,95 +493,64 @@ export default function UsersPage() {
         </div>
       ) : (
         <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
-          <div className="mx-auto space-y-6 max-w-7xl">
-            {/* Header */}
-            <PageHeader
-              title="User Management"
-              subtitle="Manage user accounts, roles, and permissions"
-              action={
-                <Button onClick={openCreateModal} className="gap-2 bg-[#4988C4] cursor-pointer">
-                  <Plus className="w-4 h-4" />
+          <div className="mx-auto space-y-4 max-w-7xl">
+            {/* Stripe-style: filter tabs + search + view toggle */}
+            <div className="space-y-3">
+              {/* Stat filter cards */}
+              <div className="flex gap-2 overflow-x-auto pb-0.5">
+                {[
+                  { key: 'all', label: 'All', count: filteredUsersForStats.length },
+                  { key: 'male', label: 'Male', count: genderStats.male },
+                  { key: 'female', label: 'Female', count: genderStats.female },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => handleTabChange(tab.key)}
+                    className={`flex-1 min-w-[80px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      activeTab === tab.key
+                        ? 'border-[#4988C4] bg-[#4988C4]/5 ring-1 ring-[#4988C4]'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <p className="text-xs font-medium text-gray-500">{tab.label}</p>
+                    <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                      activeTab === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                    }`}>{tab.count}</p>
+                  </button>
+                ))}
+              </div>
+              {/* Search + view toggle */}
+              <div className="flex items-center justify-end gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                  <Input
+                    placeholder="Search users..."
+                    className="h-8 pl-8 text-sm w-48 border-gray-200 bg-white"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
+                <div className="flex border border-gray-200 rounded-md overflow-hidden bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-2.5 py-1.5 text-xs transition-colors ${viewMode === 'table' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('map')}
+                    className={`px-2.5 py-1.5 text-xs transition-colors ${viewMode === 'map' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    Map
+                  </button>
+                </div>
+                <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+                  <Plus className="w-3.5 h-3.5" />
                   Add User
                 </Button>
-              }
-            />
-
-            {/* Minimal Stats */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-              <div className={`p-4 rounded-lg ${getUserStatColor('total')}`}>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
-              </div>
-              <div className={`p-4 rounded-lg ${getUserStatColor('with-phone')}`}>
-                <div className="text-2xl font-bold">{stats.active}</div>
-                <div className="text-sm text-gray-600">With Phone</div>
-              </div>
-              <div className={`p-4 rounded-lg ${getUserStatColor('admins')}`}>
-                <div className="text-2xl font-bold ">{stats.admins}</div>
-                <div className="text-sm text-gray-600">Admins</div>
-              </div>
-              <div className={`p-4 rounded-lg ${getUserStatColor('users')}`}>
-                <div className="text-2xl font-bold">{stats.regular}</div>
-                <div className="text-sm text-gray-600">Users</div>
-              </div>
-              <div className={`p-4 rounded-lg ${getUserStatColor('male')}`}>
-                <div className="text-2xl font-bold">{genderStats.male}</div>
-                <div className="text-sm text-gray-600">Male Users</div>
-              </div>
-              <div className={`p-4 rounded-lg ${getUserStatColor('female')}`}>
-                <div className="text-2xl font-bold">{genderStats.female}</div>
-                <div className="text-sm text-gray-600">Female Users</div>
-              </div>
-            </div>
-
-            {/* Minimal Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-                <Input
-                  placeholder="Search users..."
-                  className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
-              <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-                <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex items-center justify-end">
-              <div className="inline-flex overflow-hidden border border-gray-200 rounded-md">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`px-3 py-1.5 text-sm ${
-                    viewMode === 'table'
-                      ? 'bg-white text-blue-700 border-b-2 border-blue-600'
-                      : 'bg-transparent text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  Table
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('map')}
-                  className={`px-3 py-1.5 text-sm ${
-                    viewMode === 'map'
-                      ? 'bg-white text-blue-700 border-b-2 border-blue-600'
-                      : 'bg-transparent text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  Map
-                </button>
               </div>
             </div>
 
@@ -709,7 +667,8 @@ export default function UsersPage() {
                                               disabled={statusLoading !== null}
                                               className="cursor-pointer text-yellow-600"
                                             >
-                                              {statusLoading?.userId === user.id && statusLoading?.status === 'pending' ? (
+                                              {statusLoading?.userId === user.id &&
+                                              statusLoading?.status === 'pending' ? (
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                               ) : (
                                                 <Clock className="w-4 h-4 mr-2" />
@@ -723,7 +682,8 @@ export default function UsersPage() {
                                               disabled={statusLoading !== null}
                                               className="cursor-pointer text-green-600"
                                             >
-                                              {statusLoading?.userId === user.id && statusLoading?.status === 'approved' ? (
+                                              {statusLoading?.userId === user.id &&
+                                              statusLoading?.status === 'approved' ? (
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                               ) : (
                                                 <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -731,20 +691,22 @@ export default function UsersPage() {
                                               Approved
                                             </DropdownMenuItem>
                                           )}
-                                          {user.status !== 'rejected' && user.status !== 'approved' && (
-                                            <DropdownMenuItem
-                                              onClick={() => handleStatusChange(user, 'rejected')}
-                                              disabled={statusLoading !== null}
-                                              className="cursor-pointer text-red-600"
-                                            >
-                                              {statusLoading?.userId === user.id && statusLoading?.status === 'rejected' ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                              ) : (
-                                                <XCircle className="w-4 h-4 mr-2" />
-                                              )}
-                                              Rejected
-                                            </DropdownMenuItem>
-                                          )}
+                                          {user.status !== 'rejected' &&
+                                            user.status !== 'approved' && (
+                                              <DropdownMenuItem
+                                                onClick={() => handleStatusChange(user, 'rejected')}
+                                                disabled={statusLoading !== null}
+                                                className="cursor-pointer text-red-600"
+                                              >
+                                                {statusLoading?.userId === user.id &&
+                                                statusLoading?.status === 'rejected' ? (
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                  <XCircle className="w-4 h-4 mr-2" />
+                                                )}
+                                                Rejected
+                                              </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuSubContent>
                                       </DropdownMenuSub>
                                       <DropdownMenuSeparator />
@@ -777,26 +739,26 @@ export default function UsersPage() {
                     {paginatedUsers.length > 0 ? (
                       <Table className="w-full table-fixed">
                         <TableHeader>
-                          <TableRow className="bg-gray-50 border-b border-gray-100">
-                            <TableHead className="w-[24%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                            <TableHead className="w-[24%] px-4 py-2 text-xs font-medium text-gray-500">
                               User
                             </TableHead>
-                            <TableHead className="w-[11%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[11%] px-4 py-2 text-xs font-medium text-gray-500">
                               Role
                             </TableHead>
-                            <TableHead className="w-[9%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[9%] px-4 py-2 text-xs font-medium text-gray-500">
                               Gender
                             </TableHead>
-                            <TableHead className="w-[14%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[14%] px-4 py-2 text-xs font-medium text-gray-500">
                               Phone
                             </TableHead>
-                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[12%] px-4 py-2 text-xs font-medium text-gray-500">
                               Joined
                             </TableHead>
-                            <TableHead className="w-[12%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <TableHead className="w-[12%] px-4 py-2 text-xs font-medium text-gray-500">
                               Status
                             </TableHead>
-                            <TableHead className="w-[18%] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                            <TableHead className="w-[18%] px-4 py-2 text-xs font-medium text-gray-500 text-right">
                               Actions
                             </TableHead>
                           </TableRow>
@@ -805,8 +767,11 @@ export default function UsersPage() {
                           {paginatedUsers.map((user) => {
                             const RoleIcon = getRoleIcon(user.role);
                             return (
-                              <TableRow key={user.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
-                                <TableCell className="w-[24%]">
+                              <TableRow
+                                key={user.id}
+                                className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
+                              >
+                                <TableCell className="w-[24%] px-4 py-2.5">
                                   <div>
                                     <div className="font-medium text-gray-900">
                                       {user.full_name || 'No Name'}
@@ -821,13 +786,13 @@ export default function UsersPage() {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="w-[11%]">
+                                <TableCell className="w-[11%] px-4 py-2.5">
                                   <Badge className={`${getRoleColor(user.role)} text-xs`}>
                                     <RoleIcon className="w-3 h-3 mr-1" />
                                     {user.role || 'user'}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="w-[9%]">
+                                <TableCell className="w-[9%] px-4 py-2.5">
                                   {user.gender ? (
                                     <Badge
                                       className={`text-xs ${
@@ -842,22 +807,22 @@ export default function UsersPage() {
                                     <span className="text-sm text-gray-400">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="w-[14%] text-gray-600">
+                                <TableCell className="w-[14%] px-4 py-2.5 text-gray-600">
                                   <div className="text-sm">
                                     {user.phone_number || 'Not provided'}
                                   </div>
                                 </TableCell>
-                                <TableCell className="w-[12%] text-gray-600">
+                                <TableCell className="w-[12%] px-4 py-2.5 text-gray-600">
                                   <div className="text-sm">
                                     {new Date(user.created_at).toLocaleDateString()}
                                   </div>
                                 </TableCell>
-                                <TableCell className="w-[12%]">
+                                <TableCell className="w-[12%] px-4 py-2.5">
                                   {getStatusBadge(user.status) ?? (
                                     <span className="text-sm text-gray-400">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="w-[18%] text-right">
+                                <TableCell className="w-[18%] px-4 py-2.5 text-right">
                                   <div className="flex items-center justify-end gap-1 ml-auto">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
@@ -911,7 +876,8 @@ export default function UsersPage() {
                                                 disabled={statusLoading !== null}
                                                 className="cursor-pointer text-yellow-600"
                                               >
-                                                {statusLoading?.userId === user.id && statusLoading?.status === 'pending' ? (
+                                                {statusLoading?.userId === user.id &&
+                                                statusLoading?.status === 'pending' ? (
                                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
                                                   <Clock className="w-4 h-4 mr-2" />
@@ -925,7 +891,8 @@ export default function UsersPage() {
                                                 disabled={statusLoading !== null}
                                                 className="cursor-pointer text-green-600"
                                               >
-                                                {statusLoading?.userId === user.id && statusLoading?.status === 'approved' ? (
+                                                {statusLoading?.userId === user.id &&
+                                                statusLoading?.status === 'approved' ? (
                                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
                                                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -933,20 +900,24 @@ export default function UsersPage() {
                                                 Approved
                                               </DropdownMenuItem>
                                             )}
-                                            {user.status !== 'rejected' && user.status !== 'approved' && (
-                                              <DropdownMenuItem
-                                                onClick={() => handleStatusChange(user, 'rejected')}
-                                                disabled={statusLoading !== null}
-                                                className="cursor-pointer text-red-600"
-                                              >
-                                                {statusLoading?.userId === user.id && statusLoading?.status === 'rejected' ? (
-                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                ) : (
-                                                  <XCircle className="w-4 h-4 mr-2" />
-                                                )}
-                                                Rejected
-                                              </DropdownMenuItem>
-                                            )}
+                                            {user.status !== 'rejected' &&
+                                              user.status !== 'approved' && (
+                                                <DropdownMenuItem
+                                                  onClick={() =>
+                                                    handleStatusChange(user, 'rejected')
+                                                  }
+                                                  disabled={statusLoading !== null}
+                                                  className="cursor-pointer text-red-600"
+                                                >
+                                                  {statusLoading?.userId === user.id &&
+                                                  statusLoading?.status === 'rejected' ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                  ) : (
+                                                    <XCircle className="w-4 h-4 mr-2" />
+                                                  )}
+                                                  Rejected
+                                                </DropdownMenuItem>
+                                              )}
                                           </DropdownMenuSubContent>
                                         </DropdownMenuSub>
                                         <DropdownMenuSeparator />
@@ -1088,7 +1059,9 @@ export default function UsersPage() {
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {/* Contact Info */}
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Contact</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                    Contact
+                  </p>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
@@ -1096,7 +1069,9 @@ export default function UsersPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] text-gray-400">Email</p>
-                        <p className="text-sm text-gray-800 truncate">{selectedUser.email || '—'}</p>
+                        <p className="text-sm text-gray-800 truncate">
+                          {selectedUser.email || '—'}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1115,7 +1090,9 @@ export default function UsersPage() {
 
                 {/* Personal Info */}
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Personal</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                    Personal
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
@@ -1146,7 +1123,11 @@ export default function UsersPage() {
                         <p className="text-[10px] text-gray-400">Birthday</p>
                         <p className="text-sm text-gray-800">
                           {selectedUser.birth_date
-                            ? new Date(selectedUser.birth_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                            ? new Date(selectedUser.birth_date).toLocaleDateString('en-PH', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
                             : '—'}
                         </p>
                       </div>
@@ -1158,11 +1139,15 @@ export default function UsersPage() {
                       <div>
                         <p className="text-[10px] text-gray-400">Joined</p>
                         <p className="text-sm text-gray-800">
-                          {new Date(selectedUser.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(selectedUser.created_at).toLocaleDateString('en-PH', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </p>
                       </div>
                     </div>
-                    {(selectedUser.latitude && selectedUser.longitude) ? (
+                    {selectedUser.latitude && selectedUser.longitude ? (
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
                           <MapPin className="h-4 w-4 text-teal-500" />
@@ -1183,7 +1168,9 @@ export default function UsersPage() {
                   <>
                     <div className="border-t border-gray-100" />
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Government ID</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                        Government ID
+                      </p>
                       <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                         <img
                           src={selectedUser.id_picture}
@@ -1198,20 +1185,30 @@ export default function UsersPage() {
                 {/* User ID */}
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-[10px] text-gray-400">User ID</p>
-                  <p className="text-xs text-gray-500 font-mono break-all mt-0.5">{selectedUser.id}</p>
+                  <p className="text-xs text-gray-500 font-mono break-all mt-0.5">
+                    {selectedUser.id}
+                  </p>
                 </div>
               </div>
 
               {/* Footer actions */}
               <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => setIsSheetOpen(false)} className="mr-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsSheetOpen(false)}
+                  className="mr-auto"
+                >
                   Close
                 </Button>
                 {selectedUser.full_name !== 'Guest User' && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => { setIsSheetOpen(false); openEditModal(selectedUser); }}
+                    onClick={() => {
+                      setIsSheetOpen(false);
+                      openEditModal(selectedUser);
+                    }}
                     disabled={currentUserId === selectedUser.id}
                     className="gap-1.5"
                   >
@@ -1226,7 +1223,8 @@ export default function UsersPage() {
                     onClick={() => handleStatusChange(selectedUser, 'approved')}
                     disabled={statusLoading !== null}
                   >
-                    {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'approved' ? (
+                    {statusLoading?.userId === selectedUser.id &&
+                    statusLoading?.status === 'approved' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1242,7 +1240,8 @@ export default function UsersPage() {
                     disabled={statusLoading !== null}
                     className="gap-1.5"
                   >
-                    {statusLoading?.userId === selectedUser.id && statusLoading?.status === 'rejected' ? (
+                    {statusLoading?.userId === selectedUser.id &&
+                    statusLoading?.status === 'rejected' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <XCircle className="w-3.5 h-3.5" />
@@ -1311,7 +1310,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
         full_name: user.full_name || '',
         email: user.email || '',
         phone_number: user.phone_number || '',
-        role: user.role || 'user',
+        role: 'user',
         gender: user.gender || '',
       });
       const local = parseStoredPhoneToLocal(user.phone_number || '');
@@ -1417,28 +1416,6 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
                 Full number will be saved as +63{phoneLocal}
               </p>
             )}
-          </div>
-
-          <div>
-            <Label htmlFor="role">Role</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  role: value as 'admin' | 'user',
-                }))
-              }
-              disabled={loading}
-            >
-              <SelectTrigger className="mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[10000]">
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div>

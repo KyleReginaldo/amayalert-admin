@@ -110,6 +110,7 @@ const Dashboard = () => {
 
       const filteredUsers = users.filter((user) => {
         if (!user.created_at) return false;
+        if (user.full_name === 'Guest User') return false;
         const userTime = new Date(user.created_at).getTime();
         return userTime >= startTimestamp && userTime <= endTimestamp;
       });
@@ -247,6 +248,7 @@ const Dashboard = () => {
 
     const dayUsers = users.filter((u) => {
       if (!u.created_at) return false;
+      if (u.full_name === 'Guest User') return false;
       const time = new Date(u.created_at).getTime();
       return time >= startTimestamp && time <= endTimestamp;
     });
@@ -621,6 +623,7 @@ const Dashboard = () => {
                         months.push({
                           name: date.toLocaleDateString('en-US', { month: 'short' }),
                           users: users.filter((user) => {
+                            if (user.full_name === 'Guest User') return false;
                             const d = new Date(user.created_at);
                             return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
                           }).length,

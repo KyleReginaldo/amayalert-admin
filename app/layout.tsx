@@ -16,23 +16,26 @@ import { EvacuationProvider } from './providers/evacuation-provider';
 import { NotificationProvider } from './providers/notification-provider';
 import { RescueProvider } from './providers/rescue-provider';
 
+// Page info map — used by both mobile header and desktop topbar
+const PAGE_INFO: Record<string, { title: string; subtitle: string }> = {
+  '/': { title: 'Dashboard', subtitle: 'Overview of your emergency management system' },
+  '/alert': { title: 'Alert Management', subtitle: 'Monitor and manage emergency alerts' },
+  '/evacuation': { title: 'Evacuation Centers', subtitle: 'Monitor and manage evacuation facilities' },
+  '/rescue': { title: 'Rescue Requests', subtitle: 'Monitor and manage emergency rescue requests from citizens' },
+  '/users': { title: 'User Management', subtitle: 'Manage registered users' },
+  '/admins': { title: 'Admin Management', subtitle: 'Manage administrator accounts and permissions' },
+  '/reports': { title: 'Reports', subtitle: 'Manage reported posts and take appropriate actions' },
+  '/chat': { title: 'Chat', subtitle: 'Communicate with users' },
+  '/word-filters': { title: 'Word Filters', subtitle: 'Manage inappropriate words and content filters' },
+  '/logs': { title: 'Activity Logs', subtitle: 'Monitor all admin and sub-admin activities' },
+  '/settings': { title: 'Settings', subtitle: 'Configure system settings' },
+};
+
 // Global Mobile Header Component
 function GlobalMobileHeader() {
   const { toggleMobileMenu } = useSidebar();
   const pathname = usePathname();
-
-  // Get page title based on pathname
-  const getPageTitle = (path: string) => {
-    if (path === '/') return 'Dashboard';
-    if (path === '/alert') return 'Alerts';
-    if (path === '/evacuation') return 'Evacuation Centers';
-    if (path === '/rescue') return 'Rescue Operations';
-    if (path === '/sms-test') return 'SMS Test';
-    if (path === '/users') return 'Users';
-    if (path === '/chat') return 'Chat';
-    if (path === '/settings') return 'Settings';
-    return 'Amayalert';
-  };
+  const pageInfo = PAGE_INFO[pathname || ''] ?? { title: 'Amayalert', subtitle: '' };
 
   return (
     <div className="sticky top-0 z-10 bg-white border-b shadow-sm md:hidden">
@@ -41,12 +44,29 @@ function GlobalMobileHeader() {
           <Button variant="ghost" size="sm" onClick={toggleMobileMenu} className="p-2 rounded-lg">
             <Menu className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold text-gray-900">{getPageTitle(pathname || '')}</h1>
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold text-gray-900 leading-tight">{pageInfo.title}</h1>
+          </div>
           <div className="ml-auto">
             <NotificationCenter />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DesktopTopBar({ pathname }: { pathname: string | null }) {
+  const pageInfo = PAGE_INFO[pathname || ''] ?? { title: 'Amayalert', subtitle: '' };
+  return (
+    <div className="sticky top-0 z-10 items-center justify-between hidden px-6 py-3 bg-white border-b shadow-sm md:flex">
+      <div>
+        <h1 className="text-sm font-semibold text-gray-900 leading-tight">{pageInfo.title}</h1>
+        {pageInfo.subtitle && (
+          <p className="text-xs text-gray-500 mt-0.5 leading-tight">{pageInfo.subtitle}</p>
+        )}
+      </div>
+      <NotificationCenter />
     </div>
   );
 }
@@ -162,9 +182,7 @@ export default function RootLayout({
                         >
                           {!shouldHideAdminLayout && <GlobalMobileHeader />}
                           {!shouldHideAdminLayout && (
-                            <div className="sticky top-0 z-10 items-center justify-end hidden px-6 py-2 bg-white border-b shadow-sm md:flex">
-                              <NotificationCenter />
-                            </div>
+                            <DesktopTopBar pathname={pathname} />
                           )}
                           {children}
                         </main>

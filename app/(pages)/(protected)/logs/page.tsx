@@ -1,7 +1,5 @@
 'use client';
 
-import { PageHeader } from '@/app/components/page-header';
-import { getActivityStatColor } from '@/app/core/utils/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +22,6 @@ import { Tables } from '@/database.types';
 import {
   AlertTriangle,
   Building2,
-  Calendar,
   ChevronDown,
   ChevronRight,
   Download,
@@ -298,82 +295,35 @@ export default function LogsPage() {
 
   return (
     <div className="min-h-screen p-4 bg-[#f8fafc] md:p-6">
-      <div className="mx-auto space-y-6 max-w-7xl">
-        <PageHeader
-          title="Activity Logs"
-          subtitle="Monitor all admin and sub-admin activities"
-          action={
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                onClick={handleExport}
-                disabled={isExporting}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                Export
-              </Button>
+      <div className="mx-auto space-y-4 max-w-7xl">
+        {/* Stat cards + filters bar */}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            {[
+              { label: 'Total', count: logs.length },
+              { label: 'Create', count: logs.filter((l) => l.content?.toLowerCase().includes('create')).length },
+              { label: 'Update', count: logs.filter((l) => l.content?.toLowerCase().includes('update')).length },
+              { label: 'Delete', count: logs.filter((l) => l.content?.toLowerCase().includes('delete')).length },
+            ].map((stat) => (
+              <div key={stat.label} className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white">
+                <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+                <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{stat.count}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="Search activities..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 text-sm w-44 border-gray-200 bg-white"
+              />
             </div>
-          }
-        />
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className={`p-4 rounded-lg ${getActivityStatColor('total')}`}>
-            <div className="text-2xl font-bold ">{logs.length}</div>
-            <div className="text-sm text-gray-600">Total Activities</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getActivityStatColor('create')}`}>
-            <div className="text-2xl font-bold ">
-              {logs.filter((log) => log.content?.toLowerCase().includes('create')).length}
-            </div>
-            <div className="text-sm text-gray-600">Create Actions</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getActivityStatColor('update')}`}>
-            <div className="text-2xl font-bold ">
-              {logs.filter((log) => log.content?.toLowerCase().includes('update')).length}
-            </div>
-            <div className="text-sm ">Update Actions</div>
-          </div>
-          <div className={`p-4 rounded-lg ${getActivityStatColor('delete')}`}>
-            <div className="text-2xl font-bold ">
-              {logs.filter((log) => log.content?.toLowerCase().includes('delete')).length}
-            </div>
-            <div className="text-sm text-gray-600">Delete Actions</div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
-            <Input
-              type="text"
-              placeholder="Search activities or users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-gray-500" />
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="h-8 w-[150px] text-xs border-gray-200 bg-white">
                 <SelectValue placeholder="All Users" />
               </SelectTrigger>
               <SelectContent>
@@ -385,11 +335,8 @@ export default function LogsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
             <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="h-8 w-[120px] text-xs border-gray-200 bg-white">
                 <SelectValue placeholder="Time Range" />
               </SelectTrigger>
               <SelectContent>
@@ -399,9 +346,28 @@ export default function LogsPage() {
                 <SelectItem value="month">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="text-sm text-gray-500">
-            {filteredLogs.length} {filteredLogs.length === 1 ? 'log' : 'logs'}
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={handleExport}
+              disabled={isExporting}
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+            >
+              {isExporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Export
+            </Button>
           </div>
         </div>
 
@@ -411,12 +377,12 @@ export default function LogsPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 border-b border-gray-100">
-                    <TableHead className="w-[80px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</TableHead>
-                    <TableHead className="w-[180px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date & Time</TableHead>
-                    <TableHead className="w-[150px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">User</TableHead>
-                    <TableHead className="w-[100px] px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Activity</TableHead>
+                  <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                    <TableHead className="w-[80px] px-4 py-2 text-xs font-medium text-gray-500">ID</TableHead>
+                    <TableHead className="w-[180px] px-4 py-2 text-xs font-medium text-gray-500">Date & Time</TableHead>
+                    <TableHead className="w-[150px] px-4 py-2 text-xs font-medium text-gray-500">User</TableHead>
+                    <TableHead className="w-[100px] px-4 py-2 text-xs font-medium text-gray-500">Role</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Activity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -428,9 +394,9 @@ export default function LogsPage() {
 
                     return (
                       <>
-                        <TableRow key={log.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
-                          <TableCell className="font-medium text-gray-600">#{log.id}</TableCell>
-                          <TableCell className="text-sm text-gray-600">
+                        <TableRow key={log.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                          <TableCell className="px-4 py-2.5 font-medium text-sm text-gray-600">#{log.id}</TableCell>
+                          <TableCell className="px-4 py-2.5 text-sm text-gray-600">
                             <div className="flex flex-col">
                               <span className="font-medium">
                                 {new Date(log.created_at).toLocaleDateString()}
@@ -440,10 +406,10 @@ export default function LogsPage() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
-                              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full">
-                                <span className="text-sm font-medium text-gray-600">
+                              <div className="flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full">
+                                <span className="text-xs font-medium text-gray-600">
                                   {log.users?.full_name?.charAt(0).toUpperCase() || 'S'}
                                 </span>
                               </div>
@@ -457,7 +423,7 @@ export default function LogsPage() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4 py-2.5">
                             <Badge
                               className={
                                 log.users?.role === 'admin'
@@ -470,7 +436,7 @@ export default function LogsPage() {
                               {log.users?.role?.toUpperCase() || 'SYSTEM'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4 py-2.5">
                             <div className="flex items-start gap-2">
                               <div className="mt-0.5">{getActivityIcon(log.content || '')}</div>
                               <div className="flex-1">

@@ -1,7 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import TopRightDialog from '@/app/components/top-right-dialog';
 import usersAPI from '@/app/lib/users-api';
 import { Button } from '@/components/ui/button';
@@ -470,8 +469,6 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen p-4 bg-background sm:p-6">
       <div className="max-w-[800px] mx-auto space-y-6">
-        <PageHeader title="Settings" subtitle="Manage your account info and security" />
-
         <TopRightDialog
           open={!!status}
           variant={

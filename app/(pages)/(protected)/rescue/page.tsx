@@ -1,7 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import { getRequestStatColor } from '@/app/core/utils/utils';
 import rescueAPI, { Rescue, RescueStatus, RescueUpdate } from '@/app/lib/rescue-api';
 import { useRescue } from '@/app/providers/rescue-provider';
@@ -174,7 +173,25 @@ export default function RescuePage() {
     }
   };
 
+  // One-way status state machine — mirrors server-side validation
+  const ALLOWED_TRANSITIONS: Partial<Record<RescueStatus, RescueStatus[]>> = {
+    pending: ['in_progress', 'cancelled'],
+    in_progress: ['completed', 'cancelled'],
+    // completed and cancelled are terminal — no outgoing transitions
+  };
+
+  const canTransition = (from: RescueStatus, to: RescueStatus): boolean => {
+    if (from === to) return true;
+    return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
+  };
+
   const handleStatusUpdate = async (id: string, status: RescueStatus) => {
+    // Find current rescue to validate transition client-side before hitting the API
+    const currentRescue = rescues.find((r) => r.id === id);
+    if (currentRescue && !canTransition(currentRescue.status as RescueStatus, status)) {
+      console.warn(`Blocked invalid transition: ${currentRescue.status} → ${status}`);
+      return;
+    }
     try {
       setRowLoading((prev) => ({ ...prev, [id]: true }));
       const response = await rescueAPI.updateRescueStatus(id, status);
@@ -505,23 +522,49 @@ export default function RescuePage() {
                 <Label htmlFor="status" className="font-medium text-gray-700">
                   Update Status <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, status: value as RescueStatus }))
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger className="mt-2 border-gray-300 rounded-md">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const currentStatus = selectedRescue?.status as RescueStatus;
+                  const allowedNext = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+                  const isTerminal = allowedNext.length === 0;
+                  const statusLabels: Record<string, string> = {
+                    pending: 'Pending',
+                    in_progress: 'In Progress',
+                    completed: 'Completed',
+                    cancelled: 'Cancelled',
+                  };
+                  return (
+                    <>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, status: value as RescueStatus }))
+                        }
+                        disabled={loading || isTerminal}
+                      >
+                        <SelectTrigger className="mt-2 border-gray-300 rounded-md">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Always include the current status */}
+                          <SelectItem value={currentStatus}>
+                            {statusLabels[currentStatus] ?? currentStatus}
+                          </SelectItem>
+                          {/* Only show valid forward transitions */}
+                          {allowedNext.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {statusLabels[s]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isTerminal && (
+                        <p className="mt-1.5 text-xs text-gray-400">
+                          This status is final and cannot be changed.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <div>
                 <Label htmlFor="priority" className="font-medium text-gray-700">
@@ -1050,111 +1093,69 @@ export default function RescuePage() {
       {/* Desktop Layout */}
       <div className="hidden min-h-screen p-4 md:block bg-[#f8fafc] sm:p-6">
         <div className="mx-auto space-y-4 max-w-7xl sm:space-y-6">
-          <PageHeader
-            title="Rescue Requests"
-            subtitle="Monitor and manage emergency rescue requests from citizens"
-          />
-
-          {/* Stats */}
-          <div className={`grid grid-cols-2 gap-4 lg:grid-cols-5`}>
-            <Card className={`p-4 ${getRequestStatColor('total')}`}>
-              <div className="text-3xl font-bold text-slate-800">{stats.total}</div>
-              <div className="text-sm text-slate-600">Total Requests</div>
-            </Card>
-            <Card className={`p-4 ${getRequestStatColor('awaiting')}`}>
-              <div className="text-3xl font-bold text-yellow-700">{stats.pending}</div>
-              <div className="text-sm text-yellow-700/80">Awaiting Response</div>
-            </Card>
-            <Card className={`p-4 ${getRequestStatColor('active')}`}>
-              <div className="text-3xl font-bold text-blue-700">{stats.inProgress}</div>
-              <div className="text-sm text-blue-700/80">Active Operations</div>
-            </Card>
-            <Card className={`p-4 ${getRequestStatColor('completed')}`}>
-              <div className="text-3xl font-bold text-green-700">{stats.completed}</div>
-              <div className="text-sm text-green-700/80">Completed</div>
-            </Card>
-            <Card className={`p-4 ${getRequestStatColor('critical')}`}>
-              <div className="text-3xl font-bold text-red-700">{stats.critical}</div>
-              <div className="text-sm text-red-700/80">Critical Priority</div>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-              <Input
-                placeholder="Search rescue requests..."
-                className="w-full pl-10 border-gray-300 focus:border-gray-400 md:w-md"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          {/* Stripe-style status tabs (replaces stat cards + status filter) */}
+          <div className="space-y-3">
+            <div className="flex gap-2 overflow-x-auto pb-0.5">
+              {[
+                { key: 'all', label: 'All', count: stats.total },
+                { key: 'pending', label: 'Pending', count: stats.pending },
+                { key: 'in_progress', label: 'In Progress', count: stats.inProgress },
+                { key: 'completed', label: 'Completed', count: stats.completed },
+                { key: 'cancelled', label: 'Cancelled', count: stats.cancelled },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`flex-1 min-w-[90px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    statusFilter === tab.key
+                      ? 'border-[#4988C4] bg-[#4988C4]/5 ring-1 ring-[#4988C4]'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <p className="text-xs font-medium text-gray-500">{tab.label}</p>
+                  <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                    statusFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                  }`}>{tab.count}</p>
+                </button>
+              ))}
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="1">Critical</SelectItem>
-                <SelectItem value="2">High</SelectItem>
-                <SelectItem value="3">Medium</SelectItem>
-                <SelectItem value="4">Low</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={emergencyTypeFilter} onValueChange={setEmergencyTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[160px] border-gray-300">
-                <SelectValue placeholder="Emergency" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {EMERGENCY_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Quick Tabs */}
-          <div className="flex items-center gap-6 px-1 mt-2">
-            {[
-              { key: 'all', label: 'All Requests', count: stats.total },
-              { key: 'pending', label: 'Pending', count: stats.pending },
-              { key: 'in_progress', label: 'In Progress', count: stats.inProgress },
-              { key: 'completed', label: 'Completed', count: stats.completed },
-              { key: 'cancelled', label: 'Cancelled', count: stats.cancelled },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setStatusFilter(tab.key)}
-                className={`relative pb-2 text-sm transition-colors ${
-                  statusFilter === tab.key ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <span className="font-medium">{tab.label}</span>
-                <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                  {tab.count}
-                </span>
-                {statusFilter === tab.key && (
-                  <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-indigo-600 rounded-full" />
-                )}
-              </button>
-            ))}
+            <div className="flex items-center justify-end gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                <Input
+                  placeholder="Search rescue requests..."
+                  className="h-8 pl-8 text-sm w-48 border-gray-200 bg-white"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="h-8 w-[110px] text-xs border-gray-200 bg-white">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priority</SelectItem>
+                  <SelectItem value="1">Critical</SelectItem>
+                  <SelectItem value="2">High</SelectItem>
+                  <SelectItem value="3">Medium</SelectItem>
+                  <SelectItem value="4">Low</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={emergencyTypeFilter} onValueChange={setEmergencyTypeFilter}>
+                <SelectTrigger className="h-8 w-[120px] text-xs border-gray-200 bg-white">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {EMERGENCY_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table View */}
@@ -1162,21 +1163,21 @@ export default function RescuePage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 border-b border-gray-100">
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Details</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Emergency Type</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">People</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reported</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reporter</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</TableHead>
-                    <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</TableHead>
+                  <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Request Details</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Status</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Priority</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Emergency Type</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">People</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Reported</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Reporter</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Location</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRescues.slice(startIndex, startIndex + entriesPerPage).map((rescue) => (
-                    <TableRow key={rescue.id} className="hover:bg-gray-50/60 transition-colors border-gray-100">
+                    <TableRow key={rescue.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                       <TableCell>
                         <div>
                           <div className="font-medium text-gray-900">{rescue.title}</div>

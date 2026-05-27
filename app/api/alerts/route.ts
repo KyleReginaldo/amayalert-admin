@@ -1,5 +1,6 @@
 import { logAlertAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
+import { sendViTextBee } from '@/app/lib/textbee';
 import { Database } from '@/database.types';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,30 +55,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const origin =
-  process.env.NEXT_PUBLIC_BASE_URL ||
-  process.env.BASE_URL ||
-  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  'http://localhost:3000';
-
-// Send one SMS API call for all phone numbers at once
+// Send SMS directly via TextBee (no HTTP roundtrip to /api/sms)
 async function sendBatchSMS(phones: string[], message: string): Promise<{ sent: number; error?: string }> {
-  try {
-    const resp = await fetch(`${origin.replace(/\/$/, '')}/api/sms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipients: phones, message }),
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!resp.ok) {
-      type SMSAPIError = { error?: string; details?: string };
-      const data: SMSAPIError = await resp.json().catch(() => ({} as SMSAPIError));
-      return { sent: 0, error: data.error || data.details || `HTTP ${resp.status}` };
-    }
-    return { sent: phones.length };
-  } catch (e) {
-    return { sent: 0, error: e instanceof Error ? e.message : 'Network error' };
+  const result = await sendViTextBee(phones, message);
+  if (result.error) {
+    const detail = result.details ? ` — ${result.details}` : '';
+    console.error('TextBee batch SMS failed:', result.error + detail);
+    return { sent: 0, error: result.error };
   }
+  return { sent: result.sent };
 }
 
 // Send push to all device tokens and/or external user IDs in 1-2 OneSignal calls

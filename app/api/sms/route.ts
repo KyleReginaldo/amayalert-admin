@@ -1,3 +1,4 @@
+import { sendViTextBee } from '@/app/lib/textbee';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -19,65 +20,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Basic E.164 validation for each recipient
-    const phoneRegex = /^\+[1-9]\d{7,14}$/;
-    const invalid = recipients.filter((n) => !phoneRegex.test(String(n).replace(/\s+/g, '')));
-    if (invalid.length > 0) {
+    const result = await sendViTextBee(recipients, message);
+
+    if (result.error) {
+      console.error('TextBee error:', result.error, result.details ?? '');
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid phone number(s). Use international format (e.g., +15551234567)',
-          details: `Invalid: ${invalid.join(', ')}`,
-        },
-        { status: 400 },
-      );
-    }
-
-    const apiKey = process.env.TEXTBEE_API_KEY;
-    const deviceId = process.env.TEXTBEE_DEVICE_ID;
-    const baseUrl = process.env.TEXTBEE_BASE_URL || 'https://api.textbee.dev';
-
-    if (!apiKey || !deviceId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Missing TextBee configuration',
-          details:
-            'Set TEXTBEE_API_KEY and TEXTBEE_DEVICE_ID in your environment (Vercel/locally).',
-        },
-        { status: 500 },
-      );
-    }
-
-    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/gateway/devices/${deviceId}/send-sms`;
-
-    const payload = { recipients, message: `Amayalert - Official Notification\n\n ${message}` };
-
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await resp.json().catch(() => null);
-    if (!resp.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'TextBee API error',
-          details: typeof data === 'object' && data ? JSON.stringify(data) : 'Unknown error',
-        },
-        { status: resp.status || 502 },
+        { success: false, error: result.error, details: result.details },
+        { status: 502 },
       );
     }
 
     return NextResponse.json({
       success: true,
-      data,
-      message: 'SMS sent successfully via TextBee',
+      message: `SMS sent to ${result.sent} recipient(s) via TextBee`,
     });
   } catch (error) {
     console.error('SMS sending error (TextBee):', error);
@@ -93,5 +48,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ success: true, message: 'SMS API ready' });
+  return NextResponse.json({ success: true, message: 'SMS API ready (TextBee)' });
 }

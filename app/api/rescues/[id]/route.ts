@@ -1,31 +1,20 @@
 import { supabase } from '@/app/client/supabase';
 import { logRescueAction } from '@/app/lib/activity-logger';
 import emailService from '@/app/lib/email-service';
+import { normalizePhone, sendViTextBee } from '@/app/lib/textbee';
 import { Database } from '@/database.types';
 import { NextRequest, NextResponse } from 'next/server';
-// Internal SMS forwarding using TextBee via /api/sms
+
+// Send rescue status SMS directly via TextBee (no HTTP roundtrip)
 async function sendStatusSMSInternal(to: string, message: string) {
-  try {
-    if (!to) return { success: false, error: 'No recipient phone provided' };
-    // Ensure E.164 format (+countrycode...) Basic normalization: prepend '+' if missing
-    const phone = to.startsWith('+') ? to : `+${to.replace(/[^0-9]/g, '')}`;
-    const originHost =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      process.env.BASE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const res = await fetch(`${originHost}/api/sms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipients: [phone], message }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      return { success: false, error: data.error || `HTTP ${res.status}` };
-    }
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  if (!to) return { success: false, error: 'No recipient phone provided' };
+  const phone = normalizePhone(to);
+  const result = await sendViTextBee([phone], message);
+  if (result.error) {
+    console.error('Rescue SMS failed:', result.error, result.details ?? '');
+    return { success: false, error: result.error };
   }
+  return { success: true };
 }
 type RescueUpdate = Database['public']['Tables']['rescues']['Update'];
 
@@ -113,6 +102,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .select('id,status,title,emergency_type,female_count,male_count,contact_phone,scheduled_for')
       .eq('id', id)
       .single();
+
+    // Enforce one-way status state machine — no going backwards
+    if (body.status !== undefined && existingRescue?.status) {
+      const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+        pending: ['in_progress', 'cancelled'],
+        in_progress: ['completed', 'cancelled'],
+        completed: [],
+        cancelled: [],
+      };
+      const current = existingRescue.status as string;
+      const allowed = ALLOWED_TRANSITIONS[current] ?? [];
+      if (body.status !== current && !allowed.includes(body.status)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Cannot change status from "${current}" to "${body.status}". ${
+              allowed.length
+                ? `Allowed transitions: ${allowed.join(', ')}.`
+                : 'This status is final and cannot be changed.'
+            }`,
+          },
+          { status: 422 },
+        );
+      }
+    }
 
     // Prepare update data
     const updateData: RescueUpdate = {

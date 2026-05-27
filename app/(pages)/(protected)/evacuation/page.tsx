@@ -1,9 +1,7 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import SmartMapPicker from '@/app/components/SmartMapPicker';
-import { getEvacTopColor } from '@/app/core/utils/utils';
 import evacuationAPI, {
   EvacuationCenter,
   EvacuationCenterInsert,
@@ -253,81 +251,53 @@ export default function EvacuationPage() {
       ) : (
         <div className="min-h-screen p-4 bg-background sm:p-6">
           <div className="mx-auto space-y-4 max-w-7xl sm:space-y-6">
-            {/* Header */}
-            <PageHeader
-              title="Evacuation Centers"
-              subtitle="Monitor and manage evacuation facilities"
-              action={
-                <Button onClick={openCreateModal} className="gap-2 bg-[#4988C4] cursor-pointer">
-                  <Plus className="w-4 h-4" />
-                  Add Center
-                </Button>
-              }
-            />
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
-              <div className={`p-3 text-center ${getEvacTopColor('total')} rounded-lg md:p-4`}>
-                <div className="text-lg font-bold text-gray-900 md:text-2xl">{stats.total}</div>
-                <div className="text-xs text-gray-600 md:text-sm">Total</div>
+            {/* Stripe-style filter tabs + search */}
+            <div className="space-y-3">
+              <div className="flex gap-2 overflow-x-auto pb-0.5">
+                {[
+                  { key: 'all', label: 'All', count: stats.total },
+                  { key: 'open', label: 'Open', count: stats.open },
+                  { key: 'full', label: 'Full', count: stats.full },
+                  { key: 'maintenance', label: 'Maintenance', count: stats.maintenance },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`flex-1 min-w-[80px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      statusFilter === tab.key
+                        ? 'border-[#4988C4] bg-[#4988C4]/5 ring-1 ring-[#4988C4]'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <p className="text-xs font-medium text-gray-500">{tab.label}</p>
+                    <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                      statusFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                    }`}>{tab.count}</p>
+                  </button>
+                ))}
               </div>
-              <div className={`p-3 text-center ${getEvacTopColor('open')} rounded-lg md:p-4`}>
-                <div className="text-lg font-bold text-green-600 md:text-2xl">{stats.open}</div>
-                <div className="text-xs text-gray-600 md:text-sm">Open</div>
-              </div>
-              <div className={`p-3 text-center ${getEvacTopColor('capacity')} rounded-lg md:p-4`}>
-                <div className="text-lg font-bold text-blue-600 md:text-2xl">
-                  {evacuationCenters
-                    .reduce((sum, center) => sum + (center.capacity || 0), 0)
-                    .toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-600 md:text-sm">Capacity</div>
-              </div>
-              <div
-                className={`hidden p-4 text-center ${getEvacTopColor(
-                  'current',
-                )} rounded-lg md:block`}
-              >
-                <div className="text-2xl font-bold text-orange-600">
-                  {evacuationCenters
-                    .reduce((sum, center) => sum + (center.current_occupancy || 0), 0)
-                    .toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">Current</div>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="p-3 bg-white border border-gray-200 rounded-lg md:p-4">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+              <div className="flex items-center justify-end gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                   <Input
                     placeholder="Search centers..."
-                    className="pl-10 border-gray-300 focus:border-gray-400"
+                    className="h-8 pl-8 text-sm w-52 border-gray-200 bg-white"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="full">Full</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Center
+                </Button>
               </div>
             </div>
 
             {/* Responsive List (single markup) */}
             <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
               {/* Header row for md+ */}
-              <div className="hidden grid-cols-12 gap-3 px-4 py-3 text-sm font-medium text-gray-900 border-b md:grid">
+              <div className="hidden grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 bg-gray-50/80 md:grid">
                 <div className="col-span-3">Center</div>
                 <div className="col-span-2">Status</div>
                 <div className="col-span-2">Occupancy</div>
@@ -340,7 +310,7 @@ export default function EvacuationPage() {
                 {pagedCenters.map((center) => (
                   <div
                     key={center.id}
-                    className="grid grid-cols-1 gap-3 px-4 py-4 border-b md:grid-cols-12 last:border-0"
+                    className="grid grid-cols-1 gap-3 px-4 py-3 border-b border-gray-100 md:grid-cols-12 last:border-0"
                   >
                     {/* Center info */}
                     <div className="md:col-span-3">

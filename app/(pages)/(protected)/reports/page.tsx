@@ -1,7 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { PageHeader } from '@/app/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -275,91 +274,57 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen bg-[#f8fafc]">
-      {/* Header */}
-      <div className="flex flex-col gap-4 mx-auto space-y-6 max-w-7xl sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          title="Reports Management"
-          subtitle="Manage reported posts and take appropriate actions"
-        />
-        <Button
-          onClick={exportToCSV}
-          className="w-full gap-2 sm:w-auto bg-[#4988C4] cursor-pointer"
-        >
-          <Download className="w-4 h-4" />
-          Export Report
-        </Button>
-      </div>
-
-      {/* Filter Controls */}
-      <Card className="gap-4 p-4 mx-auto space-y-6 max-w-7xl ">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <div className="flex-1 w-full sm:w-auto">
-            <label className="block mb-2 text-sm font-medium">Filter by Period</label>
-            <div className="flex gap-2">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, index) => (
-                    <SelectItem key={index} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <div className="p-4 space-y-4 min-h-screen bg-[#f8fafc] md:p-6">
+      <div className="mx-auto space-y-4 max-w-7xl">
+      {/* Stat cards + filters bar */}
+      <div className="space-y-3">
+        <div className="flex gap-2 overflow-x-auto pb-0.5">
+          {[
+            { label: 'Total', count: totalReports },
+            { label: 'Posts Reported', count: uniquePostsReported },
+            { label: "Today's", count: reportsToday },
+          ].map((stat) => (
+            <div key={stat.label} className="flex-1 min-w-[90px] p-3 rounded-xl border border-gray-200 bg-white">
+              <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+              <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{stat.count}</p>
             </div>
-          </div>
-          <div className="flex-1 w-full sm:w-auto">
-            <label className="block mb-2 text-sm font-medium">Search</label>
-            <div className="flex items-center gap-2 px-2 py-1 transition-all border rounded-md bg-muted/30 focus-within:ring-1 focus-within:ring-primary">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search reports..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 h-6 p-0 text-sm bg-transparent border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-              />
-            </div>
-          </div>
+          ))}
         </div>
-      </Card>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 mx-auto md:grid-cols-3 max-w-7xl">
-        <Card className="p-6 bg-gradient-to-br from-red-50 to-red-100/50 border-red-200/50">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-red-700">Total Reports</p>
-            <p className="text-4xl font-bold text-red-800">{totalReports}</p>
+        <div className="flex items-center justify-end gap-2">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="h-8 w-[120px] text-xs border-gray-200 bg-white">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month, index) => (
+                <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="h-8 w-[90px] text-xs border-gray-200 bg-white">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+            <Input
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8 pl-8 text-sm w-44 border-gray-200 bg-white"
+            />
           </div>
-        </Card>
-
-        <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200/50">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-orange-700">Posts Reported</p>
-            <p className="text-4xl font-bold text-orange-800">{uniquePostsReported}</p>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/50">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-blue-700">Today&apos;s Reports</p>
-            <p className="text-4xl font-bold text-blue-800">{reportsToday}</p>
-          </div>
-        </Card>
+          <Button onClick={exportToCSV} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </Button>
+        </div>
       </div>
 
       {paginatedReports.length === 0 ? (
@@ -374,21 +339,21 @@ export default function ReportsPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50 border-b border-gray-100">
-                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  REPORTER
+              <TableRow className="border-b border-gray-100 bg-gray-50/80">
+                <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                  Reporter
                 </TableHead>
-                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  REASON
+                <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                  Reason
                 </TableHead>
-                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  POST CONTENT
+                <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                  Post Content
                 </TableHead>
-                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  REPORTED
+                <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                  Reported
                 </TableHead>
-                <TableHead className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
-                  ACTIONS
+                <TableHead className="px-4 py-2 text-xs font-medium text-gray-500 text-right">
+                  Actions
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -396,9 +361,9 @@ export default function ReportsPage() {
               {paginatedReports.map((report) => (
                 <TableRow
                   key={report.id}
-                  className="hover:bg-gray-50/60 transition-colors border-gray-100"
+                  className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
                 >
-                  <TableCell className="px-4 py-4">
+                  <TableCell className="px-4 py-2.5">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
                         <User className="w-4 h-4 text-muted-foreground" />
@@ -411,7 +376,7 @@ export default function ReportsPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-4">
+                  <TableCell className="px-4 py-2.5">
                     <Badge
                       variant="outline"
                       className={`${getReasonBadge(report.reason)} border text-xs`}
@@ -419,7 +384,7 @@ export default function ReportsPage() {
                       {report.reason}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-4 py-4">
+                  <TableCell className="px-4 py-2.5">
                     <div className="max-w-[300px] space-y-2">
                       <div className="text-sm text-foreground line-clamp-2">
                         {report.post_details?.content || 'Content not available'}
@@ -432,7 +397,7 @@ export default function ReportsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-4">
+                  <TableCell className="px-4 py-2.5">
                     <div className="space-y-1">
                       <div className="text-sm text-foreground">{formatDate(report.created_at)}</div>
                       <div className="text-xs text-muted-foreground">
@@ -440,7 +405,7 @@ export default function ReportsPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-right">
+                  <TableCell className="px-4 py-2.5 text-right">
                     <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -666,6 +631,7 @@ export default function ReportsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
