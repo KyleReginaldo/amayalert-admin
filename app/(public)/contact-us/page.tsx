@@ -110,7 +110,7 @@ export default function ContactUsPage() {
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-gray-500" />
                     <div>
-                      <p className="text-gray-600">amayalert.site@gmail.com</p>
+                      <p className="text-gray-600">amayalert1@gmail.com</p>
                     </div>
                   </div>
 

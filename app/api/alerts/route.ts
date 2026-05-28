@@ -191,8 +191,6 @@ export async function POST(request: NextRequest) {
         const content = newAlert?.content ?? '';
         const base = process.env.NEXT_PUBLIC_BASE_URL || '';
         const alertUrl = `${base}/alert`;
-        const html = `<!doctype html><html><body><h2>${title}</h2><p>${content}</p><p><a href="${alertUrl}" style="display:inline-block;padding:10px 14px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none">View Alert</a></p><hr/><p style="color:#6b7280;font-size:13px">This is an official notification from AmayAlert.</p></body></html>`;
-        const text = `${title}\n\n${content}\n\nView: ${alertUrl}`;
 
         const smsMessage = (() => {
           const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
@@ -228,7 +226,11 @@ export async function POST(request: NextRequest) {
 
         const [emailResult, smsResult, pushResult] = await Promise.allSettled([
           emailRecipients.length > 0
-            ? emailService.sendBulkEmails(emailRecipients, `[ALERT] ${title}`, text, html)
+            ? emailService.sendAlertEmail(
+                emailRecipients,
+                { title, content, alert_level: alertData.alert_level ?? 'alert' },
+                alertUrl,
+              )
             : Promise.resolve({ success: true, error: undefined } as { success: boolean; error?: string }),
           smsRecipients.length > 0
             ? sendBatchSMS(smsRecipients, smsMessage)

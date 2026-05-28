@@ -54,7 +54,10 @@ export async function POST(request: NextRequest) {
       try {
         // Prefer device_token targeting; fall back to external_id
         const pushPayload = user.device_token
-          ? { message: `[TEST] AmayAlert push test for ${user.full_name}`, deviceToken: user.device_token }
+          ? {
+              message: `[TEST] AmayAlert push test for ${user.full_name}`,
+              deviceToken: user.device_token,
+            }
           : { message: `[TEST] AmayAlert push test for ${user.full_name}`, userId };
 
         const pushResponse = await fetch(`${BASE}/api/notifications/push`, {
@@ -64,7 +67,12 @@ export async function POST(request: NextRequest) {
           signal: AbortSignal.timeout(15000),
         });
 
-        const raw = await pushResponse.json().catch(() => ({})) as { success?: boolean; recipients?: number; data?: { recipients?: number }; error?: string };
+        const raw = (await pushResponse.json().catch(() => ({}))) as {
+          success?: boolean;
+          recipients?: number;
+          data?: { recipients?: number };
+          error?: string;
+        };
         const recipients = raw?.data?.recipients ?? raw?.recipients ?? 0;
 
         results.push.raw = raw;
@@ -89,7 +97,7 @@ export async function POST(request: NextRequest) {
         const emailService = await import('@/app/lib/email-service');
         await emailService.default.sendEmail({
           to: user.email,
-          from: 'amayalert.site@gmail.com',
+          from: 'amayalert1@gmail.com',
           subject: 'Test Email from AmayAlert',
           text: `Hello ${user.full_name},\n\nThis is a test email to verify email notifications are working.\n\nBest regards,\nAmayAlert Team`,
           html: `<h2>Hello ${user.full_name},</h2><p>This is a test email to verify email notifications are working.</p><p>Best regards,<br>AmayAlert Team</p>`,

@@ -124,59 +124,17 @@ export async function POST(request: NextRequest) {
       .select('email, phone_number')
       .eq('role', 'user');
     if (users && users.length > 0) {
-      // Send a simple email without images to avoid external assets
-      await emailService.sendBulkEmails(
-        users?.map((e) => e.email!),
-        'New Evacuation Center Alert',
-        undefined,
-        `<!doctype html>
-        <html lang="en">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width,initial-scale=1" />
-          <title>New Evacuation Center Available</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f6f6; margin:0; padding:0; }
-            .container { max-width:600px; margin:24px auto; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);} 
-            .header { background:#0b5cff; color:#ffffff; padding:20px; text-align:center }
-            .content { padding:20px; color:#111827; }
-            .muted { color:#6b7280; font-size:14px }
-            .btn { display:inline-block; padding:10px 16px; background:#0b5cff; color:#fff; border-radius:6px; text-decoration:none }
-            .meta { background:#f3f4f6; padding:12px; border-radius:6px; margin:12px 0 }
-            @media (max-width:420px) { .container{margin:12px} .content{padding:16px} }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin:0;font-size:20px">New Evacuation Center Available</h1>
-            </div>
-            <div class="content">
-              <p class="muted">A new evacuation center was just added. Please review the details below and follow local guidance.</p>
-
-              <div class="meta">
-                <strong>Center:</strong> ${data.name ?? 'N/A'}<br />
-                <strong>Address:</strong> ${data.address ?? 'N/A'}<br />
-                <strong>Capacity:</strong> ${data.current_occupancy ?? 'N/A'} / ${
-          data.capacity ?? 'N/A'
-        }<br />
-                <strong>Contact:</strong> ${data.contact_name ?? 'N/A'} ${
-          data.contact_phone ? `(${data.contact_phone})` : ''
-        }
-              </div>
-
-              <p style="margin-top:16px">
-                <a class="btn" href="${
-                  process.env.NEXT_PUBLIC_BASE_URL || ''
-                }/evacuation">View on Amayalert</a>
-              </p>
-
-              <hr style="border:none;border-top:1px solid #e5e7eb;margin:18px 0" />
-              <p class="muted" style="font-size:13px">If you didn't expect this message, you can ignore it. Replying to this email will not connect you to emergency services.</p>
-            </div>
-          </div>
-        </body>
-        </html>`,
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      await emailService.sendEvacuationEmail(
+        users.map((u) => u.email!).filter(Boolean),
+        {
+          name: data.name,
+          address: data.address ?? '',
+          status: data.status ?? 'open',
+          capacity: data.capacity,
+          current_occupancy: data.current_occupancy,
+        },
+        `${appUrl}/evacuation`,
       );
     }
 
