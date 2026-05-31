@@ -464,7 +464,6 @@ export type Database = {
           longitude: number | null;
           suspended: boolean | null;
           status: 'pending' | 'approved' | 'rejected' | null;
-          verification_status: 'pending' | 'verified' | 'rejected' | null;
           modules: Database['public']['Enums']['modules'][] | null;
           phone_number: string | null;
           profile_picture: string | null;
@@ -483,7 +482,6 @@ export type Database = {
           longitude?: number | null;
           suspended?: boolean | null;
           status?: 'pending' | 'approved' | 'rejected' | null;
-          verification_status?: 'pending' | 'verified' | 'rejected' | null;
           modules?: Database['public']['Enums']['modules'][] | null;
           phone_number?: string | null;
           profile_picture?: string | null;
@@ -502,7 +500,6 @@ export type Database = {
           longitude?: number | null;
           suspended?: boolean | null;
           status?: 'pending' | 'approved' | 'rejected' | null;
-          verification_status?: 'pending' | 'verified' | 'rejected' | null;
           modules?: Database['public']['Enums']['modules'][] | null;
           phone_number?: string | null;
           profile_picture?: string | null;
