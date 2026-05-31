@@ -69,6 +69,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 // Pagination Controls Component
@@ -154,6 +155,7 @@ const PaginationControls = ({
 
 export default function UsersPage() {
   const { users, usersLoading, refreshUsers, addUser, updateUser, removeUser } = useData();
+  const searchParams = useSearchParams();
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -172,6 +174,7 @@ export default function UsersPage() {
   const [statusLoading, setStatusLoading] = useState<{ userId: string; status: string } | null>(
     null,
   );
+  const [verifLoading, setVerifLoading] = useState<string | null>(null);
 
   // Load users on component mount
   useEffect(() => {
@@ -179,6 +182,17 @@ export default function UsersPage() {
       refreshUsers();
     }
   }, [users.length, usersLoading, refreshUsers]);
+
+  // Deep-link: ?id=userId → auto-open that user's sheet
+  useEffect(() => {
+    const targetId = searchParams.get('id');
+    if (!targetId || users.length === 0) return;
+    const target = users.find((u) => u.id === targetId);
+    if (target) {
+      setSelectedUser(target);
+      setIsSheetOpen(true);
+    }
+  }, [searchParams, users]);
 
   // Get current user ID
   useEffect(() => {
@@ -402,6 +416,43 @@ export default function UsersPage() {
       rejected: 'bg-red-50 text-red-700 border-red-200',
     };
     return <Badge className={`text-xs capitalize ${styles[status]}`}>{status}</Badge>;
+  };
+
+  const handleVerificationChange = async (
+    user: User,
+    status: 'pending' | 'verified' | 'rejected',
+  ) => {
+    setVerifLoading(user.id);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ verification_status: status })
+        .eq('id', user.id);
+      if (error) throw error;
+      const updated = { ...user, verification_status: status };
+      updateUser(user.id, updated as User);
+      if (selectedUser?.id === user.id) setSelectedUser(updated as User);
+      toast.success(`Verification ${status === 'verified' ? 'approved' : 'rejected'}.`);
+    } catch {
+      toast.error('Failed to update verification status.');
+    } finally {
+      setVerifLoading(null);
+    }
+  };
+
+  const getVerificationBadge = (
+    status: 'pending' | 'verified' | 'rejected' | null | undefined,
+  ) => {
+    if (!status) return null;
+    const styles = {
+      pending: 'bg-amber-50 text-amber-700 border-amber-200',
+      verified: 'bg-blue-50 text-blue-700 border-blue-200',
+      rejected: 'bg-red-50 text-red-700 border-red-200',
+    };
+    const labels = { pending: 'Unverified', verified: 'Email Verified', rejected: 'Rejected' };
+    return (
+      <Badge className={`text-xs ${styles[status]}`}>{labels[status]}</Badge>
+    );
   };
 
   const openCreateModal = () => {
@@ -1181,6 +1232,44 @@ export default function UsersPage() {
                     </div>
                   </>
                 )}
+
+                {/* Verification Status */}
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                    Verification Status
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {getVerificationBadge(selectedUser.verification_status as 'pending' | 'verified' | 'rejected' | null)}
+                    {selectedUser.verification_status !== 'verified' && (
+                      <button
+                        onClick={() => handleVerificationChange(selectedUser, 'verified')}
+                        disabled={verifLoading === selectedUser.id}
+                        className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {verifLoading === selectedUser.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-3 h-3" />
+                        )}
+                        Mark Verified
+                      </button>
+                    )}
+                    {selectedUser.verification_status !== 'rejected' && (
+                      <button
+                        onClick={() => handleVerificationChange(selectedUser, 'rejected')}
+                        disabled={verifLoading === selectedUser.id}
+                        className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {verifLoading === selectedUser.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <XCircle className="w-3 h-3" />
+                        )}
+                        Reject
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {/* User ID */}
                 <div className="border-t border-gray-100 pt-4">
