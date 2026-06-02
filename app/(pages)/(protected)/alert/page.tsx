@@ -3,7 +3,9 @@
 import type React from 'react';
 
 import { supabase } from '@/app/client/supabase';
+import { ExportPopover } from '@/app/components/export-popover';
 import alertsAPI, { Alert, AlertCreateRequest, AlertUpdate } from '@/app/lib/alerts-api';
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
 import { useAlerts } from '@/app/providers/alerts-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -105,6 +107,7 @@ export default function AlertPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // You can make this configurable if needed
 
+  const [isExporting, setIsExporting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
@@ -335,6 +338,101 @@ export default function AlertPage() {
     critical: alerts.filter((a) => a.alert_level === 'critical').length,
   };
 
+  const exportToPDF = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = alerts.filter((a) => {
+        if (!a.created_at) return !startTs && !endTs;
+        const ts = new Date(a.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      const html = buildReportHtml({
+        title: 'Alerts Report',
+        subtitle:
+          start || end
+            ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}`
+            : undefined,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Active', value: data.filter((a) => !a.deleted_at).length },
+          { label: 'Critical', value: data.filter((a) => a.alert_level === 'critical').length },
+          { label: 'High', value: data.filter((a) => a.alert_level === 'high').length },
+          { label: 'Medium', value: data.filter((a) => a.alert_level === 'medium').length },
+          { label: 'Low', value: data.filter((a) => a.alert_level === 'low').length },
+        ],
+        sections: [
+          {
+            title: 'Alerts List',
+            headers: ['ID', 'Title', 'Level', 'Status', 'Created At'],
+            rows: data.map((a) => [
+              `#${a.id}`,
+              a.title || 'Untitled Alert',
+              a.alert_level || 'medium',
+              a.deleted_at ? 'Deleted' : 'Active',
+              new Date(a.created_at!).toLocaleString(),
+            ]),
+          },
+        ],
+      });
+      openPrintWindow(html);
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportToExcel = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = alerts.filter((a) => {
+        if (!a.created_at) return !startTs && !endTs;
+        const ts = new Date(a.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      buildExcelReport({
+        title: 'Alerts Report',
+        filename: `alerts-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Active', value: data.filter((a) => !a.deleted_at).length },
+          { label: 'Critical', value: data.filter((a) => a.alert_level === 'critical').length },
+          { label: 'High', value: data.filter((a) => a.alert_level === 'high').length },
+          { label: 'Medium', value: data.filter((a) => a.alert_level === 'medium').length },
+          { label: 'Low', value: data.filter((a) => a.alert_level === 'low').length },
+        ],
+        sections: [
+          {
+            title: 'Alerts List',
+            headers: ['ID', 'Title', 'Level', 'Status', 'Created At'],
+            rows: data.map((a) => [
+              `#${a.id}`,
+              a.title || 'Untitled Alert',
+              a.alert_level || 'medium',
+              a.deleted_at ? 'Deleted' : 'Active',
+              new Date(a.created_at!).toLocaleString(),
+            ]),
+          },
+        ],
+        colWidths: [10, 40, 12, 12, 22],
+      });
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (alertsLoading && alerts.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -370,9 +468,13 @@ export default function AlertPage() {
                 }`}
               >
                 <p className="text-xs font-medium text-gray-500">{tab.label}</p>
-                <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
-                  alertLevelFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
-                }`}>{tab.count}</p>
+                <p
+                  className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                    alertLevelFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                  }`}
+                >
+                  {tab.count}
+                </p>
               </button>
             ))}
           </div>
@@ -387,13 +489,20 @@ export default function AlertPage() {
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
-            <Button
-              onClick={openCreateModal}
-              className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Create Alert
-            </Button>
+            <div className="flex items-center gap-2">
+              <ExportPopover
+                isExporting={isExporting}
+                onExportPDF={exportToPDF}
+                onExportExcel={exportToExcel}
+              />
+              <Button
+                onClick={openCreateModal}
+                className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create Alert
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -508,9 +617,30 @@ export default function AlertPage() {
                 {selectedIds.size > 0 && (
                   <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100">
                     <span className="text-xs text-blue-700">{selectedIds.size} selected</span>
-                    <Button variant="ghost" size="sm" onClick={clearSelection} disabled={bulkDeleting} className="h-6 text-xs text-blue-600 px-2">Clear</Button>
-                    <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="h-6 text-xs px-2">
-                      {bulkDeleting ? 'Deleting...' : <><Trash2 className="h-3 w-3 mr-1" />Delete</>}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearSelection}
+                      disabled={bulkDeleting}
+                      className="h-6 text-xs text-blue-600 px-2"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleting}
+                      className="h-6 text-xs px-2"
+                    >
+                      {bulkDeleting ? (
+                        'Deleting...'
+                      ) : (
+                        <>
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
@@ -528,12 +658,24 @@ export default function AlertPage() {
                             : ''}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Title</TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Content</TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Level</TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Created</TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Status</TableHead>
-                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500 text-right">Actions</TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                        Title
+                      </TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                        Content
+                      </TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                        Level
+                      </TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                        Created
+                      </TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                        Status
+                      </TableHead>
+                      <TableHead className="px-4 py-2 text-xs font-medium text-gray-500 text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -733,12 +875,12 @@ export default function AlertPage() {
               </SheetHeader>
 
               <div className="flex-1 py-6 space-y-6 overflow-auto">
-                <div>
+                {/* <div>
                   <Label className="text-xs font-semibold uppercase text-muted-foreground">
                     ID
                   </Label>
                   <div className="mt-2 font-mono text-sm break-all">{selectedAlert.id}</div>
-                </div>
+                </div> */}
                 <div>
                   <Label className="text-xs font-semibold uppercase text-muted-foreground">
                     Title
@@ -822,6 +964,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
   const [formData, setFormData] = useState({
     title: '',
     content: '',
+    sms_content: '',
     alert_level: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     notification_method: 'app_push' as 'app_push' | 'app' | 'sms' | 'both' | 'none',
   });
@@ -845,6 +988,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
       setFormData({
         title: alert.title || '',
         content: alert.content || '',
+        sms_content: '',
         alert_level: (alert.alert_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         notification_method: 'app_push',
       });
@@ -852,6 +996,7 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
       setFormData({
         title: '',
         content: '',
+        sms_content: '',
         alert_level: 'medium',
         notification_method: 'app_push',
       });
@@ -868,8 +1013,14 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
     } catch {}
   }, [formData, isOpen]);
 
+  const MIN_CHARS = 60;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.title.trim().length < MIN_CHARS) return;
+    if (formData.content.trim().length < MIN_CHARS) return;
+    if (formData.notification_method === 'both' && formData.sms_content.trim().length < MIN_CHARS)
+      return;
     onSave(formData);
   };
 
@@ -889,35 +1040,142 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <Label htmlFor="title" className="text-sm font-semibold">
-              Alert Title *
-            </Label>
-            <Input
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="title" className="text-sm font-semibold">
+                Alert Title *
+              </Label>
+              <span
+                className={`text-xs tabular-nums font-medium ${
+                  formData.title.length === 0
+                    ? 'text-muted-foreground'
+                    : formData.title.length < MIN_CHARS
+                      ? 'text-red-500'
+                      : formData.title.length >= 100
+                        ? 'text-red-500'
+                        : 'text-emerald-600'
+                }`}
+              >
+                {formData.title.length < MIN_CHARS
+                  ? `${MIN_CHARS - formData.title.length} more needed`
+                  : `${formData.title.length}/100`}
+              </span>
+            </div>
+            <Textarea
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="E.g., System Maintenance, Security Breach"
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, title: e.target.value.slice(0, 100) }))
+              }
+              placeholder="E.g., System Maintenance, Security Breach (min. 60 characters)"
               required
+              rows={2}
               disabled={loading}
-              className="mt-2 bg-background"
+              className={`resize-none bg-background break-all ${formData.title.length > 0 && formData.title.length < MIN_CHARS ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
             />
           </div>
 
           <div>
-            <Label htmlFor="content" className="text-sm font-semibold">
-              Alert Content *
-            </Label>
-            <Textarea
-              id="content"
-              value={formData.content}
-              onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
-              placeholder="Provide detailed information about the alert..."
-              required
-              rows={5}
-              disabled={loading}
-              className="mt-2 resize-none bg-background"
-            />
+            {(() => {
+              const method = formData.notification_method;
+              const isSMS = method === 'sms';
+              const maxLen = isSMS ? 160 : method === 'none' ? undefined : 500;
+              const count = formData.content.length;
+              const label = isSMS ? 'SMS Content *' : 'Alert Content *';
+              const placeholder = isSMS
+                ? 'Type the exact message to send via SMS (max 160 chars)...'
+                : 'Provide detailed information about the alert...';
+              const hint = isSMS
+                ? 'This text is sent directly as the SMS. 160 characters = 1 standard SMS.'
+                : 'Push + Email limit: 500 characters';
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="content" className="text-sm font-semibold">
+                      {label}
+                    </Label>
+                    <span
+                      className={`text-xs tabular-nums font-medium ${
+                        count === 0
+                          ? 'text-muted-foreground'
+                          : count < MIN_CHARS
+                            ? 'text-red-500'
+                            : maxLen !== undefined && count >= maxLen
+                              ? 'text-red-500'
+                              : maxLen !== undefined && count >= maxLen * 0.9
+                                ? 'text-amber-500'
+                                : 'text-emerald-600'
+                      }`}
+                    >
+                      {count < MIN_CHARS && count > 0
+                        ? `${MIN_CHARS - count} more needed`
+                        : maxLen !== undefined
+                          ? `${count}/${maxLen}`
+                          : `${count}`}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="content"
+                    value={formData.content}
+                    onChange={(e) => {
+                      const val =
+                        maxLen !== undefined ? e.target.value.slice(0, maxLen) : e.target.value;
+                      setFormData((prev) => ({ ...prev, content: val }));
+                    }}
+                    placeholder={`${placeholder.replace('...', '')} (min. 60 characters)...`}
+                    required
+                    rows={5}
+                    disabled={loading}
+                    className={`resize-none bg-background break-all ${count > 0 && count < MIN_CHARS ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                  />
+                  {maxLen !== undefined && (
+                    <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
+
+          {formData.notification_method === 'both' && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="sms_content" className="text-sm font-semibold">
+                  SMS Message{' '}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (for SMS recipients)
+                  </span>
+                </Label>
+                <span
+                  className={`text-xs tabular-nums font-medium ${
+                    formData.sms_content.length === 0
+                      ? 'text-muted-foreground'
+                      : formData.sms_content.length < MIN_CHARS
+                        ? 'text-red-500'
+                        : formData.sms_content.length >= 160
+                          ? 'text-red-500'
+                          : 'text-emerald-600'
+                  }`}
+                >
+                  {formData.sms_content.length < MIN_CHARS && formData.sms_content.length > 0
+                    ? `${MIN_CHARS - formData.sms_content.length} more needed`
+                    : `${formData.sms_content.length}/160`}
+                </span>
+              </div>
+              <Textarea
+                id="sms_content"
+                value={formData.sms_content}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, sms_content: e.target.value.slice(0, 160) }))
+                }
+                placeholder="Short SMS version of the alert (min. 60, max 160 characters)..."
+                rows={3}
+                disabled={loading}
+                className={`resize-none bg-background break-all ${formData.sms_content.length > 0 && formData.sms_content.length < MIN_CHARS ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                This message is sent via SMS. Push + Email will use the content above.
+              </p>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="alert_level" className="text-sm font-semibold">
@@ -968,7 +1226,12 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
                     onClick={() =>
                       setFormData((prev) => ({
                         ...prev,
-                        notification_method: m.value as 'app_push' | 'app' | 'sms' | 'both' | 'none',
+                        notification_method: m.value as
+                          | 'app_push'
+                          | 'app'
+                          | 'sms'
+                          | 'both'
+                          | 'none',
                       }))
                     }
                     className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 ${
@@ -979,7 +1242,9 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
                         : 'bg-muted text-foreground/70 border-border hover:bg-primary/10'
                     } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <Icon className={`h-3.5 w-3.5 ${active ? 'text-white' : isNone ? 'text-gray-500' : 'text-primary'}`} />
+                    <Icon
+                      className={`h-3.5 w-3.5 ${active ? 'text-white' : isNone ? 'text-gray-500' : 'text-primary'}`}
+                    />
                     {m.label}
                   </button>
                 );
@@ -1017,7 +1282,17 @@ function AlertModal({ isOpen, onClose, alert, onSave, loading = false }: AlertMo
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="gap-2 bg-[#4988C4] cursor-pointer">
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                formData.title.trim().length < MIN_CHARS ||
+                formData.content.trim().length < MIN_CHARS ||
+                (formData.notification_method === 'both' &&
+                  formData.sms_content.trim().length < MIN_CHARS)
+              }
+              className="gap-2 bg-[#4988C4] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></div>

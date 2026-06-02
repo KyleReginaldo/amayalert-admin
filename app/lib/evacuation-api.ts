@@ -1,7 +1,13 @@
 import { Database } from '@/database.types';
 
 // Types
-export type EvacuationCenter = Database['public']['Tables']['evacuation_centers']['Row'];
+export type EvacuationCenter = Database['public']['Tables']['evacuation_centers']['Row'] & {
+  updated_by_user?: {
+    id: string;
+    full_name: string;
+    role: string | null;
+  } | null;
+};
 export type EvacuationCenterInsert =
   Database['public']['Tables']['evacuation_centers']['Insert'] & {
     userId?: string;

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('evacuation_centers')
-      .select('*')
+      .select('*, updated_by_user:updated_by(id, full_name, role)')
       .order('created_at', { ascending: false });
 
     // Apply search filter

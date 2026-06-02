@@ -3,6 +3,8 @@
 import { supabase } from '@/app/client/supabase';
 import UsersLiveMap from '@/app/components/UsersLiveMap';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
+import { ExportPopover } from '@/app/components/export-popover';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -157,6 +159,7 @@ export default function UsersPage() {
   const { users, usersLoading, refreshUsers, addUser, updateUser, removeUser } = useData();
   const searchParams = useSearchParams();
 
+  const [isExporting, setIsExporting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -516,6 +519,68 @@ export default function UsersPage() {
     );
   }
 
+  const exportToPDF = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = users.filter(u => {
+        if (!u.created_at) return !startTs && !endTs;
+        const ts = new Date(u.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const toRow = (u: User) => [u.full_name || 'Unknown', u.email ?? '', u.phone_number ?? '—', u.role || 'user', u.gender || '—', u.suspended ? 'Suspended' : (u.status || 'pending'), u.verification_status || 'pending', u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'];
+      const timestamp = new Date().toLocaleString();
+      const html = buildReportHtml({
+        title: 'User Management Report',
+        subtitle: start || end ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}` : undefined,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Male', value: data.filter(u => u.gender === 'male').length },
+          { label: 'Female', value: data.filter(u => u.gender === 'female').length },
+          { label: 'Admins', value: data.filter(u => u.role === 'admin').length },
+          { label: 'Sub-Admins', value: data.filter(u => u.role === 'sub_admin').length },
+          { label: 'Suspended', value: data.filter(u => u.suspended).length },
+        ],
+        sections: [{ title: 'Users', headers: ['Name', 'Email', 'Phone', 'Role', 'Gender', 'Status', 'Verification', 'Join Date'], rows: data.map(toRow) }],
+      });
+      openPrintWindow(html);
+    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
+  };
+
+  const exportToExcel = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = users.filter(u => {
+        if (!u.created_at) return !startTs && !endTs;
+        const ts = new Date(u.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const toRow = (u: User) => [u.full_name || 'Unknown', u.email ?? '', u.phone_number ?? '—', u.role || 'user', u.gender || '—', u.suspended ? 'Suspended' : (u.status || 'pending'), u.verification_status || 'pending', u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'];
+      const timestamp = new Date().toLocaleString();
+      buildExcelReport({
+        title: 'User Management Report',
+        filename: `users-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Male', value: data.filter(u => u.gender === 'male').length },
+          { label: 'Female', value: data.filter(u => u.gender === 'female').length },
+          { label: 'Admins', value: data.filter(u => u.role === 'admin').length },
+          { label: 'Sub-Admins', value: data.filter(u => u.role === 'sub_admin').length },
+          { label: 'Suspended', value: data.filter(u => u.suspended).length },
+        ],
+        sections: [{ title: 'Users', headers: ['Name', 'Email', 'Phone', 'Role', 'Gender', 'Status', 'Verification', 'Join Date'], rows: data.map(toRow) }],
+        colWidths: [26, 34, 16, 12, 10, 14, 14, 14],
+      });
+    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
+  };
+
   return (
     <>
       {/* Empty state when no users exist */}
@@ -598,6 +663,7 @@ export default function UsersPage() {
                     Map
                   </button>
                 </div>
+                <ExportPopover isExporting={isExporting} onExportPDF={exportToPDF} onExportExcel={exportToExcel} />
                 <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
                   <Plus className="w-3.5 h-3.5" />
                   Add User

@@ -6,6 +6,12 @@ import { useData } from '@/app/providers/data-provider';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -13,12 +19,15 @@ import {
   AlertTriangle,
   Building2,
   CalendarIcon,
+  ChevronDown,
   Clock,
   Download,
+  FileSpreadsheet,
   Loader2,
   TrendingUp,
   Users,
 } from 'lucide-react';
+import * as XLSX from 'xlsx-js-style';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const SeverityBadge = ({ severity }: { severity: string }) => {
@@ -147,6 +156,17 @@ const Dashboard = () => {
         status: 'active',
       }));
 
+      const levelBadge = (level: string) => {
+        const map: Record<string, string> = {
+          critical: 'background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA',
+          high:     'background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA',
+          medium:   'background:#FFFBEB;color:#B45309;border:1px solid #FDE68A',
+          low:      'background:#F0FDF4;color:#047857;border:1px solid #BBF7D0',
+        };
+        const style = map[level.toLowerCase()] ?? 'background:#F3F4F6;color:#374151;border:1px solid #E5E7EB';
+        return `<span style="${style};padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600;text-transform:capitalize">${level}</span>`;
+      };
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -154,29 +174,95 @@ const Dashboard = () => {
           <meta charset="utf-8">
           <title>Amayalert Report</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.4; }
-            .header { text-align: center; margin-bottom: 40px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .header p { margin: 5px 0; color: #666; }
-            .section { margin: 30px 0; }
-            .section h2 { font-size: 18px; margin: 0 0 15px 0; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; font-weight: bold; }
-            .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0; }
-            .stat { padding: 15px; border: 1px solid #ddd; }
-            .stat-value { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-            .stat-label { color: #666; font-size: 14px; }
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            * { box-sizing: border-box; }
+
+            /* screen: show page as A4 sheet centered on gray bg */
+            @media screen {
+              html { background: #E5E7EB; min-height: 100%; padding: 32px 0; }
+              body {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
+                background: #fff;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+              }
+              .page { padding: 18mm 20mm; }
+            }
+
+            /* print: full bleed, margins via padding */
+            @media print {
+              html, body { background: #fff; width: 100%; margin: 0; box-shadow: none; }
+              .page { padding: 18mm 20mm; }
+            }
+
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 11px;
+              color: #111827;
+              line-height: 1.5;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            /* ── Header ── */
+            .header {
+              background: #111827;
+              color: #fff;
+              padding: 18px 22px 14px;
+              margin-bottom: 18px;
+            }
+            .header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+            .header p  { margin: 0; font-size: 10px; color: #9CA3AF; }
+
+            /* ── Section ── */
+            .section { margin-bottom: 20px; page-break-inside: avoid; }
+            .section-title {
+              background: #374151;
+              color: #fff;
+              padding: 6px 10px;
+              font-size: 11px;
+              font-weight: 700;
+              margin: 0;
+              letter-spacing: 0.2px;
+            }
+
+            /* ── Stats grid ── */
+            .stats {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              border: 1px solid #E5E7EB;
+              border-top: none;
+            }
+            .stat { padding: 12px 14px; border-right: 1px solid #E5E7EB; }
+            .stat:last-child { border-right: none; }
+            .stat-value { font-size: 22px; font-weight: 700; color: #111827; line-height: 1.2; }
+            .stat-label { font-size: 10px; color: #6B7280; margin-top: 2px; }
+
+            /* ── Tables ── */
+            table { width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #E5E7EB; border-top: none; }
+            thead tr { background: #1F2937; }
+            thead th { color: #fff; font-weight: 700; padding: 7px 8px; text-align: left; border-right: 1px solid #374151; }
+            thead th:last-child { border-right: none; }
+            tbody tr:nth-child(even) { background: #F9FAFB; }
+            tbody tr:nth-child(odd)  { background: #ffffff; }
+            tbody td { padding: 6px 8px; border-right: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; color: #111827; vertical-align: middle; }
+            tbody td:last-child { border-right: none; }
+            .empty-row td { text-align: center; color: #9CA3AF; padding: 14px; font-style: italic; }
           </style>
         </head>
         <body>
+          <div class="page">
           <div class="header">
             <h1>Amayalert Report</h1>
-            <p>Report Period: ${periodName}</p>
-            <p>Generated on: ${timestamp}</p>
+            <p>Report Period: ${periodName} &nbsp;·&nbsp; Generated on: ${timestamp}</p>
           </div>
+
           <div class="section">
-            <h2>Overview Statistics</h2>
+            <div class="section-title">Overview Statistics</div>
             <div class="stats">
               <div class="stat"><div class="stat-value">${dayStats.totalUsers.toLocaleString()}</div><div class="stat-label">New Users</div></div>
               <div class="stat"><div class="stat-value">${dayStats.activeAlerts}</div><div class="stat-label">Active Alerts</div></div>
@@ -184,32 +270,42 @@ const Dashboard = () => {
               <div class="stat"><div class="stat-value">${dayStats.criticalAlerts}</div><div class="stat-label">Critical Alerts</div></div>
             </div>
           </div>
+
           <div class="section">
-            <h2>Alerts for ${periodName}</h2>
+            <div class="section-title">Alerts for ${periodName}</div>
             <table>
-              <thead><tr><th>ID</th><th>Title</th><th>Level</th><th>Time</th><th>Status</th></tr></thead>
+              <thead><tr><th style="width:7%">ID</th><th style="width:35%">Title</th><th style="width:12%">Level</th><th style="width:14%">Time</th><th style="width:14%">Date</th><th style="width:12%">Status</th></tr></thead>
               <tbody>
-                ${dayAlerts.length > 0 ? dayAlerts.map((alert) => `<tr><td>#${alert.id}</td><td>${alert.title}</td><td>${alert.severity}</td><td>${alert.time}</td><td>${alert.status}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align: center; color: #666;">No alerts for this period</td></tr>'}
+                ${dayAlerts.length > 0
+                  ? dayAlerts.map((a) => `<tr><td>${a.id}</td><td>${a.title}</td><td>${levelBadge(a.severity)}</td><td>${a.time}</td><td>${a.date}</td><td>${a.status}</td></tr>`).join('')
+                  : '<tr class="empty-row"><td colspan="6">No alerts for this period</td></tr>'}
               </tbody>
             </table>
           </div>
+
           <div class="section">
-            <h2>New Users in ${periodName}</h2>
+            <div class="section-title">New Users in ${periodName}</div>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Join Date</th></tr></thead>
+              <thead><tr><th style="width:28%">Name</th><th style="width:38%">Email</th><th style="width:14%">Role</th><th style="width:20%">Join Date</th></tr></thead>
               <tbody>
-                ${dayUsers.length > 0 ? dayUsers.map((user) => `<tr><td>${user.name}</td><td>${user.email}</td><td>${user.role}</td><td>${new Date(user.joinDate).toLocaleDateString()}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align: center; color: #666;">No new users for this period</td></tr>'}
+                ${dayUsers.length > 0
+                  ? dayUsers.map((u) => `<tr><td>${u.name}</td><td>${u.email}</td><td style="text-transform:capitalize">${u.role}</td><td>${new Date(u.joinDate).toLocaleDateString()}</td></tr>`).join('')
+                  : '<tr class="empty-row"><td colspan="4">No new users for this period</td></tr>'}
               </tbody>
             </table>
           </div>
+
           <div class="section">
-            <h2>Evacuation Centers</h2>
+            <div class="section-title">Evacuation Centers</div>
             <table>
-              <thead><tr><th>Name</th><th>Status</th><th>Occupancy</th><th>Capacity</th><th>Address</th></tr></thead>
+              <thead><tr><th style="width:22%">Name</th><th style="width:12%">Status</th><th style="width:11%">Occupancy</th><th style="width:10%">Capacity</th><th style="width:45%">Address</th></tr></thead>
               <tbody>
-                ${filteredEvacuationCenters.length > 0 ? filteredEvacuationCenters.map((center) => `<tr><td>${center.name}</td><td>${(center.status || 'closed').toUpperCase()}</td><td>${center.current_occupancy || 0}</td><td>${center.capacity || 0}</td><td>${center.address}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align: center; color: #666;">No evacuation center updates for this period</td></tr>'}
+                ${filteredEvacuationCenters.length > 0
+                  ? filteredEvacuationCenters.map((c) => `<tr><td>${c.name}</td><td>${(c.status || 'closed').toUpperCase()}</td><td>${c.current_occupancy || 0}</td><td>${c.capacity || 0}</td><td>${c.address}</td></tr>`).join('')
+                  : '<tr class="empty-row"><td colspan="5">No evacuation center updates for this period</td></tr>'}
               </tbody>
             </table>
+          </div>
           </div>
         </body>
         </html>
@@ -222,6 +318,170 @@ const Dashboard = () => {
         printWindow.focus();
         setTimeout(() => { printWindow.print(); }, 500);
       }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportToExcel = () => {
+    try {
+      setIsExporting(true);
+
+      const startDateObj = startDate;
+      const endDateObj = endDate;
+      const periodName =
+        startDate.toDateString() === endDate.toDateString()
+          ? startDateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : `${startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const timestamp = new Date().toLocaleString();
+
+      const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
+      const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
+
+      const filteredAlerts = alerts.filter((alert) => {
+        if (!alert.created_at) return false;
+        const alertTime = new Date(alert.created_at).getTime();
+        return alertTime >= startTimestamp && alertTime <= endTimestamp;
+      });
+
+      const filteredUsers = users.filter((user) => {
+        if (!user.created_at) return false;
+        if (user.full_name === 'Guest User') return false;
+        const userTime = new Date(user.created_at).getTime();
+        return userTime >= startTimestamp && userTime <= endTimestamp;
+      });
+
+      const filteredEvacuationCenters = evacuationCenters.filter((center) => {
+        const stamp = center.updated_at || center.created_at;
+        if (!stamp) return false;
+        const centerTime = new Date(stamp).getTime();
+        return centerTime >= startTimestamp && centerTime <= endTimestamp;
+      });
+
+      const dayStats = {
+        totalUsers: filteredUsers.length,
+        activeAlerts: filteredAlerts.filter((alert) => !alert.deleted_at).length,
+        evacuationCenters: filteredEvacuationCenters.length,
+        criticalAlerts: filteredAlerts.filter((alert) => alert.alert_level === 'critical').length,
+      };
+
+      const dayAlerts = filteredAlerts.slice(0, 20).map((alert) => [
+        `#${alert.id}`,
+        alert.title || 'Untitled Alert',
+        alert.alert_level || 'medium',
+        new Date(alert.created_at!).toLocaleTimeString(),
+        new Date(alert.created_at!).toLocaleDateString(),
+        alert.deleted_at ? 'Deleted' : 'Active',
+      ]);
+
+      const dayUsers = filteredUsers.slice(0, 20).map((user) => [
+        user.full_name || 'Unknown User',
+        user.email ?? '',
+        user.role || 'user',
+        new Date(user.created_at!).toLocaleDateString(),
+      ]);
+
+      const centerRows = filteredEvacuationCenters.map((center) => [
+        center.name ?? '',
+        (center.status || 'closed').toUpperCase(),
+        center.current_occupancy ?? 0,
+        center.capacity ?? 0,
+        center.address ?? '',
+      ]);
+
+      // ── Style helpers ──────────────────────────────────────────────────────
+      const S = {
+        title:    { font: { bold: true, sz: 16, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111827' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        subtitle: { font: { sz: 10, color: { rgb: 'FF6B7280' } }, fill: { fgColor: { rgb: 'FFFFFFFF' } }, alignment: { horizontal: 'left' } },
+        sectionHeader: { font: { bold: true, sz: 11, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF374151' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        colHeader: { font: { bold: true, sz: 10, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF1F2937' } }, alignment: { horizontal: 'left', vertical: 'center' }, border: { bottom: { style: 'thin', color: { rgb: 'FF4B5563' } } } },
+        statLabel: { font: { bold: true, sz: 10, color: { rgb: 'FF374151' } }, fill: { fgColor: { rgb: 'FFF3F4F6' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        statValue: { font: { bold: true, sz: 13, color: { rgb: 'FF111827' } }, fill: { fgColor: { rgb: 'FFF3F4F6' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        rowEven:   { font: { sz: 10, color: { rgb: 'FF111827' } }, fill: { fgColor: { rgb: 'FFFFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        rowOdd:    { font: { sz: 10, color: { rgb: 'FF111827' } }, fill: { fgColor: { rgb: 'FFF9FAFB' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        empty:     { fill: { fgColor: { rgb: 'FFFFFFFF' } } },
+        levelCritical: { font: { bold: true, sz: 10, color: { rgb: 'FFB91C1C' } }, fill: { fgColor: { rgb: 'FFFEF2F2' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        levelHigh:     { font: { bold: true, sz: 10, color: { rgb: 'FFC2410C' } }, fill: { fgColor: { rgb: 'FFFFF7ED' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        levelMedium:   { font: { bold: true, sz: 10, color: { rgb: 'FFB45309' } }, fill: { fgColor: { rgb: 'FFFFFBEB' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+        levelLow:      { font: { bold: true, sz: 10, color: { rgb: 'FF047857' } }, fill: { fgColor: { rgb: 'FFF0FDF4' } }, alignment: { horizontal: 'left', vertical: 'center' } },
+      } as const;
+
+      const cell = (v: string | number, s: object) => ({ v, t: typeof v === 'number' ? 'n' : 's', s });
+      const blank = () => ({ v: '', t: 's', s: S.empty });
+
+      // ── Build rows ─────────────────────────────────────────────────────────
+      const ws: XLSX.WorkSheet = {};
+      let r = 0;
+
+      const setRow = (cols: ReturnType<typeof cell | typeof blank>[]) => {
+        cols.forEach((c, ci) => { ws[XLSX.utils.encode_cell({ r, c: ci })] = c; });
+        r++;
+      };
+
+      // Header block
+      setRow([cell('Amayalert Report', S.title), blank(), blank(), blank(), blank(), blank()]);
+      setRow([cell(`Report Period: ${periodName}`, S.subtitle), blank(), blank(), blank(), blank(), blank()]);
+      setRow([cell(`Generated on: ${timestamp}`, S.subtitle), blank(), blank(), blank(), blank(), blank()]);
+      setRow([blank(), blank(), blank(), blank(), blank(), blank()]);
+
+      // Overview stats
+      setRow([cell('Overview Statistics', S.sectionHeader), blank(), blank(), blank(), blank(), blank()]);
+      setRow([cell('New Users', S.statLabel), cell(dayStats.totalUsers, S.statValue), blank(), cell('Active Alerts', S.statLabel), cell(dayStats.activeAlerts, S.statValue), blank()]);
+      setRow([cell('Evacuation Centers', S.statLabel), cell(dayStats.evacuationCenters, S.statValue), blank(), cell('Critical Alerts', S.statLabel), cell(dayStats.criticalAlerts, S.statValue), blank()]);
+      setRow([blank(), blank(), blank(), blank(), blank(), blank()]);
+
+      // Alerts table
+      setRow([cell(`Alerts for ${periodName}`, S.sectionHeader), blank(), blank(), blank(), blank(), blank()]);
+      setRow(['ID', 'Title', 'Level', 'Time', 'Date', 'Status'].map((h) => cell(h, S.colHeader)));
+      if (dayAlerts.length > 0) {
+        dayAlerts.forEach((a, i) => {
+          const base = i % 2 === 0 ? S.rowEven : S.rowOdd;
+          const level = String(a[2]).toLowerCase();
+          const levelStyle = level === 'critical' ? S.levelCritical : level === 'high' ? S.levelHigh : level === 'medium' ? S.levelMedium : S.levelLow;
+          setRow([cell(String(a[0]), base), cell(String(a[1]), base), cell(String(a[2]), levelStyle), cell(String(a[3]), base), cell(String(a[4]), base), cell(String(a[5]), base)]);
+        });
+      } else {
+        setRow([blank(), cell('No alerts for this period', S.rowEven), blank(), blank(), blank(), blank()]);
+      }
+      setRow([blank(), blank(), blank(), blank(), blank(), blank()]);
+
+      // Users table
+      setRow([cell(`New Users in ${periodName}`, S.sectionHeader), blank(), blank(), blank(), blank(), blank()]);
+      setRow(['Name', 'Email', 'Role', 'Join Date'].map((h) => cell(h, S.colHeader)).concat([blank(), blank()]));
+      if (dayUsers.length > 0) {
+        dayUsers.forEach((u, i) => {
+          const base = i % 2 === 0 ? S.rowEven : S.rowOdd;
+          setRow([cell(String(u[0]), base), cell(String(u[1]), base), cell(String(u[2]), base), cell(String(u[3]), base), blank(), blank()]);
+        });
+      } else {
+        setRow([blank(), cell('No new users for this period', S.rowEven), blank(), blank(), blank(), blank()]);
+      }
+      setRow([blank(), blank(), blank(), blank(), blank(), blank()]);
+
+      // Evacuation centers table
+      setRow([cell('Evacuation Centers', S.sectionHeader), blank(), blank(), blank(), blank(), blank()]);
+      setRow(['Name', 'Status', 'Occupancy', 'Capacity', 'Address'].map((h) => cell(h, S.colHeader)).concat([blank()]));
+      if (centerRows.length > 0) {
+        centerRows.forEach((c, i) => {
+          const base = i % 2 === 0 ? S.rowEven : S.rowOdd;
+          setRow([cell(String(c[0]), base), cell(String(c[1]), base), cell(Number(c[2]), base), cell(Number(c[3]), base), cell(String(c[4]), base), blank()]);
+        });
+      } else {
+        setRow([cell('No evacuation center updates for this period', S.rowEven), blank(), blank(), blank(), blank(), blank()]);
+      }
+
+      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: 5 } });
+      ws['!cols'] = [{ wch: 28 }, { wch: 36 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 12 }];
+      ws['!rows'] = Array.from({ length: r }, (_, i) => (i === 0 ? { hpt: 28 } : { hpt: 18 }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+
+      const filename = `amayalert-report-${startDate.toISOString().slice(0, 10)}${startDate.toDateString() !== endDate.toDateString() ? `_to_${endDate.toISOString().slice(0, 10)}` : ''}.xlsx`;
+      XLSX.writeFile(wb, filename);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');
@@ -427,19 +687,33 @@ const Dashboard = () => {
                 </PopoverContent>
               </Popover>
 
-              <Button
-                onClick={exportToPDF}
-                disabled={isExporting}
-                size="sm"
-                className="h-9 gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-none cursor-pointer"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Download className="w-3.5 h-3.5" />
-                )}
-                Export Report
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={isExporting}
+                    size="sm"
+                    className="h-9 gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium shadow-none cursor-pointer"
+                  >
+                    {isExporting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    Export Report
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={exportToPDF} className="gap-2 cursor-pointer">
+                    <Download className="w-4 h-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToExcel} className="gap-2 cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           }
         />

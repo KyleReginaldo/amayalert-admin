@@ -193,15 +193,21 @@ export async function POST(request: NextRequest) {
         const alertUrl = `${base}/alert`;
 
         const smsMessage = (() => {
-          const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
-          const extras: string[] = [];
-          if (content) {
-            const trimmed = content.replace(/\s+/g, ' ').trim();
-            if (trimmed) extras.push(trimmed.length > 90 ? trimmed.slice(0, 87) + '…' : trimmed);
+          // "All" mode: use the dedicated sms_content field directly
+          if (body.sms_content && typeof body.sms_content === 'string' && body.sms_content.trim()) {
+            return body.sms_content.trim().slice(0, 160);
           }
-          if (process.env.NEXT_PUBLIC_BASE_URL) extras.push(`View: ${process.env.NEXT_PUBLIC_BASE_URL}/alert`);
-          const candidate = `${baseDefault} ${extras.join(' | ')}`;
-          return candidate.length <= 150 ? candidate : baseDefault;
+          // "SMS only" mode: content IS the SMS message — user already limited it to 160 on the frontend
+          if (notificationMethod === 'sms') {
+            return content.trim().slice(0, 160);
+          }
+          // Fallback auto-generate for other cases
+          const baseDefault = `Alert: "${title}" level ${alertData.alert_level}.`;
+          const trimmed = content.replace(/\s+/g, ' ').trim();
+          const candidate = trimmed
+            ? `${baseDefault} ${trimmed.length > 90 ? trimmed.slice(0, 87) + '…' : trimmed}`
+            : baseDefault;
+          return candidate.slice(0, 160);
         })();
 
         // Collect all targets upfront — then send 3 batch calls instead of N×3 individual calls

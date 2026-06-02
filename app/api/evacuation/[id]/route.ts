@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { data, error } = await supabase
       .from('evacuation_centers')
-      .select('*')
+      .select('*, updated_by_user:updated_by(id, full_name, role)')
       .eq('id', id)
       .single();
 
@@ -66,9 +66,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const body = await request.json();
 
-    // Extract userId from request body (don't include in updateData)
-    const userId = body.userId;
-    console.log('🔐 User ID from request:', userId);
+    // Extract userId from request body
+    const userId: string | undefined = typeof body.userId === 'string' && body.userId ? body.userId : undefined;
+    console.log('🔐 updated_by userId:', userId ?? '(none)');
 
     // Validate required fields if provided
     if (body.name !== undefined && (!body.name || !body.name.trim())) {
@@ -92,9 +92,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    // Prepare update data (exclude userId which is only for logging)
+    // Verify userId exists in public.users before setting updated_by
+    let resolvedUpdatedBy: string | null = null;
+    if (userId) {
+      const { data: userCheck } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+      if (userCheck) {
+        resolvedUpdatedBy = userId;
+      } else {
+        console.warn('⚠️ userId not found in public.users:', userId);
+      }
+    }
+
+    // Prepare update data
     const updateData: EvacuationCenterUpdate = {
       updated_at: new Date().toISOString(),
+      updated_by: resolvedUpdatedBy,
     };
 
     if (body.name !== undefined) updateData.name = body.name.trim();
@@ -117,7 +133,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .from('evacuation_centers')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select('*, updated_by_user:updated_by(id, full_name, role)')
       .single();
 
     if (error) {

@@ -1,5 +1,7 @@
 'use client';
 
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
+import { ExportPopover } from '@/app/components/export-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +26,6 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
-  Download,
   FileText,
   Filter,
   LifeBuoy,
@@ -129,86 +130,53 @@ export default function LogsPage() {
     fetchLogs();
   };
 
-  const handleExport = () => {
+  const exportToPDF = (start: Date | null, end: Date | null) => {
     try {
       setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = filteredLogs.filter(l => {
+        const ts = new Date(l.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
       const timestamp = new Date().toLocaleString();
+      const html = buildReportHtml({
+        title: 'Activity Logs Report',
+        subtitle: start || end ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}` : `Total: ${data.length}`,
+        timestamp,
+        sections: [{ title: 'Activity Logs', headers: ['ID', 'Date & Time', 'User', 'Role', 'Activity'],
+          rows: data.map(log => [`#${log.id}`, new Date(log.created_at).toLocaleString(), log.users?.full_name || 'System', (log.users?.role || 'system').toUpperCase(), log.content || '']) }],
+      });
+      openPrintWindow(html);
+    } catch (error) { console.error('Export failed:', error); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
+  };
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Activity Logs Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.4; }
-            .header { text-align: center; margin-bottom: 40px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .header p { margin: 5px 0; color: #666; }
-            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-            th { background-color: #f5f5f5; font-weight: bold; }
-            .role-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-            .role-admin { background-color: #fee2e2; color: #991b1b; }
-            .role-sub_admin { background-color: #dbeafe; color: #1e40af; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Activity Logs Report</h1>
-            <p>Generated on: ${timestamp}</p>
-            <p>Total Logs: ${filteredLogs.length}</p>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 50px;">ID</th>
-                <th style="width: 150px;">Date & Time</th>
-                <th style="width: 120px;">User</th>
-                <th style="width: 80px;">Role</th>
-                <th>Activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredLogs
-                .map(
-                  (log) => `
-                <tr>
-                  <td>#${log.id}</td>
-                  <td>${new Date(log.created_at).toLocaleString()}</td>
-                  <td>${log.users?.full_name || 'System'}</td>
-                  <td>
-                    <span class="role-badge role-${log.users?.role || 'system'}">
-                      ${log.users?.role?.toUpperCase() || 'SYSTEM'}
-                    </span>
-                  </td>
-                  <td>${log.content}</td>
-                </tr>
-              `,
-                )
-                .join('')}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `;
-
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    } finally {
-      setIsExporting(false);
-    }
+  const exportToExcel = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = filteredLogs.filter(l => {
+        const ts = new Date(l.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      buildExcelReport({
+        title: 'Activity Logs Report',
+        filename: `activity-logs-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        timestamp,
+        stats: [
+          { label: 'Total Logs', value: data.length },
+          { label: 'Admin Actions', value: data.filter(l => l.users?.role === 'admin').length },
+          { label: 'Sub-Admin Actions', value: data.filter(l => l.users?.role === 'sub_admin').length },
+        ],
+        sections: [{ title: 'Activity Logs', headers: ['ID', 'Date & Time', 'User', 'Role', 'Activity'],
+          rows: data.map(log => [`#${log.id}`, new Date(log.created_at).toLocaleString(), log.users?.full_name || 'System', (log.users?.role || 'system').toUpperCase(), log.content || '']) }],
+        colWidths: [10, 22, 24, 14, 60],
+      });
+    } catch (error) { console.error('Export failed:', error); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
   };
 
   const filteredLogs = logs.filter(
@@ -355,19 +323,7 @@ export default function LogsPage() {
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button
-              onClick={handleExport}
-              disabled={isExporting}
-              variant="outline"
-              className="h-8 gap-1.5 text-xs"
-            >
-              {isExporting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Download className="w-3.5 h-3.5" />
-              )}
-              Export
-            </Button>
+            <ExportPopover isExporting={isExporting} onExportPDF={exportToPDF} onExportExcel={exportToExcel} />
           </div>
         </div>
 

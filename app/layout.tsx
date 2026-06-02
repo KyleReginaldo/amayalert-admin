@@ -22,6 +22,7 @@ const PAGE_INFO: Record<string, { title: string; subtitle: string }> = {
   '/alert': { title: 'Alert Management', subtitle: 'Monitor and manage emergency alerts' },
   '/evacuation': { title: 'Evacuation Centers', subtitle: 'Monitor and manage evacuation facilities' },
   '/rescue': { title: 'Rescue Requests', subtitle: 'Monitor and manage emergency rescue requests from citizens' },
+  '/hotlines': { title: 'Emergency Hotlines', subtitle: 'Manage emergency contact numbers and services' },
   '/users': { title: 'User Management', subtitle: 'Manage registered users' },
   '/admins': { title: 'Admin Management', subtitle: 'Manage administrator accounts and permissions' },
   '/reports': { title: 'Reports', subtitle: 'Manage reported posts and take appropriate actions' },
@@ -59,7 +60,7 @@ function GlobalMobileHeader() {
 function DesktopTopBar({ pathname }: { pathname: string | null }) {
   const pageInfo = PAGE_INFO[pathname || ''] ?? { title: 'Amayalert', subtitle: '' };
   return (
-    <div className="sticky top-0 z-10 items-center justify-between hidden px-6 py-3 bg-white border-b shadow-sm md:flex">
+    <div className="sticky top-0 z-10 items-center justify-between hidden pl-5 pr-5 py-3 bg-white border-b md:flex">
       <div>
         <h1 className="text-sm font-semibold text-gray-900 leading-tight">{pageInfo.title}</h1>
         {pageInfo.subtitle && (
@@ -177,7 +178,7 @@ export default function RootLayout({
                           className={`${
                             shouldHideAdminLayout
                               ? 'min-h-screen w-full'
-                              : 'flex-1 overflow-auto ml-0 md:ml-64 transition-all duration-300'
+                              : 'flex-1 overflow-auto ml-0 md:ml-56 transition-all duration-300'
                           }`}
                         >
                           {!shouldHideAdminLayout && <GlobalMobileHeader />}

@@ -1,7 +1,8 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { getRequestStatColor } from '@/app/core/utils/utils';
+import { ExportPopover } from '@/app/components/export-popover';
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
 import rescueAPI, { Rescue, RescueStatus, RescueUpdate } from '@/app/lib/rescue-api';
 import { useRescue } from '@/app/providers/rescue-provider';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +89,7 @@ export default function RescuePage() {
   // Get data from context
   const { rescues, rescueLoading, updateRescue, removeRescue } = useRescue();
 
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -407,11 +409,6 @@ export default function RescuePage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-semibold text-gray-900 truncate">{rescue.title}</h3>
-              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                <span className="font-mono text-[11px] bg-gray-100 px-1.5 py-0.5 rounded">
-                  #{rescue.id}
-                </span>
-              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Badge
@@ -869,6 +866,134 @@ export default function RescuePage() {
     );
   }
 
+  const PRIORITY_LABELS: Record<string, string> = {
+    '1': 'Critical',
+    '2': 'High',
+    '3': 'Medium',
+    '4': 'Low',
+  };
+
+  const exportToPDF = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = rescues.filter((r) => {
+        if (!r.created_at) return !startTs && !endTs;
+        const ts = new Date(r.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      const toRow = (r: Rescue) => [
+        r.title || 'Untitled',
+        r.emergency_type || '—',
+        PRIORITY_LABELS[String(r.priority)] ?? String(r.priority),
+        r.status,
+        r.male_count ?? 0,
+        r.female_count ?? 0,
+        r.contact_phone ?? '—',
+        r.scheduled_for ? new Date(r.scheduled_for).toLocaleString() : '—',
+      ];
+      const html = buildReportHtml({
+        title: 'Rescue Operations Report',
+        subtitle:
+          start || end
+            ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}`
+            : undefined,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Pending', value: data.filter((r) => r.status === 'pending').length },
+          { label: 'In Progress', value: data.filter((r) => r.status === 'in_progress').length },
+          { label: 'Completed', value: data.filter((r) => r.status === 'completed').length },
+          { label: 'Cancelled', value: data.filter((r) => r.status === 'cancelled').length },
+          { label: 'Critical Priority', value: data.filter((r) => r.priority === 1).length },
+        ],
+        sections: [
+          {
+            title: 'Rescue Operations',
+            headers: [
+              'Title',
+              'Emergency Type',
+              'Priority',
+              'Status',
+              'Male',
+              'Female',
+              'Contact',
+              'Scheduled For',
+            ],
+            rows: data.map(toRow),
+          },
+        ],
+      });
+      openPrintWindow(html);
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportToExcel = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = rescues.filter((r) => {
+        if (!r.created_at) return !startTs && !endTs;
+        const ts = new Date(r.created_at).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      const toRow = (r: Rescue) => [
+        r.title || 'Untitled',
+        r.emergency_type || '—',
+        PRIORITY_LABELS[String(r.priority)] ?? String(r.priority),
+        r.status,
+        r.male_count ?? 0,
+        r.female_count ?? 0,
+        r.contact_phone ?? '—',
+        r.scheduled_for ? new Date(r.scheduled_for).toLocaleString() : '—',
+      ];
+      buildExcelReport({
+        title: 'Rescue Operations Report',
+        filename: `rescue-operations-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Pending', value: data.filter((r) => r.status === 'pending').length },
+          { label: 'In Progress', value: data.filter((r) => r.status === 'in_progress').length },
+          { label: 'Completed', value: data.filter((r) => r.status === 'completed').length },
+          { label: 'Cancelled', value: data.filter((r) => r.status === 'cancelled').length },
+          { label: 'Critical Priority', value: data.filter((r) => r.priority === 1).length },
+        ],
+        sections: [
+          {
+            title: 'Rescue Operations',
+            headers: [
+              'Title',
+              'Emergency Type',
+              'Priority',
+              'Status',
+              'Male',
+              'Female',
+              'Contact',
+              'Scheduled For',
+            ],
+            rows: data.map(toRow),
+          },
+        ],
+        colWidths: [30, 18, 12, 14, 8, 8, 18, 22],
+      });
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile Layout */}
@@ -1114,9 +1239,13 @@ export default function RescuePage() {
                   }`}
                 >
                   <p className="text-xs font-medium text-gray-500">{tab.label}</p>
-                  <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
-                    statusFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
-                  }`}>{tab.count}</p>
+                  <p
+                    className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                      statusFilter === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                    }`}
+                  >
+                    {tab.count}
+                  </p>
                 </button>
               ))}
             </div>
@@ -1155,6 +1284,11 @@ export default function RescuePage() {
                   ))}
                 </SelectContent>
               </Select>
+              <ExportPopover
+                isExporting={isExporting}
+                onExportPDF={exportToPDF}
+                onExportExcel={exportToExcel}
+              />
             </div>
           </div>
 
@@ -1164,20 +1298,41 @@ export default function RescuePage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-gray-100 bg-gray-50/80">
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Request Details</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Status</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Priority</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Emergency Type</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">People</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Reported</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Reporter</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Location</TableHead>
-                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">Actions</TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Request Details
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Status
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Priority
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Emergency Type
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      People
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Reported
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Reporter
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Location
+                    </TableHead>
+                    <TableHead className="px-4 py-2 text-xs font-medium text-gray-500">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRescues.slice(startIndex, startIndex + entriesPerPage).map((rescue) => (
-                    <TableRow key={rescue.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                    <TableRow
+                      key={rescue.id}
+                      className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
+                    >
                       <TableCell>
                         <div>
                           <div className="font-medium text-gray-900">{rescue.title}</div>
@@ -1405,7 +1560,7 @@ export default function RescuePage() {
                   </div>
                   <div className="text-xs text-right text-gray-500">
                     <div>Reported: {new Date(selectedRescue.created_at).toLocaleString()}</div>
-                    <div>ID: #{selectedRescue.id}</div>
+                    {/* <div>ID: #{selectedRescue.id}</div> */}
                   </div>
                 </div>
 
@@ -1526,12 +1681,12 @@ export default function RescuePage() {
                     <div>
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                         <Users className="w-4 h-4 text-gray-500" />
-                        People Involved
+                        Persons Involved
                       </div>
                       <div className="mt-1 text-sm text-gray-600">
                         {(selectedRescue.female_count || 0) + (selectedRescue.male_count || 0)} (
-                        {selectedRescue.female_count || 0} Female, {selectedRescue.male_count || 0}{' '}
-                        Male)
+                        {selectedRescue.female_count || 0} Female/s,{' '}
+                        {selectedRescue.male_count || 0} Male/s)
                       </div>
                     </div>
                   )}

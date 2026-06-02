@@ -8,6 +8,8 @@ import evacuationAPI, {
   EvacuationCenterUpdate,
   EvacuationStatus,
 } from '@/app/lib/evacuation-api';
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
+import { ExportPopover } from '@/app/components/export-popover';
 import { useEvacuation } from '@/app/providers/evacuation-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,6 +55,7 @@ export default function EvacuationPage() {
     removeEvacuationCenter,
   } = useEvacuation();
 
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -200,6 +203,68 @@ export default function EvacuationPage() {
     );
   }
 
+  const exportToPDF = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = evacuationCenters.filter(c => {
+        const stamp = c.updated_at || c.created_at;
+        if (!stamp) return !startTs && !endTs;
+        const ts = new Date(stamp).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      const html = buildReportHtml({
+        title: 'Evacuation Centers Report',
+        subtitle: start || end ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}` : undefined,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Open', value: data.filter(c => c.status === 'open').length },
+          { label: 'Full', value: data.filter(c => c.status === 'full').length },
+          { label: 'Maintenance', value: data.filter(c => c.status === 'maintenance').length },
+          { label: 'Closed', value: data.filter(c => c.status === 'closed').length },
+        ],
+        sections: [{ title: 'Evacuation Centers', headers: ['Name', 'Status', 'Occupancy', 'Capacity', 'Fill %', 'Contact', 'Phone', 'Address'],
+          rows: data.map(c => [c.name ?? '', (c.status || 'closed').toUpperCase(), c.current_occupancy ?? 0, c.capacity ?? 0, c.capacity ? `${Math.round(((c.current_occupancy ?? 0) / c.capacity) * 100)}%` : '—', c.contact_name ?? '—', c.contact_phone ?? '—', c.address ?? '']) }],
+      });
+      openPrintWindow(html);
+    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
+  };
+
+  const exportToExcel = (start: Date | null, end: Date | null) => {
+    try {
+      setIsExporting(true);
+      const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = evacuationCenters.filter(c => {
+        const stamp = c.updated_at || c.created_at;
+        if (!stamp) return !startTs && !endTs;
+        const ts = new Date(stamp).getTime();
+        return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
+      });
+      const timestamp = new Date().toLocaleString();
+      buildExcelReport({
+        title: 'Evacuation Centers Report',
+        filename: `evacuation-centers-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        timestamp,
+        stats: [
+          { label: 'Total', value: data.length },
+          { label: 'Open', value: data.filter(c => c.status === 'open').length },
+          { label: 'Full', value: data.filter(c => c.status === 'full').length },
+          { label: 'Maintenance', value: data.filter(c => c.status === 'maintenance').length },
+          { label: 'Closed', value: data.filter(c => c.status === 'closed').length },
+        ],
+        sections: [{ title: 'Evacuation Centers', headers: ['Name', 'Status', 'Occupancy', 'Capacity', 'Fill %', 'Contact', 'Phone', 'Address'],
+          rows: data.map(c => [c.name ?? '', (c.status || 'closed').toUpperCase(), c.current_occupancy ?? 0, c.capacity ?? 0, c.capacity ? `${Math.round(((c.current_occupancy ?? 0) / c.capacity) * 100)}%` : '—', c.contact_name ?? '—', c.contact_phone ?? '—', c.address ?? '']) }],
+        colWidths: [26, 14, 12, 12, 10, 22, 18, 36],
+      });
+    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
+    finally { setIsExporting(false); }
+  };
+
   return (
     <>
       {evacuationCenters.length === 0 ? (
@@ -287,6 +352,7 @@ export default function EvacuationPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                <ExportPopover isExporting={isExporting} onExportPDF={exportToPDF} onExportExcel={exportToExcel} />
                 <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
                   <Plus className="w-3.5 h-3.5" />
                   Add Center
@@ -299,9 +365,10 @@ export default function EvacuationPage() {
               {/* Header row for md+ */}
               <div className="hidden grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 bg-gray-50/80 md:grid">
                 <div className="col-span-3">Center</div>
-                <div className="col-span-2">Status</div>
+                <div className="col-span-1">Status</div>
                 <div className="col-span-2">Occupancy</div>
-                <div className="col-span-3">Location</div>
+                <div className="col-span-2">Location</div>
+                <div className="col-span-2">Updated By</div>
                 <div className="col-span-2 text-right">Actions</div>
               </div>
 
@@ -342,12 +409,21 @@ export default function EvacuationPage() {
                             <span className="text-sm text-gray-600">{center.contact_phone}</span>
                           </div>
                         )}
+                        {center.updated_by_user && (
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <span className="text-xs text-gray-400">Updated by:</span>
+                            <span className="text-xs font-medium text-gray-700">{center.updated_by_user.full_name}</span>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${center.updated_by_user.role === 'admin' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                              {center.updated_by_user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Status (md+) */}
-                    <div className="items-center hidden md:flex md:col-span-2">
-                      <Badge variant={getStatusVariant(center.status || 'closed')}>
+                    <div className="items-center hidden md:flex md:col-span-1">
+                      <Badge variant={getStatusVariant(center.status || 'closed')} className="text-[10px] px-1.5">
                         {center.status || 'closed'}
                       </Badge>
                     </div>
@@ -355,7 +431,7 @@ export default function EvacuationPage() {
                     {/* Occupancy (md+) */}
                     <div className="hidden md:block md:col-span-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-gray-200 rounded-full">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full">
                           <div
                             className="h-2 bg-blue-500 rounded-full"
                             style={{
@@ -376,13 +452,33 @@ export default function EvacuationPage() {
                     </div>
 
                     {/* Location (md+) */}
-                    <div className="items-center hidden md:flex md:col-span-3">
+                    <div className="items-center hidden md:flex md:col-span-2">
                       <div
-                        className="max-w-[260px] truncate text-sm text-gray-600"
+                        className="max-w-[180px] truncate text-sm text-gray-600"
                         title={center.address}
                       >
                         {center.address}
                       </div>
+                    </div>
+
+                    {/* Updated By (md+) */}
+                    <div className="hidden md:flex md:col-span-2 items-center">
+                      {center.updated_by_user ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm text-gray-800 font-medium leading-tight truncate max-w-[140px]">
+                            {center.updated_by_user.full_name}
+                          </span>
+                          <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full w-fit ${
+                            center.updated_by_user.role === 'admin'
+                              ? 'bg-red-50 text-red-700'
+                              : 'bg-blue-50 text-blue-700'
+                          }`}>
+                            {center.updated_by_user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </div>
 
                     {/* Actions */}
@@ -598,6 +694,8 @@ function EvacuationModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.name.trim().length < 60) return;
+    if (formData.capacity && parseInt(formData.capacity) < 1000) return;
     // Upload new files (if any) to Supabase Storage
     let uploadedUrls: string[] = [];
     if (newFiles.length > 0) {
@@ -699,15 +797,25 @@ function EvacuationModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Center Name *</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="name">Center Name *</Label>
+                <span className={`text-xs tabular-nums font-medium ${
+                  formData.name.length === 0 ? 'text-muted-foreground' :
+                  formData.name.length < 60 ? 'text-red-500' : 'text-emerald-600'
+                }`}>
+                  {formData.name.length < 60 && formData.name.length > 0
+                    ? `${60 - formData.name.length} more needed`
+                    : `${formData.name.length} chars`}
+                </span>
+              </div>
               <Input
                 id="name"
                 value={formData.name}
-                placeholder="e.g. Central Evacuation Center"
+                placeholder="e.g. Central Evacuation Center (min. 60 characters)"
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 required
                 disabled={loading}
-                className="mt-2"
+                className={`mt-1 ${formData.name.length > 0 && formData.name.length < 60 ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
               />
             </div>
 
@@ -734,16 +842,28 @@ function EvacuationModal({
               </div>
 
               <div>
-                <Label htmlFor="capacity">Capacity</Label>
+                <Label htmlFor="capacity">Capacity <span className="text-xs font-normal text-muted-foreground">(min. 1,000)</span></Label>
                 <Input
                   id="capacity"
                   type="number"
-                  placeholder="100"
+                  inputMode="numeric"
+                  placeholder="1000"
+                  min={1000}
+                  step={1}
                   value={formData.capacity}
-                  onChange={(e) => setFormData((p) => ({ ...p, capacity: e.target.value }))}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setFormData((p) => ({ ...p, capacity: raw }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (['.', ',', '-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                  }}
                   disabled={loading}
-                  className="mt-2"
+                  className={`mt-2 ${formData.capacity && parseInt(formData.capacity) < 1000 ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                 />
+                {formData.capacity && parseInt(formData.capacity) < 1000 && (
+                  <p className="text-xs text-red-500 mt-1">Capacity must be at least 1,000 (4 digits)</p>
+                )}
               </div>
             </div>
 

@@ -554,9 +554,21 @@ export default function ReportsPage() {
                   {selectedReport.post_details?.media_url && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Media</label>
-                      <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                        <ImageIcon className="w-4 h-4" />
-                        Media attachment present
+                      <div className="mt-1">
+                        <img
+                          src={selectedReport.post_details.media_url}
+                          alt="Post media"
+                          className="max-h-64 w-full rounded-md object-contain bg-muted/30 border"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden items-center gap-2 mt-1 text-sm text-muted-foreground">
+                          <ImageIcon className="w-4 h-4" />
+                          Unable to load image
+                        </div>
                       </div>
                     </div>
                   )}

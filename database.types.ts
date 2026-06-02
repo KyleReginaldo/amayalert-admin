@@ -90,6 +90,7 @@ export type Database = {
           photos: string[] | null;
           status: Database['public']['Enums']['evacuation_status'] | null;
           updated_at: string | null;
+          updated_by: string | null;
         };
         Insert: {
           address: string;
@@ -106,6 +107,7 @@ export type Database = {
           photos?: string[] | null;
           status?: Database['public']['Enums']['evacuation_status'] | null;
           updated_at?: string | null;
+          updated_by?: string | null;
         };
         Update: {
           address?: string;
@@ -122,6 +124,7 @@ export type Database = {
           photos?: string[] | null;
           status?: Database['public']['Enums']['evacuation_status'] | null;
           updated_at?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [
           {
@@ -131,6 +134,52 @@ export type Database = {
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'evacuation_centers_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      emergency_hotlines: {
+        Row: {
+          id: number;
+          category: string;
+          name: string;
+          phones: string[];
+          landlines: string[];
+          created_at: string;
+          created_by: string | null;
+          updated_at: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: number;
+          category: string;
+          name: string;
+          phones?: string[];
+          landlines?: string[];
+          created_at?: string;
+          created_by?: string | null;
+          updated_at?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: number;
+          category?: string;
+          name?: string;
+          phones?: string[];
+          landlines?: string[];
+          created_at?: string;
+          created_by?: string | null;
+          updated_at?: string | null;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          { foreignKeyName: 'emergency_hotlines_created_by_fkey'; columns: ['created_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id']; },
+          { foreignKeyName: 'emergency_hotlines_updated_by_fkey'; columns: ['updated_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id']; },
         ];
       };
       logs: {
