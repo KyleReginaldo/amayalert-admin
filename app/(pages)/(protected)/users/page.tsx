@@ -1,10 +1,10 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import UsersLiveMap from '@/app/components/UsersLiveMap';
-import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
-import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
 import { ExportPopover } from '@/app/components/export-popover';
+import UsersLiveMap from '@/app/components/UsersLiveMap';
+import { buildExcelReport, buildReportHtml, openPrintWindow } from '@/app/lib/report-export';
+import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,8 +70,8 @@ import {
   Users as UsersIcon,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 // Pagination Controls Component
@@ -443,9 +443,7 @@ export default function UsersPage() {
     }
   };
 
-  const getVerificationBadge = (
-    status: 'pending' | 'verified' | 'rejected' | null | undefined,
-  ) => {
+  const getVerificationBadge = (status: 'pending' | 'verified' | 'rejected' | null | undefined) => {
     if (!status) return null;
     const styles = {
       pending: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -453,9 +451,7 @@ export default function UsersPage() {
       rejected: 'bg-red-50 text-red-700 border-red-200',
     };
     const labels = { pending: 'Unverified', verified: 'Email Verified', rejected: 'Rejected' };
-    return (
-      <Badge className={`text-xs ${styles[status]}`}>{labels[status]}</Badge>
-    );
+    return <Badge className={`text-xs ${styles[status]}`}>{labels[status]}</Badge>;
   };
 
   const openCreateModal = () => {
@@ -523,44 +519,84 @@ export default function UsersPage() {
     try {
       setIsExporting(true);
       const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
-      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
-      const data = users.filter(u => {
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = users.filter((u) => {
         if (!u.created_at) return !startTs && !endTs;
         const ts = new Date(u.created_at).getTime();
         return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
       });
-      const toRow = (u: User) => [u.full_name || 'Unknown', u.email ?? '', u.phone_number ?? '—', u.role || 'user', u.gender || '—', u.suspended ? 'Suspended' : (u.status || 'pending'), u.verification_status || 'pending', u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'];
+      const toRow = (u: User) => [
+        u.full_name || 'Unknown',
+        u.email ?? '',
+        u.phone_number ?? '—',
+        u.role || 'user',
+        u.gender || '—',
+        u.suspended ? 'Suspended' : u.status || 'pending',
+        u.verification_status || 'pending',
+        u.created_at ? new Date(u.created_at).toLocaleDateString() : '—',
+      ];
       const timestamp = new Date().toLocaleString();
       const html = buildReportHtml({
         title: 'User Management Report',
-        subtitle: start || end ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}` : undefined,
+        subtitle:
+          start || end
+            ? `${start?.toLocaleDateString() ?? '—'} → ${end?.toLocaleDateString() ?? '—'}`
+            : undefined,
         timestamp,
         stats: [
           { label: 'Total', value: data.length },
-          { label: 'Male', value: data.filter(u => u.gender === 'male').length },
-          { label: 'Female', value: data.filter(u => u.gender === 'female').length },
-          { label: 'Admins', value: data.filter(u => u.role === 'admin').length },
-          { label: 'Sub-Admins', value: data.filter(u => u.role === 'sub_admin').length },
-          { label: 'Suspended', value: data.filter(u => u.suspended).length },
+          { label: 'Male', value: data.filter((u) => u.gender === 'male').length },
+          { label: 'Female', value: data.filter((u) => u.gender === 'female').length },
+          { label: 'Admins', value: data.filter((u) => u.role === 'admin').length },
+          { label: 'Sub-Admins', value: data.filter((u) => u.role === 'sub_admin').length },
+          { label: 'Suspended', value: data.filter((u) => u.suspended).length },
         ],
-        sections: [{ title: 'Users', headers: ['Name', 'Email', 'Phone', 'Role', 'Gender', 'Status', 'Verification', 'Join Date'], rows: data.map(toRow) }],
+        sections: [
+          {
+            title: 'Users',
+            headers: [
+              'Name',
+              'Email',
+              'Phone',
+              'Role',
+              'Sex',
+              'Status',
+              'Verification',
+              'Join Date',
+            ],
+            rows: data.map(toRow),
+          },
+        ],
       });
       openPrintWindow(html);
-    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
-    finally { setIsExporting(false); }
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const exportToExcel = (start: Date | null, end: Date | null) => {
     try {
       setIsExporting(true);
       const startTs = start ? new Date(start).setHours(0, 0, 0, 0) : null;
-      const endTs   = end   ? new Date(end).setHours(23, 59, 59, 999) : null;
-      const data = users.filter(u => {
+      const endTs = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+      const data = users.filter((u) => {
         if (!u.created_at) return !startTs && !endTs;
         const ts = new Date(u.created_at).getTime();
         return (!startTs || ts >= startTs) && (!endTs || ts <= endTs);
       });
-      const toRow = (u: User) => [u.full_name || 'Unknown', u.email ?? '', u.phone_number ?? '—', u.role || 'user', u.gender || '—', u.suspended ? 'Suspended' : (u.status || 'pending'), u.verification_status || 'pending', u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'];
+      const toRow = (u: User) => [
+        u.full_name || 'Unknown',
+        u.email ?? '',
+        u.phone_number ?? '—',
+        u.role || 'user',
+        u.gender || '—',
+        u.suspended ? 'Suspended' : u.status || 'pending',
+        u.verification_status || 'pending',
+        u.created_at ? new Date(u.created_at).toLocaleDateString() : '—',
+      ];
       const timestamp = new Date().toLocaleString();
       buildExcelReport({
         title: 'User Management Report',
@@ -568,17 +604,36 @@ export default function UsersPage() {
         timestamp,
         stats: [
           { label: 'Total', value: data.length },
-          { label: 'Male', value: data.filter(u => u.gender === 'male').length },
-          { label: 'Female', value: data.filter(u => u.gender === 'female').length },
-          { label: 'Admins', value: data.filter(u => u.role === 'admin').length },
-          { label: 'Sub-Admins', value: data.filter(u => u.role === 'sub_admin').length },
-          { label: 'Suspended', value: data.filter(u => u.suspended).length },
+          { label: 'Male', value: data.filter((u) => u.gender === 'male').length },
+          { label: 'Female', value: data.filter((u) => u.gender === 'female').length },
+          { label: 'Admins', value: data.filter((u) => u.role === 'admin').length },
+          { label: 'Sub-Admins', value: data.filter((u) => u.role === 'sub_admin').length },
+          { label: 'Suspended', value: data.filter((u) => u.suspended).length },
         ],
-        sections: [{ title: 'Users', headers: ['Name', 'Email', 'Phone', 'Role', 'Gender', 'Status', 'Verification', 'Join Date'], rows: data.map(toRow) }],
+        sections: [
+          {
+            title: 'Users',
+            headers: [
+              'Name',
+              'Email',
+              'Phone',
+              'Role',
+              'Sex',
+              'Status',
+              'Verification',
+              'Join Date',
+            ],
+            rows: data.map(toRow),
+          },
+        ],
         colWidths: [26, 34, 16, 12, 10, 14, 14, 14],
       });
-    } catch (e) { console.error(e); alert('Export failed. Please try again.'); }
-    finally { setIsExporting(false); }
+    } catch (e) {
+      console.error(e);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -630,9 +685,13 @@ export default function UsersPage() {
                     }`}
                   >
                     <p className="text-xs font-medium text-gray-500">{tab.label}</p>
-                    <p className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
-                      activeTab === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
-                    }`}>{tab.count}</p>
+                    <p
+                      className={`text-xl font-bold mt-0.5 tabular-nums leading-none ${
+                        activeTab === tab.key ? 'text-[#4988C4]' : 'text-gray-900'
+                      }`}
+                    >
+                      {tab.count}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -663,8 +722,15 @@ export default function UsersPage() {
                     Map
                   </button>
                 </div>
-                <ExportPopover isExporting={isExporting} onExportPDF={exportToPDF} onExportExcel={exportToExcel} />
-                <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+                <ExportPopover
+                  isExporting={isExporting}
+                  onExportPDF={exportToPDF}
+                  onExportExcel={exportToExcel}
+                />
+                <Button
+                  onClick={openCreateModal}
+                  className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
+                >
                   <Plus className="w-3.5 h-3.5" />
                   Add User
                 </Button>
@@ -864,7 +930,7 @@ export default function UsersPage() {
                               Role
                             </TableHead>
                             <TableHead className="w-[9%] px-4 py-2 text-xs font-medium text-gray-500">
-                              Gender
+                              Sex
                             </TableHead>
                             <TableHead className="w-[14%] px-4 py-2 text-xs font-medium text-gray-500">
                               Phone
@@ -1216,7 +1282,7 @@ export default function UsersPage() {
                         <UserIcon className="h-4 w-4 text-purple-500" />
                       </div>
                       <div>
-                        <p className="text-[10px] text-gray-400">Gender</p>
+                        <p className="text-[10px] text-gray-400">Sex</p>
                         {selectedUser.gender ? (
                           <Badge
                             className={`text-xs mt-0.5 ${
@@ -1305,7 +1371,13 @@ export default function UsersPage() {
                     Verification Status
                   </p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {getVerificationBadge(selectedUser.verification_status as 'pending' | 'verified' | 'rejected' | null)}
+                    {getVerificationBadge(
+                      selectedUser.verification_status as
+                        | 'pending'
+                        | 'verified'
+                        | 'rejected'
+                        | null,
+                    )}
                     {selectedUser.verification_status !== 'verified' && (
                       <button
                         onClick={() => handleVerificationChange(selectedUser, 'verified')}
@@ -1335,14 +1407,6 @@ export default function UsersPage() {
                       </button>
                     )}
                   </div>
-                </div>
-
-                {/* User ID */}
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-[10px] text-gray-400">User ID</p>
-                  <p className="text-xs text-gray-500 font-mono break-all mt-0.5">
-                    {selectedUser.id}
-                  </p>
                 </div>
               </div>
 
@@ -1574,7 +1638,7 @@ function UserModal({ isOpen, onClose, user, onSave, loading = false }: UserModal
           </div>
 
           <div>
-            <Label htmlFor="gender">Gender</Label>
+            <Label htmlFor="gender">Sex</Label>
             <Select
               value={formData.gender}
               onValueChange={(value) =>

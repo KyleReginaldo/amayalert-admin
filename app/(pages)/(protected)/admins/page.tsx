@@ -1,7 +1,6 @@
 'use client';
 
 import { supabase } from '@/app/client/supabase';
-import { getAdminStatColor } from '@/app/core/utils/utils';
 import usersAPI, { User, UserInsert, UserUpdate } from '@/app/lib/users-api';
 import { useData } from '@/app/providers/data-provider';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,13 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Sheet,
   SheetContent,
@@ -446,9 +445,14 @@ export default function AdminsPage() {
               { label: 'Male', count: stats.male },
               { label: 'Female', count: stats.female },
             ].map((stat) => (
-              <div key={stat.label} className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white">
+              <div
+                key={stat.label}
+                className="flex-1 min-w-[80px] p-3 rounded-xl border border-gray-200 bg-white"
+              >
                 <p className="text-xs font-medium text-gray-500">{stat.label}</p>
-                <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">{stat.count}</p>
+                <p className="text-xl font-bold mt-0.5 text-gray-900 tabular-nums leading-none">
+                  {stat.count}
+                </p>
               </div>
             ))}
           </div>
@@ -462,7 +466,10 @@ export default function AdminsPage() {
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
-            <Button onClick={openCreateModal} className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer">
+            <Button
+              onClick={openCreateModal}
+              className="h-8 gap-1.5 text-xs bg-[#4988C4] cursor-pointer"
+            >
               <Plus className="w-3.5 h-3.5" />
               Add Admin
             </Button>
@@ -573,10 +580,18 @@ export default function AdminsPage() {
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="border-b border-gray-100 bg-gray-50/80">
-                    <TableHead className="w-[30%] px-4 py-2 text-xs font-medium text-gray-500">Admin</TableHead>
-                    <TableHead className="w-[10%] px-4 py-2 text-xs font-medium text-gray-500">Gender</TableHead>
-                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">Phone</TableHead>
-                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">Joined</TableHead>
+                    <TableHead className="w-[30%] px-4 py-2 text-xs font-medium text-gray-500">
+                      Admin
+                    </TableHead>
+                    <TableHead className="w-[10%] px-4 py-2 text-xs font-medium text-gray-500">
+                      Sex
+                    </TableHead>
+                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">
+                      Phone
+                    </TableHead>
+                    <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500">
+                      Joined
+                    </TableHead>
                     <TableHead className="w-[20%] px-4 py-2 text-xs font-medium text-gray-500 text-right">
                       Actions
                     </TableHead>
@@ -585,7 +600,10 @@ export default function AdminsPage() {
                 <TableBody>
                   {paginatedAdmins.map((admin) => {
                     return (
-                      <TableRow key={admin.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                      <TableRow
+                        key={admin.id}
+                        className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
+                      >
                         <TableCell className="w-[30%] px-4 py-2.5">
                           <div>
                             <div className="flex items-center gap-1.5">
@@ -624,7 +642,9 @@ export default function AdminsPage() {
                           )}
                         </TableCell>
                         <TableCell className="w-[20%] px-4 py-2.5 text-gray-600">
-                          <div className="text-sm">{admin.phone_number || <span className="text-gray-400">—</span>}</div>
+                          <div className="text-sm">
+                            {admin.phone_number || <span className="text-gray-400">—</span>}
+                          </div>
                         </TableCell>
                         <TableCell className="w-[20%] px-4 py-2.5 text-gray-600">
                           <div className="text-sm">
@@ -756,7 +776,7 @@ export default function AdminsPage() {
                   <div>{selectedAdmin.phone_number || 'Not provided'}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Gender</div>
+                  <div className="text-xs text-gray-500">Sex</div>
                   <div>
                     {selectedAdmin.gender ? (
                       <Badge
@@ -1018,7 +1038,7 @@ function AdminModal({ isOpen, onClose, admin, onSave, loading = false }: AdminMo
           </div>
 
           <div>
-            <Label htmlFor="gender">Gender</Label>
+            <Label htmlFor="gender">Sex</Label>
             <Select
               value={formData.gender}
               onValueChange={(value) =>
